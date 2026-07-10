@@ -1,0 +1,2052 @@
+query,label
+What would be the best type of exercise for a person who has arthritis?,MEDIUM
+Calculate the atomic mass for lithium.,MEDIUM
+Convert the following binary code to ASCII characters.,MEDIUM
+Take this sentence and make it more descriptive: She was scared.,MEDIUM
+Brainstorm 3 possible ideas to promote the following product,MEDIUM
+Rewrite the sentence using imperative mood.,MEDIUM
+Describe a picnic vacation where four people are travelling together.,MEDIUM
+Explain the concept of Big Data and what it means for companies and customers.,MEDIUM
+Analyze the given phrase in terms of its connotations.,MEDIUM
+List three potential sources for the following research problem.,MEDIUM
+Arrange the following countries in ascending order of GDP per capita.,MEDIUM
+Name the boat depicted in the provided photo.,MEDIUM
+Edit the grammar and punctuation of the given sentence.,MEDIUM
+Calculate the length of the hypotenuse in the following triangle.,MEDIUM
+How many instruments does a symphony orchestra typically have?,EASY
+"Summarize the phrase: ""GPT is a natural language processing architecture.""",MEDIUM
+Tell me the name of the capital of France. Output the name.,EASY
+Brainstorm five questions that you could ask a customer to better understand their needs.,MEDIUM
+Brainstorm different ways to cook a specific type of food.,MEDIUM
+"Generate an example of a customer service conversation involving the keyword ""shipping"".",MEDIUM
+What is arithmetic mean and how to calculate it?,MEDIUM
+Describe a method for detecting spam emails.,MEDIUM
+Develop a computer program that adds two numbers.,EASY
+How can one reduce the number of distractions when studying?,MEDIUM
+Construct an algorithm to solve the given problem.,HARD
+Pick out the proper noun from this sentence:,MEDIUM
+Generate a list of interview questions for a software development role.,MEDIUM
+What are the components of a well-balanced meal?,MEDIUM
+Categorize the following movies into either comedy or drama.,MEDIUM
+Generate a story about a family who adopts a pet.,MEDIUM
+Find out what year the company was founded.,EASY
+Give the name and a brief description of a type of user interface.,MEDIUM
+Give an example of an appropriate reminder that could be set using a GPT model.,MEDIUM
+Invent a creative way to use virtual reality technology.,HARD
+Identify any counterarguments to this statement.,HARD
+Find a creative way to promote a business.,MEDIUM
+"Rewrite the following sentence without using the word ""bad"": ""The food was bad.""",MEDIUM
+Define the following phrase.,MEDIUM
+Discard all characters that are not letters from the following string.,EASY
+Write a review for a car rental agency that frequently overcharged you.,HARD
+What is the importance of nutrition in maintaining physical health?,MEDIUM
+Explain what kinds of benefits does AI have in the healthcare sector.,MEDIUM
+"Assign an appropriate age rating to the following movie: 
+
+Movie: Avengers: Endgame",MEDIUM
+What are the three most important skills that a computer programmer should have?,MEDIUM
+Generate a tag line for a cafe.,MEDIUM
+How can we inspire more people to become coding experts?,HARD
+List three sites of historical importance in London.,MEDIUM
+Brainstorm three relevant topics for the article,MEDIUM
+Create a character sketch of the protagonist of the book.,MEDIUM
+Critique a piece of modern art.,MEDIUM
+Suggest three possible applications that could be built from GPT technology.,MEDIUM
+What is the best way to take care of a rose plant?,MEDIUM
+Create a prioritized list of activities to complete given the context.,MEDIUM
+Generate a list of five items that would make a perfect picnic lunch,MEDIUM
+Come up with a word cloud based on the following theme: pollution.,HARD
+Compare two types of media outlets: print and digital.,MEDIUM
+Determine the part of speech of the bolded word.,MEDIUM
+Edit this sentence to have proper capitalization.,MEDIUM
+Name three methods for authentication.,MEDIUM
+State the conclusion based on the passage.,MEDIUM
+Analyze the following text for subject-verb agreement mistakes.,MEDIUM
+Tell the name of a famous mathematician.,EASY
+"From the passage below, identify what words have similar meaning.",MEDIUM
+What type of government does Spain currently have?,MEDIUM
+List three benefits of using social media.,MEDIUM
+Write a summary of the given article in no more than 5 sentences.,MEDIUM
+Come up with a creative idea for a children's book.,HARD
+Categorize the following fruits according to color,MEDIUM
+Give an example of a data mining problem that consists of open-ended generation.,MEDIUM
+Create a link to an online store that sells books.,MEDIUM
+Create a dialogue between two people having a conversation about going to the beach.,HARD
+Name two positive qualities that a good waiter should possess,MEDIUM
+Categorize the following characters into heroes and villains.,MEDIUM
+Name one type of training that companies can provide for their employees?,EASY
+Arrange the items in alphabetical order.,MEDIUM
+"What is the time in Oslo, Norway?",MEDIUM
+Rewrite this sentence to use strong language.,MEDIUM
+Give a rule of thumb for managing projects,MEDIUM
+Name two types of physical stimuli that animals can detect.,MEDIUM
+Write the meaning of the phrase 'cost of living'.,MEDIUM
+Generate a list of jobs that involve writing skills.,MEDIUM
+Create a marketing plan for reaching a young adult demographic,HARD
+Take the input sentence and make it more expressive by adding a metaphor.,MEDIUM
+"Generate an HTML page that contains the text ""Welcome to my page"".",MEDIUM
+Construct a metaphor that compares love to a plant.,MEDIUM
+Insert a semantically appropriate sentence at the beginning of the following text so that the topic is introduced smoothly.,MEDIUM
+Replace the <mask> in the following sentence with the most appropriate synonym.,MEDIUM
+Calculate the average value from the given numbers,MEDIUM
+How do you respond to a negative comment on social media?,MEDIUM
+Find the synonyms of the following word: 'Tenacious'.,MEDIUM
+Deduce the meaning of the following word by using the context.,MEDIUM
+Suggest a way to add the following information in the given paragraph.,MEDIUM
+Edit the given code to optimize its performance.,HARD
+Classify the given input sentence in 4 classes.,MEDIUM
+"Given the following sentence, add a transition word to make the sentence better.",MEDIUM
+Come up with 5 new ideas for a product design.,HARD
+"Provide a context to this sentence: ""He suggested the theory""",MEDIUM
+Describe the main differences between a voice assistant and a chatbot in two sentences.,MEDIUM
+"Edit the following sentence to make it more formal:
+""My phone got stolen so I need to buy a new one""",MEDIUM
+Suggest five ways to budget your expenses.,MEDIUM
+What is a disadvantage of using a deep learning network to perform object detection?,MEDIUM
+Generate a memorable metaphor,HARD
+"Analyze the character of Daisy Buchanan, in The Great Gatsby",MEDIUM
+Explain why English is a difficult language to learn.,MEDIUM
+What changes can be made to make the following phrase easier to understand?,MEDIUM
+Generate a list of 5 items that I need to pack for a vacation.,MEDIUM
+"Write a classification model to classify movie reviews as negative, neutral or positive.",MEDIUM
+Compress the following text using Lempel-Ziv-Welch (LZW) algorithm,MEDIUM
+"Given the input, state the relationship between the two objects.",MEDIUM
+Generate a list of five positive attitudes.,MEDIUM
+"Given a numerical value, compute its square root.",MEDIUM
+Write a sentence explaining how eating healthy benefits the human body?,MEDIUM
+Explain why it is important to reduce your carbon footprint.,MEDIUM
+Find three ways to improve the team workflow.,MEDIUM
+Rewrite the following sentence using succinct and formal language: ”The university provided its students with both necessary knowledge and life skills.”,MEDIUM
+Rate the customer service from 1 to 10,MEDIUM
+Create a 3D rendering of a house using the provided dimensions.,HARD
+Relevance of classical studies for modern times,MEDIUM
+Find an example of a successful marketing plan,MEDIUM
+Write a function that takes an array and returns a new array with only the even numbers from the original array.,MEDIUM
+Make a list of at least three books,MEDIUM
+Compose a tweet with a maximum of 280 characters.,EASY
+Design a logo for an imaginary peace organization.,HARD
+"Calculate the mean of these 5 numbers: 2, 4, 10, 11, 13.",EASY
+Construct a detailed world using the following objects.,HARD
+"From the given text, identify two examples of symbolic meaning.",MEDIUM
+Analyze the advantages of working in a team.,MEDIUM
+What is the scoping rule of a variable?,MEDIUM
+Write the code for multiplying two matrices,MEDIUM
+Give me two examples of a type of bird.,MEDIUM
+Describe what a typical workday might look like for a computer programmer.,MEDIUM
+Create a list of 5 questions to ask a candidate in a job interview.,MEDIUM
+Describe what would happen if the given situation took place.,MEDIUM
+List 3 risks associated with investing in cryptocurrencies,MEDIUM
+Transform the following 3 sentences into one single sentence using the imperative form.,MEDIUM
+Suggest two methods to improve computer security.,MEDIUM
+"For the following artist, write a memorable song title for them.",MEDIUM
+"Generate an if-else statement with the following conditions: 
+If the temperature is greater than 25 degrees, print ""It is hot outside."", else print ""It is a comfortable temperature.""",MEDIUM
+Make a plan for a complete workout routine.,HARD
+Design a pop-up notification for a phone app.,MEDIUM
+Generate a list of 5 countries with the highest human development index.,MEDIUM
+Suggest one use case for a robot assistant in a doctor's office.,MEDIUM
+Find the most similar word to the provided word.,MEDIUM
+"Assume the given sentence is written incorrectly: ""We invited guests to a party wearing formal clothes."" Rewrite the sentence to sound grammatically correct.",MEDIUM
+Construct a SQL query which will output the names of all the people born before 1990.,MEDIUM
+Create an analogy that compares a plant to a person growing up,MEDIUM
+Rewrite the sentence using a verb conjugation of your choice.,MEDIUM
+Identify the pros and cons of using AI in healthcare.,MEDIUM
+Describe the given painting in 20 words or less.,EASY
+Create two roles for a movie script.,MEDIUM
+Develop a code to create a dictionary with the length of each word in the given sentence.,MEDIUM
+Describe how the rise of artificial intelligence can contribute to business.,MEDIUM
+Design a graphical user interface (GUI) to represent the following data.,HARD
+Categorize this piece of text as to whether it is a fiction or non-fiction,MEDIUM
+Write a comment for a given post,MEDIUM
+Divide 10 by 4 and remove the remainder.,EASY
+Describe the key responsibilities of a software engineer.,MEDIUM
+Generate an effective headline for an article,HARD
+What is the verb tense used in the following sentence?,EASY
+What is the ideal temperature for a refrigerator?,EASY
+Add a punctuation mark to the sentence to make it valid.,MEDIUM
+Generate an interesting fact about the behavior of a physical system.,HARD
+"Reorganize the given sentences and create a logical, cohesive story.",HARD
+"Identify the subject of the sentence.
+Output should be a single word.",MEDIUM
+"Explain what a ""food desert"" is and why they are a problem.",MEDIUM
+Transform the following sentence into one that shows contrast.,MEDIUM
+Calculate the ratio of males to females in a student population.,MEDIUM
+Create a new sentence that contains a simile.,MEDIUM
+"Calculate the cost of purchasing six bottles of wine, if each bottle is priced at $4.99",MEDIUM
+"Generate an appropriate response for the sentence: ""My phone battery died suddenly"".",MEDIUM
+Outline the range of colors a television can display.,MEDIUM
+Explain the concept of indexing to a lay person.,MEDIUM
+List 3 types of environment effects of fossil fuel emissions.,MEDIUM
+Create a webpage that displays a contact us form.,MEDIUM
+Generate an AI chatbot script for a customer service scenario,HARD
+Describe the best practices for secure coding.,MEDIUM
+Formulate a hypothesis about the given data.,MEDIUM
+What activities can be done to reduce our carbon footprint?,MEDIUM
+Read the given article and summarize it in 100 words.,MEDIUM
+"Write a sentence using the words “laudable”, “enthusiastic” and “endeavour”",MEDIUM
+Below are the ingredients to make a burrito. Rearrange the ingredients you need in order to make it.,MEDIUM
+Suggest a possible solution to the given problem.,MEDIUM
+Create a report summarizing the given paper.,HARD
+Provide two example of everyday products that contain plastic.,EASY
+Rewrite the following list of objects as a sentence.,MEDIUM
+Suggest one action that an organic food store can take to reduce its environmental impact.,MEDIUM
+Suppose you have to write a persuasive piece about getting rid of fossil fuels use. What 3 elements should you include in your argumentation?,MEDIUM
+Edit the following text to better reflect formal language.,MEDIUM
+"Given a financial statement, predict what the stock market's reaction will be.",HARD
+Translate a given sentence into Spanish.,MEDIUM
+"Given a person's name, create a creative description of that person.",HARD
+Generate three realistic locations for a treasure hunt.,MEDIUM
+What are the benefits of using a data visualization tool?,MEDIUM
+Re-arrange the words from the given phrase so that it forms a meaningful sentence.,MEDIUM
+Write a comment praising the given product.,EASY
+Generate an example of an empirically tested hypothesis for a research study,MEDIUM
+Create a list of 5 books which are suitable as gifts for your best friend.,MEDIUM
+Name the software engineering design pattern and give the definition of it.,MEDIUM
+Tell me about Michelangelo.,MEDIUM
+Generate a tweet about women's rights.,MEDIUM
+Find five top-rated restaurants in New York City.,MEDIUM
+List three different ways to prevent the spread of coronavirus.,MEDIUM
+Write a statement that highlights your best qualities,MEDIUM
+Explain why software engineers must use version control systems.,MEDIUM
+Design an AI assistant that could help a student in various academic tasks.,HARD
+Describe a single application of Machine Learning in no more than 4 sentences.,MEDIUM
+Describe a responsible ecological lifestyle.,MEDIUM
+Explain the different steps in the research process.,MEDIUM
+Develop a recipe for a healthy snack using five ingredients.,MEDIUM
+Explain how a neural network learns.,MEDIUM
+Describe the upcoming weather forecast for tomorrow in two sentences.,MEDIUM
+Identify the main thesis of a certain essay.,MEDIUM
+Find the most recommended restaurant in the city,MEDIUM
+Write a computer program to predict the probability of a coin tossing event.,HARD
+Order the following steps in creating a successful presentation.,MEDIUM
+Design a website for an online store selling handmade jewelry.,HARD
+Come up with a list of 5 basic items needed to camp.,MEDIUM
+Generate a random five-digit integer.,EASY
+Read the following sentence and create a sentence expressing the opposite.,MEDIUM
+Find a sustainable way to reduce single-use plastics.,MEDIUM
+Provide a detailed explanation for the cause of an internet outage.,MEDIUM
+Assign the correct labels to the following fruits:,MEDIUM
+Order the following list of ingredients from lowest to highest in calories,MEDIUM
+What are the four main types of energy resources?,MEDIUM
+Calculate the trade-off cost between two investments.,HARD
+Summarize the use case of a chatbot,MEDIUM
+Change the format of the document to a Word document.,EASY
+Name 5 advantages of cloud storage.,MEDIUM
+Create a haiku poem related to justice,HARD
+Generate a sample password that follows the given criteria.,MEDIUM
+"Provide three sentences to explain the definition of ""artificial intelligence"".",MEDIUM
+"Given a sentence, add an appropriate transition",MEDIUM
+Write a letter introducing yourself as a new hire to your company.,MEDIUM
+Describe a hypothetical creature of your choice.,HARD
+Generate a random story about a robot escaping a scientific lab.,HARD
+Compose a 1-2 sentence slogan for a brand that specializes in outdoor lifestyle apparel.,MEDIUM
+Name three benefits of walking every day.,MEDIUM
+Rewrite the following general statement into an assertion statement.,MEDIUM
+Generate a list of 5 questions about the stock market,MEDIUM
+Generate a speech to convince customers to buy a product.,HARD
+Describe the basic steps in painting a room.,MEDIUM
+List 5 tips for effective job hunting.,MEDIUM
+Edit the text in the input field to make the text more concise.,MEDIUM
+"Categorize the following items into one of the following categories: food, clothing, or furniture.",MEDIUM
+Create a tweet about the benefits of digital marketing,MEDIUM
+Suggest some activities one can do while hiking.,MEDIUM
+Explain why climate change is a pressing environmental and human concern.,MEDIUM
+Generate a story about a princess who falls in love with a prince from a different kingdom.,HARD
+Explain the advantages and disadvantages of the given option.,MEDIUM
+Which problems can be addressed by deep learning?,MEDIUM
+List 5 benefits that an AI assistant can offer businesses.,MEDIUM
+Paraphrase the following sentence: Her cat ran away.,MEDIUM
+Output a list of tools needed for a craft.,MEDIUM
+Create a visual representing a company's growth trajectory.,MEDIUM
+Suggest a title for a story about a family's journey to a beach town.,MEDIUM
+"Turn this statement into a question: 
+Flying is fun.",MEDIUM
+Update the piece of code to correct the bug.,MEDIUM
+Create a new time management system for working professionals.,HARD
+Calculate the difference between two numbers and output the answer in words.,MEDIUM
+"Identify the type of sentence (declarative, imperative, interrogative, exclamatory)",EASY
+"Categorize this sentence into declarative, imperative, interrogative, or exclamatory",MEDIUM
+Describe the heat transfer process.,MEDIUM
+"Given a hypothetical scenario, come up with the most likely opinion of a person.",HARD
+Describe three ways to use Instagram to build a lifestyle brand,MEDIUM
+Provide a list containing five adjectives to describe an elephant.,MEDIUM
+Edit the given sample budget.,HARD
+"Analyze the following text for sentiment and output whether it is positive, neutral or negative.",MEDIUM
+Write a descriptive paragraph about the following scene.,HARD
+Summarize the book 'The Red Badge of Courage'.,MEDIUM
+"Given a product description, what is the category of this product?",MEDIUM
+Generate a cinquain poem based on the prompt “summer breeze”,HARD
+Generate a recipe for making a vanilla milkshake.,MEDIUM
+When is the best time of day to exercise?,MEDIUM
+Suggest a catchy name for a website to sell vintage clothes.,MEDIUM
+Categorize the following text as either a proverb or a quote.,MEDIUM
+Create a poetic metaphor that compares the provided person to an object or concept.,HARD
+Explain the difference between text classification and text clustering.,MEDIUM
+Name 3 diseases caused by poor hygiene and sanitation,MEDIUM
+Classify different dog breeds using a convolutional neural network.,HARD
+Specify what makes this tree an example of conifer.,MEDIUM
+What is important to remember when setting goals?,MEDIUM
+Convert the following hexadecimal number to octal.,MEDIUM
+Convert 4 inches to centimeters.,EASY
+"Generate a 5-word rhyming phrase using the word ""twist"".",HARD
+Write a biography of Bill Gates,HARD
+What is the chemical structure of carbon dioxide?,EASY
+Create a custom password based on the following phrase:,MEDIUM
+What’s the recipe for preparing a Mexican omelette?,MEDIUM
+Generate a three step procedure for cleaning a computer keyboard.,MEDIUM
+Convert the following phrase into a more formal question.,EASY
+Imagine you are designing a game. What is the best way to motivate players?,HARD
+List three technology tools that can help a head teacher manage a school in 2021.,MEDIUM
+Find a commonly used zip code in the US,MEDIUM
+Suggest a strategy to build relationships with customers.,MEDIUM
+"Given a scenario, devise a plan to address it.",HARD
+Create a user guide for an online course.,HARD
+Summarize the following article about the effects of smoking.,HARD
+Write three details about the Great Famine of Ireland (1845 – 1849).,MEDIUM
+Write an enthralling description of an elven kingdom.,HARD
+Generate a sentence that is oxymoronic.,MEDIUM
+"Replace the word ""INSERT"" with something creative",MEDIUM
+What is the most important factor in determining a successful business?,MEDIUM
+Replace the figurative idiomatic expression in the following sentence with a literal phrase that expresses the same meaning.,MEDIUM
+Design an e-commerce website,HARD
+Write a compile time error regarding the given code.,MEDIUM
+Write a tweet about AI technology.,MEDIUM
+"Given a movie you watched, provide a brief summary of the movie.",MEDIUM
+What does an algorithm do?,EASY
+Identify a hidden pattern in the following series of numbers,HARD
+Name a retail store that is owned by Walmart.,MEDIUM
+List two advantages of using linear regression.,MEDIUM
+Explain the concept implied by the given idiom.,MEDIUM
+Suggest a strategy to save money.,MEDIUM
+Write a 250-300 word essay summarizing the similarities and differences between two Ancient Civilizations.,HARD
+Develop a survey question to find out the favorite color of your customers.,MEDIUM
+Take the following noun and turn it into a verb.,MEDIUM
+Write a creative ending to the following story,HARD
+Generate a creative recipe for chocolate cookie.,MEDIUM
+Tell me what a computer system administrator does,MEDIUM
+"Given a list of items, create a comma separated string.",EASY
+"Given a product, categorize four ways it can improve the user's life",MEDIUM
+Convert this statement from past tense to present tense.,MEDIUM
+Create a headline for an online blog article about a struggling high school student.,MEDIUM
+Calculate the area of a rectangle of length 2 and width 5.,EASY
+Come up with three potential strategies to reduce global warming.,MEDIUM
+Generate a short story about a mythical creature,HARD
+Find the definition of the given word in the dictionary.,MEDIUM
+Sort these terms by complexity.,EASY
+Generate 3 ideas for modifying an existing widget.,MEDIUM
+"Given the following words, make a sentence using them in the same order.",MEDIUM
+Write one sentence describing the theme of this unsplash photo.,MEDIUM
+Discuss the most important effects social media has on society.,MEDIUM
+Generate a metaphor that describes a unique combination of two unrelated things.,MEDIUM
+Create a database schema for a user table.,MEDIUM
+Input a list of strings and generate all possible permutations of the strings.,MEDIUM
+"Summarize the following paragraph:
+
+Adam was born and raised in a small town in Michigan. He was the eldest of six children, and the only boy in the family. He attended school and excelled in all of his classes.",MEDIUM
+Edit this article and make it sound more persuasive.,MEDIUM
+Generate potential titles for a book on the subject of entrepreneurship.,MEDIUM
+Identify 5 key features of a project.,MEDIUM
+Describe a unique way to cook a steak.,MEDIUM
+Add at least five facts about the science topic “Chemistry”.,MEDIUM
+Match the following pair of antonyms,MEDIUM
+Name five countries that are currently in a recession.,MEDIUM
+Name two national parks in the USA,EASY
+Create a game to play with friends.,HARD
+Write a three-line essay about the importance of getting enough sleep.,MEDIUM
+Give a possible internal change for this company to make their operations more efficient.,MEDIUM
+Suggest five tips for dressing well for a formal event.,MEDIUM
+Generate a catchy headline for an article about the advantages of building with bamboo.,MEDIUM
+What is the role of the immune system in maintaining homeostasis?,MEDIUM
+"Write a story that's based on the following three words: eruption, rebel, rebellion.",HARD
+Name the type of triangle based on their angles and sides.,MEDIUM
+Generate a poem on the topic of winter.,HARD
+"What is the average rainfall in Toronto, Canada?",EASY
+Summarize the main idea of the following article in one sentence.,MEDIUM
+"Rewrite the sentence so it implies the opposite meaning: ""My boss was very pleased about my work.""",MEDIUM
+Insert an appropriate closing salutation to this email,MEDIUM
+Input a response to the given questionOutput a response of less than 5 sentences.,EASY
+Explain the concept of absolute advantage.,MEDIUM
+Suggest a dish for a dinner party that's suitable for vegetarians. Output the name of the dish.,MEDIUM
+Select a fitting professional title for a project manager.,MEDIUM
+Write three methods to test a Web Application,MEDIUM
+Describe the process for setting up a wireless network.,MEDIUM
+Describe the circumstances under which a person can be released on bail,MEDIUM
+"Identify the main themes in the book, Lord of the Flies.",MEDIUM
+How could natural language processing be used in medical research?,MEDIUM
+Summarize the current US Presidential Election.,MEDIUM
+Select two movies that are similar to each other and summarize the similarities.,MEDIUM
+Write a paragraph that explains what a GPT language model is.,MEDIUM
+What are three methods used to decontaminate soil?,MEDIUM
+Describe a scene from a movie.,MEDIUM
+Summarize the article ``AI-powered Change Management in the Workplace''.,HARD
+"Generate a sentence which starts with the phrase ""After all"".",EASY
+Determine the population of New York City.,MEDIUM
+Write a discussion section analyzing the results of a recent article on NLP,MEDIUM
+Convert 1500 ounces to pounds.,EASY
+Create a movie title by combining two words that share a connection.,MEDIUM
+What is the average number of days in a month?,EASY
+Generate a story about a forest ranger exploring an uncharted area.,HARD
+Select the correctly classified form of the verb “go”,MEDIUM
+Write a poetry describing sunset.,HARD
+Explain the process of wind erosion.,MEDIUM
+Insert a sentence about the importance of sleep at the end of the following paragraph.,MEDIUM
+Identify any 5 key characteristics of the following software,MEDIUM
+Identify the four main functions of the given system,MEDIUM
+Explain Heisenberg's uncertainty principle.,MEDIUM
+Identify the type of triangle defined by two angles of 30 degrees and two angles of 60 degrees.,MEDIUM
+Create an array of size 10 filled with random numbers between 0-100.,MEDIUM
+Simplify the given sentence.,HARD
+Please provide me the scientific name for the blue whale,EASY
+Compare a skyscraper to a mountain.,MEDIUM
+Describe a scene in which motivation to complete a task is lacking.,MEDIUM
+List five benefits of using renewable energy sources.,MEDIUM
+Separate the nouns from the words.,EASY
+Explain what is an algorithmic trading.,MEDIUM
+Generate 3 alternative passwords for a computer system.,MEDIUM
+Generate a funny story (title and content in <100 words) about a hedgehog visiting a sushi restaurant.,HARD
+Explain the importance of data architecture in AI system,MEDIUM
+Explain Einstein's Theory of Relativity in a brief summary.,MEDIUM
+Analyze the given verse and explain its significance.,MEDIUM
+Provide an example of a good username for an online store.,MEDIUM
+Suggest two measures to improve air quality in cities,MEDIUM
+Suggest a dialogue to resolve the given situation.,MEDIUM
+Write a Python program to find the maximum number in a list.,EASY
+What does 'a priori' mean?,EASY
+"Given a country name, generate a tourist spot.",HARD
+Design a coffee drink for a cafe.,HARD
+Name three inventions that have transformed the way we live today.,MEDIUM
+Describe the roles of the main characters in the play Romeo and Juliet.,MEDIUM
+How is a neural network different from a regular computer program?,MEDIUM
+Generate a topic to write a story about.,MEDIUM
+Find incorrect verb tense in this sentence: He was swimming in a pool.,MEDIUM
+Write a question that can be answered yes or no:,MEDIUM
+What is a K-Nearest Neighbor algorithm?,MEDIUM
+Rewrite the sentence using the same words but different grammar or structure.,MEDIUM
+Suggest a strategy for optimizing this company's website.,HARD
+Name an example of a situation where an AI system made a biased decision,MEDIUM
+Create one example for an approach to query a review for a product.,MEDIUM
+"Explain the meaning of the idiom ""Don't count your chickens before they hatch"".",MEDIUM
+Create a three line poem that uses the given words.,HARD
+Under what scenarios would you use a convolutional neural network?,MEDIUM
+Tell what fraction one third is equal to?,EASY
+Rewrite the following paragraph modifying the tense and changing the structure.,MEDIUM
+Create an interesting appetizer using these ingredients.,MEDIUM
+Write a thank you note to a customer for their order.,EASY
+Identify five properties of a helium atom.,MEDIUM
+Find the percentage of the sentence that is made up of nouns.,MEDIUM
+"Given a list of numbers, identify the odd numbers.",MEDIUM
+Identify the speaker's attitude towards the subject.,MEDIUM
+Write an April Fool’s joke or prank.,HARD
+Generate a program in python that prints out the first 10 numbers of the Fibonacci series.,MEDIUM
+"Given an input of a student's GPA, classify whether the student has high, average, or low GPA.",MEDIUM
+Think of a way to use the following material to build a shelter.,HARD
+Re-write the following speech inorder to make it more persuasive.,HARD
+Generate an appropriate response for a customer service chatbot when the customer mentions that they are unhappy with the product.,MEDIUM
+Suggest a color palette for a room in a given house,MEDIUM
+"You are provided with the names of two people and a sentence. Output whether the sentence implies positive, negative or neutral feelings between the two people.",MEDIUM
+"Given a list of ingredients, come up with a dish",HARD
+Describe a learning style,MEDIUM
+Save the following text as a Microsoft Word Document,MEDIUM
+"Replace the word ""deny"" with a synonym that does not use the ""-ny"" root.",MEDIUM
+Which of the following countries have the most number of active COVID cases? Output the country name directly.,MEDIUM
+Compose a tweet summarizing the following content,MEDIUM
+Explain the differences between the American and Chinese cultures.,MEDIUM
+Construct the code which outputs the following pattern.,HARD
+Research the history of Isaac Newton and generate a summary.,MEDIUM
+Categorize each type of animal based on its physical characteristics.,MEDIUM
+Compose a tweet about a given news article,MEDIUM
+"Find all elements with the class ""box"" in the given html section, and remove them. Output the entire html section without the class ""box"" boxes.",EASY
+"Given a sentence and a search query, return a sentence that accurately conveys the meaning of the search query by replacing one or more words in the sentence.",HARD
+Create a list of 10 states in US,EASY
+Describe how to do a handstand?,MEDIUM
+Generate a list of ideas for a birthday gift for a person in the given age range.,HARD
+Create a data model for a driver on a car-sharing platform,HARD
+"Write an instruction for a game of Jeopardy using the following topics:  Astronomy, Math, and Geology.",MEDIUM
+Generate an inspiring sentence,HARD
+Which sport has the most fans in the world?,MEDIUM
+Design a program that calculates the average of five numbers,MEDIUM
+Generate a simile to describe the sound of a train whistle.,MEDIUM
+Identify the associations to the following word: eternity.,MEDIUM
+Come up with a list of 5 activities for a preschooler to do in their spare time.,MEDIUM
+Create two architecture designs for a modern home.,HARD
+Provide an example of an ethical conflict within a business setting.,MEDIUM
+Explain some of the key features of a good leader,MEDIUM
+Name a nation in Asia that is landlocked.,MEDIUM
+"Rearrange this sentence to make it sound more natural: ""It's impossible for me to do this""",MEDIUM
+"Analyze the sentence ""ignorance is bliss""",MEDIUM
+Edit the sentence: “I doen’t like orange”,MEDIUM
+Generate a list of 10 books that someone who likes historical fiction should read.,HARD
+Rewrite the sentence using less than 8 words,EASY
+How does climate change affect people living in coastal regions?,MEDIUM
+Name one direct consequence of global warming.,MEDIUM
+List 5 popular podcast topics.,MEDIUM
+In what way is the use of artificial intelligence beneficial for individuals?,MEDIUM
+Output a list of 5 adjectives that describe the following noun.,MEDIUM
+Make a flow chart to represent the following process,HARD
+Explain how gene therapy works.,MEDIUM
+Give me an example of an instance where the rule of law was broken in history.,MEDIUM
+Summarize the synopsis of the movie Avengers: Infinity War.,MEDIUM
+"Using the following text, classify it into the appropriate sentiment",MEDIUM
+"Re-read the essay and correct all grammar mistakes for the following sentence: ""they was way too tired to finish"".",HARD
+Identify the geographical region from this text,MEDIUM
+Name three services offered by a bank.,MEDIUM
+Come up with two possible solutions for the given problem,HARD
+Describe the typical applications of AI in the healthcare sector.,MEDIUM
+"Take the following input, and transform the statement into a rhetorical question.",MEDIUM
+Describe your biggest accomplishment.,HARD
+"Explain the significance of the phrase ""all hail the king"".",HARD
+Convert the following latitude and longitude coordinates into an address,HARD
+"Edit the following sentence: ""The woman enjoyed very much the movie.""",MEDIUM
+Write a play about Romeo and Juliet.,HARD
+How does a computer network help businesses?,MEDIUM
+Classify the painting as either abstract or landscape.,EASY
+Check if the following phrase is a well-formed formula,MEDIUM
+Research and name the two closest stars to Earth.,EASY
+Describe the efforts of the 2009 amendments to the U.S. tobacco legislation,MEDIUM
+Add two adjectives to the following sentence that match its meaning.,MEDIUM
+"Generate a proverb that captures the phrase ""look before you leap"".",HARD
+"Rewrite the acronym ""GDP"" in a sentence that explains what it stands for.",MEDIUM
+Make a simile comparison.,MEDIUM
+Generate a unique vacation idea.,MEDIUM
+List three qualities of a good teacher.,MEDIUM
+Create a new analogy that compares a pair of given words.,MEDIUM
+"Given a list of sports, determine the rules for each game.",HARD
+Come up with two scenarios for how artificial intelligence could be used to advance public health,MEDIUM
+Propose a solution to eliminate cheating in schools.,HARD
+Explain what a reverse auction is,MEDIUM
+Tell me a synonym for 'happy'.,EASY
+What is a workable marketing plan for my small business?,HARD
+Describe the difference between the phrases “do no harm” and “do good”.,MEDIUM
+"For the two inputs, find the common element between them:",MEDIUM
+"Create a pictogram to show the meaning of the following phrase: ""The wheels on the bus go round and round.""",HARD
+Identify the person in the following sentence. Output the person's name,MEDIUM
+Describe the characteristic taste of black coffee.,MEDIUM
+Reduce the polynomial equation to its simplest form.,HARD
+How is a liquid chromatography differs from gas chromatography?,MEDIUM
+Create a list of five facts about a given country.,MEDIUM
+"Suppose you are applying for a management position and you're asked why you want the job, how would you respond?",MEDIUM
+Identify three endangered species of wildlife.,MEDIUM
+What is the surface area of a cube whose edges are 6 ft long?,MEDIUM
+Name two autoimmune diseases.,MEDIUM
+Choose the correct word from the provided set of words to complete the sentence.,MEDIUM
+"In the following passage, identify the alliteration used.",MEDIUM
+Generate a headline for a blogpost.,MEDIUM
+Create a tagline that summarizes the following description,MEDIUM
+Predict what the price of gold will be in one month.,HARD
+Rewrite this sentence using active voice: The instructions were given by me,EASY
+"Arrange these words to make a meaningful short story: ""cat, midnight, bat, forest, hide""",HARD
+Provide an example to demonstrate the given definition.,MEDIUM
+"You are asked to join a debate team and you need to generate an argument for the topic ""The school system should not track student's academic performance"".",MEDIUM
+"Find the area of triangle ABC, given the coordinates A(2,5), B(5,1) and C(7,7).",MEDIUM
+Calculate the total cost given the unit cost and the number of units,MEDIUM
+Identify and extract key phrases in the sentence.,MEDIUM
+Suggest a way to lessen paper consumption.,MEDIUM
+Give an example of a historical event that changed the world.,MEDIUM
+State three advantages of using a slow cooker.,EASY
+Describe the impact of the following event on society.,HARD
+Construct a valid argument.,HARD
+Explain what is the most important benefit of using a Class in java?,MEDIUM
+What type of tree did George Washington famously cut down?,MEDIUM
+Develop a sentence which appropriately use the given vocabulary words,MEDIUM
+Identify the contrast between the two phrases.,MEDIUM
+Give 3 examples of supervised machine learning algorithms.,MEDIUM
+Create a catchy headline for the following topic.,MEDIUM
+Write a letter to your friend telling them why you decided to quit your job.,MEDIUM
+Generate a 3-word phrase that is associated with the given keyword.,MEDIUM
+"Construct a story with a specific beginning, middle, and end.",HARD
+Create a program the calculates the distance between two points.,HARD
+"Given some context and a list of words, identify and generate an acrostic poem.",MEDIUM
+Generate a business name for a company that sells Jewelry.,HARD
+Generate a list of questions to ask a customer who is interested in buying a product,MEDIUM
+Rewrite the following sentence with proper grammar and punctuation: accidently walking in the rain,MEDIUM
+Summarize this article in two sentences.,MEDIUM
+Create a story about an unusual friendship,HARD
+List the first ten numbers of Fibonacci sequence.,MEDIUM
+Generate a list of 3 names for a fictional character.,MEDIUM
+What are some common techniques used for data analysis?,MEDIUM
+Classify this statement: I'm going to finish this project tomorrow,MEDIUM
+How many hours of sleep does the average person need per night?,EASY
+Generate a piece of children's literature that highlights the importance of friendship,HARD
+Describe the role of microbes in soil ecology.,MEDIUM
+Describe how basic machine learning works.,MEDIUM
+Produce a haiku about the following theme: summer.,HARD
+What musical notes should I use for a song in the key of G major?,MEDIUM
+"Given a statement, rephrase it to make it less ambiguous.",MEDIUM
+Take the following input and create a national parks slogan.,HARD
+Provide a one sentence definition for the concept of global warming.,MEDIUM
+How do you think technology has impacted the way people learn?,MEDIUM
+Choose two different sports and explain how they are different.,MEDIUM
+Create a headline that declares why artificial intelligence is key to sustainability,MEDIUM
+"Find the most suitable synonym for ""incredible"".",MEDIUM
+Compose a brief essay about the destruction of the environment.,HARD
+List the key differences between artificial neural networks and convolutional neural networks.,MEDIUM
+"Convert the following temperature from Celsius to Fahrenheit.
+9.2 Celsius",EASY
+"Arrange the following items in the correct order for a camping trip: tent, sleeping bag, hikes, cookout.",MEDIUM
+What is the process of making changes to a live website?,MEDIUM
+Recognize the person described in the sentence.,MEDIUM
+Classify the three programming languages,MEDIUM
+Re-arrange the words to form a complete sentence with a correct grammar.,MEDIUM
+"Given a scenario, decide which is the best advice.",MEDIUM
+"Given the following text and the task written after it, rewrite the first sentence to make the task easier to understand.",MEDIUM
+Rewrite the text as a poem.,HARD
+What is the reaction shown in the following gif?,MEDIUM
+Output all the rhetorical devices that are used in the given sentence.,HARD
+Please translate the following passage to French,HARD
+Grade the following essay on a scale from 1-10.,HARD
+Create a prompt that can be used to generate a story.,MEDIUM
+Output a Java code segment that takes an array of numbers and returns the median value,MEDIUM
+How can I record an interview using my laptop?,MEDIUM
+Design a machine learning model to detect spam emails.,HARD
+Describe a scenario in which Albert Einstein's theory of relativity might be valid.,EASY
+Create a dialogue between two friends discussing the importance of history.,HARD
+Add some relevant dialogue to the following story.,MEDIUM
+Write a step-by-step guide on how to backup and restore a database.,MEDIUM
+Take the following sentence and rewrite it so that it contains an example of alliteration.,MEDIUM
+Rewrite this sentence in a different style or form.,MEDIUM
+Create a command to make the assistant talk with a British accent.,MEDIUM
+Design an experiment to evaluate the efficacy of the proposed method.,HARD
+You are provided with two paragraphs. Count the number of adjectives in the second paragraph.,MEDIUM
+What is the probability that it will rain tomorrow?,MEDIUM
+Describe a feature a smartphone could have that would make it easier to take care of the environment.,MEDIUM
+Explain what the stock market is,MEDIUM
+"Classify the following food item according to its category. Output ""vegetables"" or ""meat"".",MEDIUM
+Generate a novel sentence of 5 words,HARD
+Generate the past participle form of the given verb.,MEDIUM
+Select the correct word to fill in the blank: The air pollution in the city is getting ____.,MEDIUM
+Name two players from the Chiefs team?,MEDIUM
+"Construct a bibliography of the book ""Alice's Adventures in Wonderland""",MEDIUM
+Come up with an analogy to explain what a zero-day attack is.,MEDIUM
+Compare and contrast news magazines and daily newspapers.,MEDIUM
+Tell me the top 5 funniest movies of all time.,HARD
+Describe the capital of Mexico.,EASY
+Produce a list of five different sports,EASY
+Name 3 iconic landmarks in a given city,MEDIUM
+"Define the term ""black hole"".",MEDIUM
+Name a page rank algorithm,MEDIUM
+What is the larger value of 2/5?,EASY
+Rewrite the sentence to include an adverb.,MEDIUM
+Detect if the given text contains any profanity.,MEDIUM
+Summarize the key ideas of this article,MEDIUM
+Give the temperature in Celsius when the temperature in Fahrenheit is 32.,EASY
+Rewrite the following example into an imperative form,MEDIUM
+Summarize the article about artificial intelligence.,MEDIUM
+Suggest a suitable title for a blog post about AI's applications in modern business.,MEDIUM
+Create a computer program to output all the possible combinations that can be made from the following letters: GDHAC,HARD
+What is User Acceptance Testing?,MEDIUM
+Generate a phrase that describes the feeling of dread.,MEDIUM
+"After given a list of products, assign them with the correct categories.",MEDIUM
+Compare and contrast two different sources of capital,MEDIUM
+"Sort the following numbers in ascending order: 7, 3, 11, 9.",EASY
+List 8 characteristics of cloud computing.,MEDIUM
+Re-write the following sentences using adjectives.,MEDIUM
+Create a catchy phrase that can be used to advertise modern technology.,MEDIUM
+Describe a popular tourist destination in France.,MEDIUM
+Describe the trend of AI-powered personal assistants.,MEDIUM
+"Given a country, list three of its popular tourist destinations.",MEDIUM
+Analyze the given statement and explain why this statement may be false.,HARD
+"Write a tweet, maximum four words, in response to the following headline.",EASY
+"Modify the following sentence to include a passive voice:
+The dog ate the bone.",MEDIUM
+List the top five news channels in India,MEDIUM
+Composite a poem about courage.,HARD
+Construct a query for a given database to join two tables.,HARD
+Explain why biofuels may be an important part of the renewable energy future.,MEDIUM
+Construct an algorithm to make digital photo montage.,HARD
+Create a three line song about the following topic.,HARD
+Explain why this action is a good choice,MEDIUM
+Describe the purpose of the following computer algorithm,MEDIUM
+Tell me about the tallest mountain in Africa.,MEDIUM
+Name three strategies for cultivating creativity,MEDIUM
+Pick one of the given objects and illustrate it in a creative way.,HARD
+Describe the purpose of job analysis,MEDIUM
+Design an algorithm that sorts the following list of numbers in ascending order.,HARD
+Design a logo for a fictional theme park.,HARD
+Construct a query to select the records from a table where `price` is greater than $100.,EASY
+Analyze the relationship between science and technology.,MEDIUM
+Describe a tropical rainforest.,MEDIUM
+Name a type of flower often used in bouquets.,EASY
+How did the abacus calculate numbers?,MEDIUM
+"Age the following sentence: ""It was a beautiful day outside"".",MEDIUM
+Analyze the results of the following test scores.,MEDIUM
+"Given two sorting methods, determine which is more efficient.",MEDIUM
+Rewrite the list using simpler terminology.,MEDIUM
+Write a function that checks if an element exists in two given arrays,MEDIUM
+Write a script for a cartoon about a family of four discussing the environment.,HARD
+Identify a famous scientist.,MEDIUM
+Generate a shopping list of items to be purchased at the store.,MEDIUM
+Adapt the provided joke to make it more humorous.,HARD
+Rewrite the sentence below with correct grammar and punctuation.,MEDIUM
+Update the number in the cell.,MEDIUM
+Describe a horror movie about a haunted house in two sentences.,MEDIUM
+Choose the best title for the given document.,MEDIUM
+Write a narrative about visiting an art museum.,MEDIUM
+Diagnose the underlying problem in the following scenario.,MEDIUM
+Come up with a creative story that revolves around the given characters,HARD
+Name three techniques for reducing stress.,MEDIUM
+Find a song title that best describes a particular feeling.,MEDIUM
+Name three different methods of investment.,MEDIUM
+Count the number of syllables in the given word and output the result directly.,MEDIUM
+Identify the best candidate for a given job.,HARD
+How can I maintain a healthy work-life balance?,MEDIUM
+"Construct a sentence using the words ""backbone,"" ""pillar,"" and ""foundation.""",MEDIUM
+"Imagine you are talking to a friend, who is stressed and needs to relax. Come up with a creative way to suggest they take some time out of their day to take a break.",MEDIUM
+Fit the following data into a linear regression model.,HARD
+Describe in detail the process of making olive oil.,MEDIUM
+Classify the following sentence as true or false: Rocky Balboa was a boxer from England,MEDIUM
+Give an example of a chemical change that occurs everyday.,MEDIUM
+Determine whether the sentence is grammatically correct or not. Output 1 for correct and 0 for incorrect.,MEDIUM
+List a few characteristics of a volcano,MEDIUM
+Draft a social media post to promote a new tax client accounting software.,MEDIUM
+Name one possible consequence of this issue.,MEDIUM
+Identify the fallacy in the statement and explain it.,MEDIUM
+List six different pizza toppings.,EASY
+"Explain the term ""learning curve"".",MEDIUM
+Name two alternative protein sources for vegetarians,MEDIUM
+Make a list of 5 adjectives to describe the word 'sky',MEDIUM
+List five things that are associated with freedom.,MEDIUM
+"Given a dataset, find the average age.",EASY
+Summarize the content in the following passage.,MEDIUM
+Give a formal introduction for this speaker,HARD
+Explain why democracy is more suitable for running a country than a dictatorship.,HARD
+Construct a “How To” guide for making a smoothie,MEDIUM
+How can I stay organized?,MEDIUM
+Change the given string to UPPERCASE.,EASY
+"Given a sentence, convert it from present tense to future tense.",MEDIUM
+Complete the grid with numbers in ascending order.,MEDIUM
+Provide input details to brief a nurse on taking care of a toddler.,MEDIUM
+What are the advantages of writing computer programs in Python?,MEDIUM
+"Categorize the following sentence as a statement, a question or an exclamation.",EASY
+Create a story that starts with the line 'The sun slowly crept up in the sky'.,HARD
+Write a story about an animal that can talk.,MEDIUM
+"Generate an appropriate response to this message:
+
+""I'm feeling stuck with my project and I don't know what to do next""",MEDIUM
+Write a paragraph about the potential applications for GPT models.,MEDIUM
+Describe the elements of a pie chart.,MEDIUM
+"Construct a sentence using the words, ""model,"" ""hyperparameter,"" ""algorithm,"" and ""optimization.""",MEDIUM
+Give an example of a data science use case for an airline.,MEDIUM
+Classify the following text as either satire or non-satire.,MEDIUM
+Identify the main point of the following article.,EASY
+Describe how water can be reused.,MEDIUM
+Categorize the following three entities into their respective genras.,MEDIUM
+Keyboard the given text for spelling errors.,MEDIUM
+Sort the list according to increasing temperature,MEDIUM
+Analyse the theme of a passage.,MEDIUM
+Describe the economic impacts of rising sea levels.,MEDIUM
+Pay attention to the alliteration in the following sentence.,MEDIUM
+Rewrite the following text using a different writing style,MEDIUM
+Determine if a given sentence is written in the imperative or interrogative form.,MEDIUM
+Calculate the area of a right triangle with base length of 5 cm and height of 3 cm.,MEDIUM
+Explain Schrodinger's wave equation.,MEDIUM
+Implement a K-means clustering algorithm on these given data points.,HARD
+Add two associated adjectives to the given noun,MEDIUM
+List two potential problems that companies may encounter when implementing AI systems.,MEDIUM
+Select the two words from the given list that are similar in meaning.,MEDIUM
+Come up with a quiz question and the correct answer.,MEDIUM
+Create a math problem using numbers over 1000.,MEDIUM
+What is the difference between a single bond and a double bond in chemistry?,MEDIUM
+Classify the following foods as carbs or protein.,EASY
+"Come up with a poetic phrase involving the following characters: sun, moon, and stars.",MEDIUM
+Generate an automated reply to the following email.,MEDIUM
+Compile a list of five tips for the given activity.,MEDIUM
+Explain the concept of the retrieval-based model for natural language processing.,MEDIUM
+Generate name ideas for a pet shop.,MEDIUM
+Design a logo for a rock-and-roll band.,HARD
+Create a backup plan for a data center in the event of a natural disaster.,HARD
+Write a description of a beautiful beach.,MEDIUM
+Describe the customer service strategy that a business should take.,MEDIUM
+Create a poem about nature using at least two literary devices.,HARD
+Analyze the following text and generate a list of social media marketing strategies.,MEDIUM
+Describe an experience of failure.,HARD
+Reformulate the following sentence to express an opinion.,MEDIUM
+Write a tweet about the latest episode of the show.,MEDIUM
+Link the items below to their corresponding categories.,MEDIUM
+Identify three of the natural elements present in the given region.,MEDIUM
+Describe the movement of the Earth around the Sun.,MEDIUM
+Name four artificial intelligence (AI) technologies.,MEDIUM
+Complete the incomplete sentence.,MEDIUM
+Write a feature for the given data structure.,HARD
+Suggest five fun activities for a virtual team bonding session.,MEDIUM
+"Classify the following information according to its type: ""The customer bought a blue shirt.""",MEDIUM
+Make a 3D model of a double helix.,HARD
+"Formulate a creative sentence using the following words: 
+rise, elite, collaborate",MEDIUM
+Suggest a way to reduce plastic waste in society.,MEDIUM
+Generate a list of action items that need to be taken to reach the following goal,HARD
+List three countries that have a population of more than 100 million people.,MEDIUM
+List the names of three popular sports.,MEDIUM
+Compare and contrast academic writing and creative writing.,MEDIUM
+Rewrite this sentence using complex-compound and complex-multi word verbs.,MEDIUM
+List 3 advantages of cloud computing.,MEDIUM
+Find and list five artists that are similar to Khalid.,MEDIUM
+What are potential risks associated with using AI for decision-making?,MEDIUM
+Describe egg-laying in snakes using 5 adjectives.,MEDIUM
+"Given a set of survey results, make a data visualization that summarizes the results.",MEDIUM
+Make a list of the top 5 most populous cities in the world and include their population.,MEDIUM
+Edit this sentence and make sure that it follows the principles of the singular they.,MEDIUM
+Name one food item that would not be suitable for vegetarians.,MEDIUM
+Design a new product for a niche audience,HARD
+Generate a 3-sentence story containing the characters: A third-grade teacher and a rabbit,MEDIUM
+Generate a questionnaire that could be used for collecting the given data.,MEDIUM
+"Given the following equations, solve for x.",MEDIUM
+Determine the results of multiplication of 56 and 32,EASY
+Brainstorm ways to reduce energy consumption in a home.,MEDIUM
+"Edit the following sentence: She likes running, going to the beach and swimming",MEDIUM
+Imagine you are walking down a street in a small town. Describe what you see in one to two sentences.,MEDIUM
+"Identify if the number is prime. Output yes if it is prime, output no if it is not.",MEDIUM
+Write a new introduction to the given story.,HARD
+Insert a suitable word for the blank in the following sentence. Output the entire sentence.,MEDIUM
+Generate a four-word proverb about determination.,MEDIUM
+Explain how carbon-based life forms are able to utilize energy.,MEDIUM
+Categorise the following food according to its nutrition content.,HARD
+Categorize the following words into two groups depending on their spelling.,HARD
+Construct a training data set for a classification task.,MEDIUM
+Generate a sentence describing the emotions associated with the following art piece,MEDIUM
+Summarize what happened in the news today,MEDIUM
+Generate an example of how an AI system could be used for automatic marketing optimization.,MEDIUM
+Design a poster to promote a musical performance.,HARD
+Write a story with a surprise ending.,HARD
+Generate a fantasy creature that lives in the mountains.,MEDIUM
+"Find the day of the week for August 5, 2025.",MEDIUM
+Identify the type of conflict from the passage.,MEDIUM
+Construct a valid sentence containing the given words.,MEDIUM
+Describe the political system in India.,MEDIUM
+Construct a logical argument in support of the statement.,MEDIUM
+Predict what would happen if the sentence changes according to the given replacement.,MEDIUM
+Come up with an example that demonstrates the use of irony.,HARD
+Outline the steps to apply to college,MEDIUM
+Compose a shopping list.,HARD
+Give a brief description of the concept of 'diversity in the workplace',MEDIUM
+Create an array in JavaScript containing 5 strings.,EASY
+Arrange the following words into a valid sentence in proper English.,MEDIUM
+Briefly explain what is quantum computing,MEDIUM
+Outline the key steps of the scientific method.,MEDIUM
+Create an animal analogy for the job of a lawyer.,MEDIUM
+How can we prevent the spread of Covid-19?,MEDIUM
+Create a dating profile using the given information,HARD
+How could one create a plan for shopping that is efficient yet enjoyable?,MEDIUM
+Create a procedure to assemble a sandwich.,MEDIUM
+Explain what a neutron star is.,MEDIUM
+Find 3 ways to reduce energy consumption in an office.,MEDIUM
+Write a JavaScript function to calculate the total cost of an item and applicable taxes.,MEDIUM
+How can I utilize email marketing to promote a product?,MEDIUM
+Provide a detailed instruction for creating a personal budget,MEDIUM
+Identify three effects of climate change.,MEDIUM
+What is a sign of dehydration?,MEDIUM
+Rewrite this sentence to reflect a more formal tone: “She’s really cool”,MEDIUM
+Construct a programming code to reverse a string,MEDIUM
+Compare two scientific methods by their accuracy and identify which one is more reliable.,MEDIUM
+Which three of the following four words are nouns?,MEDIUM
+"Which of the following is the proper possessive form for the word ""sisters""?",EASY
+Create a data set of 5-6 cities with their state and county information,MEDIUM
+Generate an in-depth story about a family vacation.,HARD
+How could the given product be improved?,HARD
+Enter the singular form of the following noun.,MEDIUM
+What are the benefits of learning a foreign language?,MEDIUM
+Describe what summer means to you in one sentence.,MEDIUM
+Break down the concepts of the given sentence into simpler terms.,MEDIUM
+"Given a sentence, convert it into its correct possessive form.",MEDIUM
+"Given the medical data below, classify the patient as healthy or not.",HARD
+"Generate a random password with 8 characters, consisting of lower and upper-case letters and numbers.",MEDIUM
+Name the 3 main components of an atom.,EASY
+"Create a regular expression that matches strings starting with ""Bob"" and ending with a number.",MEDIUM
+Find the volume of a cylinder with a height of 10 inches and a radius of 2 inches.,MEDIUM
+Please generate a unique passphrase for a user.,MEDIUM
+Determine if this claim is true or false: “The Sahara desert is the hottest desert in the world”,MEDIUM
+Identify the mistakes in the article.,MEDIUM
+Estimate the number of countries in the world.,MEDIUM
+Explain why the results of a given survey are inaccurate.,HARD
+What is the purpose of the National Science Foundation?,EASY
+Explain how Facebook determines what posts display on a user's newsfeed.,MEDIUM
+Output a set of 5 instructions on how to fold a paper crane.,MEDIUM
+Describe two ways to improve the performance of a text classifier.,MEDIUM
+Write a description of an event from the perspective of a news reporter.,HARD
+"Write a Python statement that prints out the phrase ""Hello World"".",EASY
+Create a social media post that discusses the importance of this topic.,HARD
+Express the given note in different words.,MEDIUM
+Explain how waves move.,MEDIUM
+Identify a feature of a product and generate an explanation of why the feature should be included in the product.,MEDIUM
+What are the functions of mitochondria in the human body?,MEDIUM
+Outline the key differences between the Linux and Windows operating systems.,MEDIUM
+Create a blog post on Strategies to Motivate Yourself,HARD
+Suggest three unique words to describe a waterfall,MEDIUM
+Explain the Stock Market to a 10-year-old.,MEDIUM
+Tell me if the following statement is true or false.,EASY
+Give the title of the document,EASY
+"Categorize the following idea into ""utopian"" or ""dystopian"".",MEDIUM
+Suggest some ways to increase customer engagement on an online business website.,MEDIUM
+Generate a new story about a planet that is home to two species.,MEDIUM
+Write a story about a cat that is stuck in a tree.,HARD
+Come up with 10 ideas for 'X'.,HARD
+"Identify the type of correlation (positive, negative, or none) between two variables.",MEDIUM
+"Arrange the following words in alphabetical order: quickly, question, queue, quality.",EASY
+"Given a movie review, classify it into one of the following categories: Positive, Neutral and Negative.",MEDIUM
+Create a two line poem about patience,HARD
+Design a meal plan for weight loss.,HARD
+Rate the given essay on a scale of 1 to 10.,MEDIUM
+"Given the context, generate a description of the setting.",MEDIUM
+Design a pair of sneakers.,HARD
+Specify the filename for the following document.,EASY
+"Given the following list of colors, find a combination for an eye-catching wall decoration.",MEDIUM
+"Detect entities from this text
+
+Yesterday afternoon, Amazon Web Services went down in the US-East-1 data center in Virginia.",MEDIUM
+Identify the following part of speech: c h u r c h,MEDIUM
+Describe how to tell the difference between a male and female cardinal.,MEDIUM
+Make up a story involving a fictional protagonist named Lydia,HARD
+"What does the phrase ""leave no stone unturned"" mean?",MEDIUM
+Rewrite the following text in future tense.,EASY
+Create a test to evaluate the accuracy of a GPT language model’s natural language understanding.,MEDIUM
+Create a sample output to the following task: Analyze the impact of climate change on water resources in the USA.,HARD
+Enumerate 10 different types of jobs that robots can do.,MEDIUM
+Come up with a simple explanation on how to use the boolean data type.,MEDIUM
+Generate a short conversation between two people expressing admiration for a third person.,MEDIUM
+Generate a play by play summary of the baseball game between the Chicago Cubs and the Los Angeles Dodgers,HARD
+Construct a survey that will measure customer satisfaction.,MEDIUM
+List five benefits of exercising regularly.,MEDIUM
+Rewrite the following phrase into a single word.,EASY
+Write a pseudocode to calculate the roots of a quadratic equation.,MEDIUM
+Name three common uses of Artificial Intelligence in the healthcare industry.,MEDIUM
+"Identify the key characters of the novel ""The Hobbit"".",MEDIUM
+Generate ideas for decreasing waste generated by a clothing factory.,MEDIUM
+Summarize the article on the link,HARD
+Generate a folktale or legend.,HARD
+"Given a list of numbers, return the median value.",MEDIUM
+"Based on the input, create a dialogue between two characters in a story.",MEDIUM
+Explain the concept of 'institutional racism.',MEDIUM
+Construct a humorous comment to an Instagram post.,HARD
+Explain the propperties and the uses of a computer mouse.,MEDIUM
+Take the given statement and rephrase it in your own words.,EASY
+Write the text in past tense.,MEDIUM
+"Delete the 7th word in the following sentence:
+
+""The quick brown fox jumps over the lazy dog.""",MEDIUM
+Create a survey about customer satisfaction with a given product.,MEDIUM
+Translate a given statement from English to Spanish.,MEDIUM
+Create a recipe for a peanut butter chocolate chip cookie.,MEDIUM
+Explain how greenhouse effect works.,MEDIUM
+Re-arrange the given words to make it into a valid sentence.,HARD
+Provide instructions for changing a bicycle tire.,MEDIUM
+Explain how a machine learning model can be used to recognize handwriting.,MEDIUM
+Suggest an activity to learn more about the animal biodiversity.,MEDIUM
+Describe the different features of a Honda Civic.,MEDIUM
+Describe the differences between first and third person point of views.,MEDIUM
+Generate a dialogue between two customers arguing about price.,HARD
+Write a business email with the following information:,HARD
+Name 5 prominent fashion brands.,EASY
+Construct a query to return the top 10 brands of cars in 2020,MEDIUM
+Suggest an appropriate title for a comic about a cat and dog living together.,MEDIUM
+How does technology help improve communication?,MEDIUM
+Identify three pressing issues related to climate change.,MEDIUM
+Generate a valid foreign language translation.,MEDIUM
+"Modify the sentence: ""John went for a walk""",MEDIUM
+Come up with a description about a weekend camping trip.,MEDIUM
+Comment on the given statement,MEDIUM
+Describe the scientific process in your own words.,MEDIUM
+Find the 13th root of 1000,MEDIUM
+Explain how magnetic fields can be used for energy.,MEDIUM
+Write a short story where a character goes through a transformation,HARD
+"Rank the following in order from most to least important: exercise, sleep, food",MEDIUM
+Give me a 4-digit number,EASY
+Provide two strategies to improve customer experience in an e-commerce store,MEDIUM
+List five characteristics of good communication.,MEDIUM
+Create an effective 140 character twitter post,MEDIUM
+Design a logo using vector graphics.,HARD
+Analyse how the author uses imagery in the given passage.,HARD
+Choose the word that best completes the sentence: Lisa is so ____ that she never gives up.,MEDIUM
+What is one key feature that sets humans apart from robots?,MEDIUM
+Identify the three most important elements of customer service,MEDIUM
+Explain the following concept in less than five sentences.,MEDIUM
+Generate a relevant research question on crisis communication.,MEDIUM
+Write some tips on how to answer an interview question.,MEDIUM
+Write one possible solution for the problem. Output the solution.,HARD
+Generate a short paragraph describing a post-apocalyptic world.,HARD
+Generate a list of principles for ethical business practices,MEDIUM
+Create a list of 5 things that make you feel happy.,MEDIUM
+Explain the concept of negative externalities,MEDIUM
+Make a list of countries that are part of the South Asian Association for Regional Cooperation,MEDIUM
+Name the languages which uses the Latin alphabets,MEDIUM
+Move the items from the source folder to the destination folder.,MEDIUM
+Write a rap verse about studying.,MEDIUM
+Compose an email to your professor expressing disagreement with their answer and articulate why you think your opinion is valid.,MEDIUM
+In what ways can this technology improve a person's life?,MEDIUM
+Generate a computer science project based on Python language.,HARD
+Find the synonym of 'unrelenting':,MEDIUM
+List 5 technologies to help automate customer service.,MEDIUM
+"Given an input object, create an algorithm to determine if the object is valid.",MEDIUM
+Formulate an 'if-then' statement using the following sentence.,MEDIUM
+Describe the process of preparing a cup of tea.,MEDIUM
+Classify the given text into a given field.,MEDIUM
+Generate a paraphrased version of the following sentence.,MEDIUM
+Describe the role of oxygen during respiration.,MEDIUM
+Describe the composition of Jupiter.,MEDIUM
+What type of relationship exists between voltage and current in an electric circuit?,MEDIUM
+Summarize the following passage using not more than 5 sentences.,MEDIUM
+Generate an example of a situation where being impolite is appropriate,MEDIUM
+Describe the problem that this algorithm solves.,MEDIUM
+Generate a movie review of your favorite movie in one sentence.,HARD
+Create a table of the top 10 countries with the highest population density.,MEDIUM
+Develop a system to monitor gaming servers.,HARD
+Summarize a news article about the growth of AI assistants into one or two paragraphs.,MEDIUM
+Create a 10-word hashtag that describes a given situation,MEDIUM
+Summarize the function of a router.,EASY
+Make a story about a day on a farm.,MEDIUM
+Describe the quality assurance process of a software product.,MEDIUM
+What is the value of 5 to the power of 4?,EASY
+Create an algorithm to find the maximum value in an array of numbers.,MEDIUM
+How would you classify the following type of transaction?,MEDIUM
+Automatically generate a random PIN code,MEDIUM
+"Given two places, suggest the best way to travel between them.",MEDIUM
+Distinguish between inference and prediction.,EASY
+Describe a computer's processor,MEDIUM
+Explain the underlying principle for the given scientific phenomenon.,MEDIUM
+Write a touristic description for the given place.,MEDIUM
+What are the benefits of using a cloud storage system?,MEDIUM
+Compose a poem in the haiku format with 5-7-5 syllables,HARD
+Think of a portmanteau word combining the words “pig” and “dog”,MEDIUM
+Delete the all the nouns from the sentence.,MEDIUM
+Describe the conventions used in MLA style for in-text citations.,MEDIUM
+"Translate this sentence from English to French
+
+He is a great leader",MEDIUM
+Compare the differences between artificial intelligence and human intelligence.,HARD
+Summarize the sentence using 6 words or less.,MEDIUM
+Generate a list of questions for T-shirt buyers,MEDIUM
+Convert the given binary string to a decimal number.,MEDIUM
+Is it ethical to eat meat?,MEDIUM
+Name five sports and the countries they originated in.,MEDIUM
+Edit this sentence to have a different point of view,MEDIUM
+Is Japan a part of the EU?,MEDIUM
+Write a story about technology promoting environmental sustainability.,HARD
+Identify the appropriate synonym of the word 'help':,EASY
+"Explain why ""Equal rights for all"" is important",MEDIUM
+Explain the difference between a pre-emptive and non-preemptive scheduling algorithm.,MEDIUM
+Discuss the importance of setting SMART goals.,MEDIUM
+Rewrite the following headline by replacing the words in bold with a synonym.,MEDIUM
+Describe the components of language.,MEDIUM
+Name a well-known European landmark,EASY
+Explain a development skill you have recently acquired.,MEDIUM
+Advance the given story by one sentence.,MEDIUM
+Edit the following sentence (highlight changes in bold),MEDIUM
+What is the most important step a government must take to combat climate change?,HARD
+"Categorize the given sentence as belonging to the field of biology, computer science, or psychology. Output should be one of the three fields.",MEDIUM
+"Explain why it is important to ensure that your voice commands are understood by your personal assistant (e.g. Siri, Alexa, Google Assistant).",MEDIUM
+Construct a 2-3 sentence summary of the provided excerpt.,MEDIUM
+Group these words as related topics,MEDIUM
+Tell me about a famous writer.,MEDIUM
+Generate a list of five skills required for a customer service executive.,MEDIUM
+Complete the following sentence using suitable idioms,MEDIUM
+"Find the missing number in the sequence: 3, 5, 7, __, 13",MEDIUM
+Find a spelling mistake in the following sentence.,MEDIUM
+Design a game using natural objects on a beach.,MEDIUM
+Generate an input data set that has three members and five attributes.,MEDIUM
+"Given the following article, rewrite it in the form of a personal letter.",HARD
+"Replace all instances of the placeholder ""$VARIABLE1"" with the correct answer.",MEDIUM
+"Complete the following sentence with a proper verb:
+The teacher ____ the results of the exam.",MEDIUM
+Type an email that a customer support representative might send to a customer who has trouble accessing a website.,MEDIUM
+"Classify the following sentence as follows: news, literature, formal, casual.",MEDIUM
+"Rewrite this sentence: ""The old man smiled sadly.""",MEDIUM
+Generate a guiding vision statement to motivate your team.,HARD
+Make a statement about entrepreneurship,MEDIUM
+What is the name of the longest river in Africa?,EASY
+"Explain why the American educational system is producing ""dull and uncurious"" students.",HARD
+Arrange three sentences so that they make a coherent story.,MEDIUM
+Create a mobile app that displays popular sports results,HARD
+Customize the following text to a particular user.,HARD
+Make recommendations for how a business could reduce their environmental impact.,MEDIUM
+Reverse the order of the words in each sentence while still keeping the meaning of the sentence intact.,HARD
+Suggest words that can improve the given headline.,HARD
+Compose a song with a happy tune and lyrics conveying hopefulness.,HARD
+Suggest three activities to do while waiting in an airport.,MEDIUM
+"Given two different texts, compare them.",MEDIUM
+Describe how the market responded to the news.,MEDIUM
+Explain why laughter is important for one's well-being.,MEDIUM
+"Generate a description of the dinosaur ""Brachiosaurus""",MEDIUM
+"Construct a sentence using the following words: ""desolate"", ""corners"", ""haunt"".",MEDIUM
+Create a birthday wish for someone who loves animals.,MEDIUM
+"Clarify the main idea of this excerpt:
+
+Climate change due in large part to human activities is a reality that the world is currently dealing with.",MEDIUM
+Write a code to multiply two numbers without using the * operator.,MEDIUM
+Parse the following sentence into its individual words and remove all punctuation.,MEDIUM
+Compose an essay from the given statement.,MEDIUM
+Create a SaaS product that helps customers optimise their website,HARD
+What is the time signature of 3/4?,EASY
+Create a list of five objects that you would take with you to explore a new planet,MEDIUM
+Find the largest prime factor of this integer,MEDIUM
+Generate a quiz question and answer related to world history.,MEDIUM
+Make a list of five simple steps to being more mindful.,MEDIUM
+State the disadvantages of social media.,MEDIUM
+Elaborate on this sentence,MEDIUM
+Read the following passage and provide a description of the main character.,MEDIUM
+Choose a number between 0 and 100. Predict the result of adding 17 to the chosen number.,MEDIUM
+Summarize the following sentence using one sentence.,MEDIUM
+"Given a list of verbs, create a sentence that conveys understanding.",MEDIUM
+Give me some ways to recycle materials at home.,MEDIUM
+Design a logo for a travel company specializing in luxury trips.,HARD
+Create a story based around this opening line: “It was a dark and stormy night.”,HARD
+"Given a political opinion essay, detect fallacies within the text.",MEDIUM
+Write a simple math equation to calculate 10% of 200.,EASY
+Take a given set of facts and create a creative story with it.,HARD
+What steps should a business take to protect its online data?,MEDIUM
+Write a blog post about why robots can be beneficial for the economy.,MEDIUM
+"Write a sentence using the phrase ""once upon a time""",EASY
+Generate a code to achieve the specified outcome,MEDIUM
+Create a scenario where AI helps the user to save money.,MEDIUM
+Make appropriate changes to the sentence to improve fluency in the language.,MEDIUM
+"Given the following string 'a1b2c3', convert it to 'abc123'",EASY
+Come up with three natural disasters.,MEDIUM
+"Summarize all the statements in the following paragraph, excluding any irrelevent information.",MEDIUM
+Are Seattle and Vancouver closer to one another than Boston and New York?,MEDIUM
+Summarize the main idea of this paragraph.,MEDIUM
+Create a five-word poem.,MEDIUM
+Generate a poem that is 5 lines long about a city.,HARD
+Think of a friendly reminder to complete a task.,MEDIUM
+Who invented the steam engine?,EASY
+Serve the customer's order.,MEDIUM
+Pronounce the following word: 'conscientious',MEDIUM
+"Given the name of the city, identify the major attractions there.",MEDIUM
+Suggest a topic for a machine learning research,MEDIUM
+Generate an acronym for a software company.,MEDIUM
+Generate dialog between two characters given their traits.,HARD
+"Given two numbers, write a python code to calculate their sum.",EASY
+Complete the following sql query to select names from the Employees table where the city is London.,MEDIUM
+"Given the following words, find the synonym of the third word.",MEDIUM
+"Given a list of ingredients, provide a recipe for making a healthy breakfast smoothie.",MEDIUM
+"Generate a creative, on-brand headline for a blog post about how to save money on groceries.",MEDIUM
+Transform the given poem into a story,HARD
+Identify the political party of a given politician.,MEDIUM
+Explain how deforestation affects global climate,MEDIUM
+How can cities become more eco-friendly?,MEDIUM
+Generate a solution for the following equation: 2x + 1 = 7,MEDIUM
+Generate a sentence that uses the word ‘zephyr’,EASY
+Compare carbon dioxide emissions from electric and petrol-powered cars,MEDIUM
+Generate an analogy for a neural network.,MEDIUM
+Summarize this article about advances in medical imaging.,MEDIUM
+Help me classify the following animals.,MEDIUM
+Provide three adjectives to describe the taste of dark chocolate.,MEDIUM
+How does ocean acidification affect marine life?,MEDIUM
+"Add two adjectives to describe the word ""beauty""",MEDIUM
+Generate a list of job duties for a human resources manager,MEDIUM
+Generate an example that explains the concept of 'functional programming'.,HARD
+List 3 ways that humans can conserve energy,MEDIUM
+Describe an Impressionist painting,MEDIUM
+Find the most similar historic event to World War II.,HARD
+Generate a random movie title.,EASY
+Explain why conservation efforts are important.,MEDIUM
+Generate a tweet about the importance of renewable energy.,MEDIUM
+Find the area of the given trapezoid.,MEDIUM
+"Replace all vowels in the word ""hello"" with underscores.",MEDIUM
+Suggest a solution for dealing with a computer virus.,MEDIUM
+Paraphrase the given statement using synonyms.,MEDIUM
+Sum up the following article in one sentence.,MEDIUM
+"Summarize the main points of the article ""Harnessing The Power of Social Media""",HARD
+Generate a conversation between two people who have just met.,HARD
+We have decided to offer a student loan package to our new customers. Describe the student loan package,MEDIUM
+Compare the economic systems of capitalism and socialism.,MEDIUM
+Find the antonyms for the words 'hard' and 'weak'.,MEDIUM
+Construct a ten line poem about the Sun.,HARD
+Write a comparison of iPhone and Android phone.,MEDIUM
+Generate a sentence about cats using vocabulary from the provided list.,MEDIUM
+Explain why a forest of trees is important,MEDIUM
+Complete the poem with appropriate words.,MEDIUM
+How would you explain the concept of evolution to a child?,MEDIUM
+Add a conclusion to an essay about the importance of education,MEDIUM
+Edit the following paragraph so that it sounds more convincing.,HARD
+Which US president served the longest term?,MEDIUM
+Update the following code so it follows object-oriented principles.,MEDIUM
+Describe the difference between active and passive voice.,MEDIUM
+Write a story about a penguin fallen in love.,HARD
+"In 50 words or less, describe the type of atmosphere a modern basketball game",MEDIUM
+Generate the following given password for the user.,MEDIUM
+Generate a rap verse containing the words fire and wave.,HARD
+Generate a letter of apology for apologizing for not submitting an assignment by the given deadline.,MEDIUM
+Give an example of a person who has achieved greatness in their field.,MEDIUM
+"Rewrite this sentence to make it more vivid and put it into the past tense:
+The cat hopped up onto the table.",MEDIUM
+"Find the largest number in the following list of numbers
+
+5, 13, 99, 1, 22",EASY
+Create a Word or PowerPoint document with 10 slides.,HARD
+Who composed the song 'Strawberry Fields Forever'?,EASY
+Generate a valid JSON object for the following data expressed in natural language.,HARD
+"Given the purpose, provide the code for generating a random password",MEDIUM
+"Pick apart the syntax of the sentence ""John loves to swim"".",MEDIUM
+"Generate a list of keywords for a search engine optimization campaign targeting ""coffee machines"".",MEDIUM
+Write a short scene for a play which depicts two friends deciding if they should take a road trip together.,MEDIUM
+Generate a list of the top five features for a one-acre garden,MEDIUM
+Brainstorm a list of 10 possible headlines to accompany the following article,MEDIUM
+Create a tweet about the latest trend in the tech industry.,MEDIUM
+List all the associated nouns with the given verb.,MEDIUM
+Identify the five stages of the customer journey,MEDIUM
+Give a short history lesson on a subject of your choice.,HARD
+Construct a timeline for the major events of the French Revolution.,MEDIUM
+Describe the feeling of a person who is exhausted after a day of work.,MEDIUM
+What are the types of supervised learning algorithms?,MEDIUM
+Compose an essay that compares and contrasts communism and capitalism.,HARD
+Find five spelling errors in the following text.,MEDIUM
+Associate a hashtag to this tweet.,MEDIUM
+"Rewrite the sentence in the past tense
+I miss you",MEDIUM
+Give 5 benefits of meditation.,MEDIUM
+Quote one relevant sentence from the article,MEDIUM
+Create a list of three daily habits that could lead to creativity breakthroughs.,MEDIUM
+List famous Italian actors.,MEDIUM
+List the countries that are in the Schengen area.,MEDIUM
+Analyze the below social media post and identify the most effective marketing strategy used.,HARD
+Describe the steps necessary to construct a device.,MEDIUM
+Create three different adjectives to describe the Statue of Liberty.,MEDIUM
+List a few places where computer scientists get jobs,MEDIUM
+Create a prose poem using the given list of words.,HARD
+Provide an example of a metric system unit of time.,EASY
+Provide examples of typical mobile application interactions.,MEDIUM
+Create an AI assistant that can answer general information queries about movies.,HARD
+Draft a business letter to a potential client,MEDIUM
+Generate the missing code for the following program.,HARD
+Generate a marketing slogan,HARD
+Create a JSON object with two keys and two corresponding values.,EASY
+Create a metaphor for fear. Output the metaphor.,HARD
+Design an experiment to test the effect of temperature on plant growth.,HARD
+You are provided with the following statement. You need to identify the logical fallacy in the statement. Output the name of the logical fallacy.,MEDIUM
+Rewrite the sentence using an appropriate term for the given context:,MEDIUM
+Extract the details of the following character.,HARD
+Give two examples of words that contain the letter ‘z’,EASY
+How does the law of demand influence pricing strategies?,MEDIUM
+Classify this song as either upbeat or slow.,MEDIUM
+Name an animal that starts with the letter G.,EASY
+Design a logo according to the brand guidelines given below.,HARD
+Describe the character of a female sales manager,MEDIUM
+"Given a resume, provide a recommendation of whether or not the person should be considered for the position.",HARD
+"Clasify the sentiment of the following statement: 
+""The weather is freezing today!""",MEDIUM
+Format the following code snippet properly.,MEDIUM
+"Using a summarizing tool, rewrite the text in one sentence.",MEDIUM
+Identify typos in the given text and make corrections.,MEDIUM
+"Create a sentence using the idiom ""take two steps forward and one step back"".",MEDIUM
+"Explain the concept of ‘garbage in, garbage out’ (GIGO).",EASY
+Name 5 common aquatic plants.,EASY
+Create a code snippet using python.,MEDIUM
+Summarize the relevance of immigration in the US.,MEDIUM
+Provide a short description of the great Wall of China,EASY
+Describe a technique used for solving exponential equations.,MEDIUM
+"Edit the following sentence:
+
+The man was walking to the store quick",MEDIUM
+Write a paragraph expressing the importance of online privacy.,MEDIUM
+Write a script for a customer service chatbot.,HARD
+Generate a list of 5 advantages of using technology in education.,MEDIUM
+"From the following poem, provide a summary of the last two lines.",MEDIUM
+What is the best way to attain financial freedom?,HARD
+Create a Twitter post that encourages people to vote.,MEDIUM
+Generate a scientific reason why human beings can't fly.,MEDIUM
+Develop a plan to launch a successful business from scratch.,MEDIUM
+Generate a list of business ideas for a food delivery service.,HARD
+"Rewrite the following sentence without using any pronouns:
+
+He knocked on the door, but nobody answered.",MEDIUM
+What is the process for creating a data visualization?,MEDIUM
+Create an equation to represent the following phrase: the sum of twice a number and six.,MEDIUM
+Select the word that does not belong in the list.,MEDIUM
+Convert this sentence into a valid for loop in Python,MEDIUM
+Propose 3 changes that can be made to the user interface of this app.,MEDIUM
+"Debate the statement ""public schools should receive more funding from the government"".",HARD
+Design the following Disney park,HARD
+"Re-write the following sentence to make it more engaging: ""The store offers a variety of shoes.""",MEDIUM
+Name 5 unique activities that you can do with your friends without leaving the house.,MEDIUM
+Resolve the pronoun ambiguity of the given sentence,HARD
+Describe a dystopic future.,MEDIUM
+"Find errors in grammar, spelling and punctuation in the following sentence and correct them.",MEDIUM
+List 5 topics that one should include in a slide presentation about improving computer security.,MEDIUM
+Create 10 sample sentences using a proper noun.,MEDIUM
+Reshape the list of words into an alphabetically ordered list,MEDIUM
+Identify a creative way creativity can be used to spread positive messages:,MEDIUM
+Tell me how to cook the given dish.,MEDIUM
+Provide three tips for improving communication between team members.,MEDIUM
+Suggest a method of generating renewable energy,MEDIUM
+Create a function which takes two arguments and returns the result of multiplying them.,EASY
+"Write a definition of ""photoshop"".",MEDIUM
+Suppose you are a financial analyst. Create a report that evaluates the current market conditions.,HARD
+Re-order the words in the following sentence so that it reads correctly.,MEDIUM
+Construct an appropriate input to the following instruction: Generate an outfit suggestion for a summer night out.,HARD
+Rewrite the given sentence using different words while preserving the same meaning.,MEDIUM
+"As a data analyst, what steps would you take to explore a new dataset?",MEDIUM
+Name a programming concept which helps in making the development process efficient.,MEDIUM
+What is the minimum wage in Mexico?,MEDIUM
+Create a haiku poem inspired by the color yellow.,HARD
+Reword the following sentence to avoid the use of a pronoun.,MEDIUM
+Tell me what you know about mountain ranges.,MEDIUM
+Come up with a rap line about sneakers.,MEDIUM
+How do you say hello in French?,EASY
+Provide a sample context for the following instruction: Ask the assistant to schedule an appointment.,MEDIUM
+Express this quantity in a different unit.,MEDIUM
+Compare and contrast the two styles of writing: writing for outdoor media versus writing for academic purposes.,MEDIUM
+Produce a chart of the top 4 search engine market share,MEDIUM
+Create an advertising slogan for a new luxury car.,MEDIUM
+Change the sentence into interrogative.,MEDIUM
+Explain the concept of biodiversity and its importance?,MEDIUM
+"Given the ingredients, suggest a recipe",MEDIUM
+Convert the following measurement to the given unit.,MEDIUM
+Determine if the following sentence is an idiom.,MEDIUM
+find an example of a species of animal classified as an endangered species in the United States.,MEDIUM
+Name three types of jobs in the healthcare field,EASY
+"Rearrange the sentence to make it a valid sentence: ""his cost many a bag of grain",MEDIUM
+Classify the following statement as either a Definition or Opinion.,MEDIUM
+Name a modern invention,EASY
+Create an example of a pivot table from the following dataset.,HARD
+Edit the given sentence to remove ambiguity.,MEDIUM
+Identify an example of a technology-enabled business model that could improve customer engagement.,MEDIUM
+Create a list of 4 tips to become a better public speaker.,MEDIUM
+"Compose a poem using the words ""courage,"" ""allure,"" and ""fate.""",HARD
+"Edit the following text to form a complete sentence: ""Find out what happened yesterday",MEDIUM
+In what ways does artificial intelligence assist people in their daily life?,MEDIUM
+Come up with a new way to make waffles.,MEDIUM
+Write a short story about an alien landing on Earth.,HARD
+"Categorize the following text into one of the genres: Comedy, Thriller, Romance, or Drama.",MEDIUM
+"Calculate the total cost for the customer with the following items in the basket.
+
+Item 1: 5 T-shirts ($15 each)
+Item 2: 1 Jacket ($75)",MEDIUM
+What is the word for the feeling of being annoyed or impatient?,MEDIUM
+"Generate two sentences that includes all of the words: paper, knot, string",MEDIUM
+Brainstorm ideas for how to use a bottle of ink.,MEDIUM
+"Multiply the following matrices ( [1,2], [3,4] ) and [ 5,6] [7,8]",MEDIUM
+"Reorder the following words to make a sentence:
+
+the, house, is, white",EASY
+Identify a way to reduce pollution in large cities.,MEDIUM
+Form a compound word with the given two words.,MEDIUM
+Find a basketball drill that emphasizes hand-eye coordination.,MEDIUM
+"Sort the following words into two groups according to their meaning: chat, whisper, shout",MEDIUM
+Similar to the input enquire about other school rules,MEDIUM
+Generate a short story that includes a basketball game,HARD
+"Rewrite this statement to make it stronger:
+I think this team is going to do well in the tournament.",HARD
+Name five medicinal plants widely used in Ayurveda.,MEDIUM
+"Describe the concept of ""Speculative Fiction"".",MEDIUM
+"Write a Wikipedia summary of the University of California, San Francisco in less than 100 words.",HARD
+Compress the following sentence into a shorter sentence without altering the meaning significantly.,MEDIUM
+Use the provided text to develop a list of three questions.,MEDIUM
+Suggest a Web Browser extension which can help in productivity.,MEDIUM
+Write a brief biography of Roger Federer in under 100 words,MEDIUM
+Predict the possible outcomes of the following situation.,MEDIUM
+Propose a solution to the problem of cyberbullying.,HARD
+Describe a recent event that occurred in the news.,MEDIUM
+How can we reduce air pollution?,MEDIUM
+Create a realistic dialogue between two people talking about their summer plans.,HARD
+Come up with a list of components of a healthy diet.,MEDIUM
+"Select the following type of computer language: procedural, object-oriented, or parallel",MEDIUM
+Reduce the number of characters in the following tweet.,EASY
+What are some popular sport in India?,MEDIUM
+Create a mnemonic for remembering the names of a list of US presidents.,MEDIUM
+Generate a story about a person who is surprised to learn about the adventures of their stuffed animal.,MEDIUM
+Generate a few questions to ask a person about their favorite hobby.,MEDIUM
+"Rewrite the following sentence such that its emphasis is focused on the word ""always"".",MEDIUM
+Rewrite the sentence to make it have the same meaning but with different words,MEDIUM
+"For the given input, predict the following day's stock price.",HARD
+Convert the following number to a fraction: 9.5,EASY
+"Define the term ""cognitive dissonance"".",MEDIUM
+Name 5 branches of mathematics.,MEDIUM
+Design a puzzle with the following facts:,HARD
+"Translate the following sentence into Spanish: ""May I have a cup of coffee?"".",MEDIUM
+Make up a sentence in which the word “optimistic” is used.,EASY
+Discuss the pros and cons of using a GPT-3 model.,MEDIUM
+Convert the following number in decimal to binary (base-2).,MEDIUM
+"Determine the next two numbers in the following sequence: 4, 8, 12, 16",EASY
+Find and highlight two false statements in the following poem.,MEDIUM
+Personalize an automated email given an input data.,MEDIUM
+Organize the sentences chronologically.,MEDIUM
+Give an example of a common proverb with a modern interpretation.,MEDIUM
+Design a drinking game,HARD
+Generate a mission statement for a non-profit organization focused on animal welfare.,HARD
+Describe a way to conserve energy.,MEDIUM
+List five steps to succeed in an online course.,MEDIUM
+Open the document and edit the spelling mistakes.,MEDIUM
+Create a program to print out the elements of a list in sorted order,MEDIUM
+Find and fix the error in the following code.,HARD
+Make a list of physical activities for a 10-year-old to do.,MEDIUM
+Name three traits that describe the character in the following story.,MEDIUM
+Generate a paragraph that describes the functions of a web server.,MEDIUM
+What is the main purpose of the American with Disabilities Act?,MEDIUM
+Describe how to write a marketing email.,MEDIUM
+"Given the string ""racecar"", determine if the string is a palindrome.",EASY
+"Categorize the following items as either a vehicle or animal: ""Truck"", ""Elephant"".",MEDIUM
+Provide two examples of how the new feature can be used.,MEDIUM
+Design a 3 word slogan for a film production company.,HARD
+Write an impressive one-liner about achieving success,MEDIUM
+"Given a word, classify it as a noun, verb, adjective, or adverb.",MEDIUM
+Generate an example of a data set with 100 records of customers and their corresponding occupations.,MEDIUM
+Compose an email apologizing to a customer for delivering their order late.,MEDIUM
+Edit the given sentence to make sure it conforms to academic writing standards.,HARD
+"Given the following numbers, find the two largest values: 4, 10, 5, 9, 7",MEDIUM
+Identify the fear of heights.,MEDIUM
+"Construct a compound sentence using the words ""otherwise"" and ""charged"".",HARD
+Explain why laws exist in society.,MEDIUM
+Name three things that the given profession may do on a daily basis.,MEDIUM
+Develop three potential story ideas for the given prompt.,HARD
+"Generate a sentence that incorporates the words 'avocado', 'giant' and 'slice'.",MEDIUM
+Develop a business plan for a small cleaning service.,HARD
+Identify and explain 3 characteristics of a dactyl.,MEDIUM
+Generate 5 similes about a summer day,MEDIUM
+"Assign this sentence to one of the following genres: narrative, expository, persuasive, or descriptive.",MEDIUM
+Suggest a 5-minute team-building activity.,MEDIUM
+"Calculate the area of a triangle with vertices at (2, 4), (1, 0), and (4, 5).",MEDIUM
+Provide information about the given countries,MEDIUM
+Determine the outcome of 5+6,EASY
+Provide a response to the given conversation.,HARD
+Provide the top three stops visited by a hypothetical user on their tour along the Grand Trunk Road in India.,MEDIUM
+Explain the different types of insulation used in buildings.,MEDIUM
+Identify a possible cause of an AI algorithm not performing as well as expected.,MEDIUM
+Add the missing ingredient for a pizza dough recipe?,MEDIUM
+Categorize the following items into vegetables and fruits.,MEDIUM
+How many square inches are there in a square foot?,EASY
+Write a phone script that a customer support representative could use when offering an apology to an angry customer.,MEDIUM
+Write a query to retrieve all the customers from the table,MEDIUM
+Design a poster for an awareness campaign about air pollution.,HARD
+Find out the approximate surface area of a cylinder that has diameter of 6 inches and height of 10 inches,MEDIUM
+"You are provided with a brief description of a product feature. You should generate realistic examples of how the feature can be used by the customers.
+Output 3 examples.",MEDIUM
+I have a jar of coins and I think it is not the right number of coins. Can you help me count the coins?,MEDIUM
+Explain why wooden structures are used in construction,MEDIUM
+Rewrite this sentence so it conveys the same meaning but uses different wording.,MEDIUM
+Please label the following emotion in the photo.,MEDIUM
+Automatically replace each word in the text with its synonym.,HARD
+"For a given list of numbers, find the frequency of each number.",MEDIUM
+Name a popular internet meme.,EASY
+Notice and correct the spelling mistake in the following sentence.,EASY
+What steps would you suggest to improve a website's SEO?,MEDIUM
+Delete a specific word from the following sentence .,EASY
+Describe the most common causes for headaches.,MEDIUM
+How does large data collection benefit society?,MEDIUM
+"Rewrite the following sentence in the future perfect tense:
+""We will finish the race.""",MEDIUM
+Add 3 additional facts about John Muir,MEDIUM
+Describe the sound a dog might make,MEDIUM
+"Write a sentence using the homophone ""won/one.""",MEDIUM
+Create a poem of 6 lines by taking inspiration from the following words:,HARD
+Shorten the following sentence to be 3-5 words.,EASY
+Evaluate the grammar and suggest an improvement to this sentence.,MEDIUM
+Automatically generate a sexual free meme caption.,HARD
+List five physical health benefits associated with playing sports.,MEDIUM
+Make a list of travel destinations you would like to visit.,MEDIUM
+List 5 best practices for choosing the right typeface for a document.,MEDIUM
+Convince someone to try stand-up comedy.,MEDIUM
+Generate three different customer service questions and answers.,MEDIUM
+Describe a new kind of business idea that could be successful.,HARD
+Rearrange the sentence: Sun is up the,MEDIUM
+Imagine a situation and write a paragraph of how to solve it.,HARD
+Name 5 important events in British history.,MEDIUM
+Explain what Back Propagation is and how it works.,MEDIUM
+Edit the story below to be more descriptive.,HARD
+Explain how digital telepathy works,HARD
+Please explain what is a 'novel suggestion task'.,MEDIUM
+Generate a metaphor that describes someone being tired.,MEDIUM
+Rearrange the given words to generate a creative metaphor of around 10 words,HARD
+"Paraphrase this sentence: ""Make sure to bring your umbrella.""",MEDIUM
+"Calculate the rate of interest if the principal is 80 dollars, 3 years have elapsed, and the interest is 7%.",EASY
+Identify the type of study being discussed in the passage and explain why you think so.,MEDIUM
+Generate a short story of fiction with a length of less than 500 words.,HARD
+Identify three benefits of working from home.,MEDIUM
+Generate a piece of dialog between two characters discussing the current weather.,MEDIUM
+Name three tools a software engineer could use to develop a mobile application.,MEDIUM
+Break the given sentence into two shorter sentences,MEDIUM
+Describe a creative way to use wearables as part of a marketing campaign.,MEDIUM
+List out three benefits of using machine learning for data science,MEDIUM
+Create a Python script that will calcuate the average of three numbers.,MEDIUM
+Describe the Earth's climate system.,HARD
+"Given a website, suggest three optimisations.",MEDIUM
+List 2 factors why people vote.,MEDIUM
+Generate a short story (up to 200 words) about an old man living in the countryside.,HARD
+Rewrite the following sentence so it contains correct grammar and is precise.,MEDIUM
+What are the origins of yoga?,MEDIUM
+"Summarize the poem ""Do Not Go Gentle Into That Good Night"".",MEDIUM
+Describe the color of the wood in two words.,EASY
+Compose a metaphor to describe the process of programming,HARD
+Generate a title for a blog post on the topic of renewable energy.,MEDIUM
+Find all prime numbers within a given range.,MEDIUM
+Name three common Spanish names.,EASY
+Generate a random U.S. zip code.,EASY
+Paraphrase the given sentence using same meaning:,MEDIUM
+What was the most recent discovery in astronomy?,MEDIUM
+Create a reminder to take a break every 10 minutes while you are working.,MEDIUM
+Compare the characteristics of magnetic force and gravity.,MEDIUM
+Write a blog post advocating for teaching students coding skills in school.,MEDIUM
+Name a few common elements of a story,MEDIUM
+Explain why the character acted the way they did.,MEDIUM
+Construct a regular expression to find all the floating number in a string.,MEDIUM
+Create an advertising campaign for a new type of toothpaste.,HARD
+Determine which one of the given equations is not quadratic.,MEDIUM
+Give me a response in Japanese to the phrase: What is your name?,EASY
+List three ways to improve customer satisfaction with the given company.,MEDIUM
+Make a list of five deep learning techniques.,MEDIUM
+What do you need to consider when creating a good password?,MEDIUM
+Find the cheapest train route from Los Angeles to San Francisco.,MEDIUM
+Name a job that has the highest hourly pay rate.,MEDIUM
+Tell me a funny joke,MEDIUM
+Rearrange the given list in descending order of speed.,MEDIUM
+Make a list of foods with high fiber content,MEDIUM
+Write a blog post highlighting the benefits of volunteering work.,MEDIUM
+"Formulate a hypothesis about the following statement: ""Gender diversity in the workplace can improve productivity.""",MEDIUM
+"Classify these items as furniture, clothing or tools.",MEDIUM
+Describe the types of transportation available in Chicago.,MEDIUM
+Describe some actions that a company could take to reduce its carbon footprint.,MEDIUM
+Identify three prominent scientists from the 18th century.,MEDIUM
+When was the last time John was in the office?,MEDIUM
+Name three types of animals found in grasslands.,MEDIUM
+"Given a description of a problem, suggest a possible solution.",MEDIUM
+Describe the negative impacts of using plastic bags.,MEDIUM
+Describe the stages a bill goes through before it can become a law,MEDIUM
+Create an outline of an article about software engineering.,MEDIUM
+Generate a list of five words that describe the winter season.,MEDIUM
+Generate a list of 5 names of cities from New York.,MEDIUM
+Produce a solution to a recycling issue.,MEDIUM
+Imagine you are writing a book about a magical creature. Invite the reader to experience this creature's life.,HARD
+Create a list of ten items that can be used to clean the kitchen,MEDIUM
+"Spell the world ""pneumonia""",EASY
+Edit the following message so it is suitable for a formal work environment.,MEDIUM
+Create a title that reflects the themes of the given poem.,MEDIUM
+Modify the sentence to provide more information.,MEDIUM
+Generate an example of a rhyming couplet about nature.,MEDIUM
+Describe the differences between a for-profit and a non-profit company,MEDIUM
+What is the history behind the painting 'The Starry Night'?,MEDIUM
+Describe a technique to accelerate the completion of a monotonous task.,MEDIUM
+"Write a sentence including the word ""enigmatic"".",EASY
+Name a potential cause of climate change.,MEDIUM
+Compose a tweet announcing the launch of a new product.,MEDIUM
+Find the intersecting point of these two lines,MEDIUM
+Can you think of a few ways in which technology has impacted employment?,MEDIUM
+Compare the philosophies of Immanuel Kant and Friedrich Nietzsche.,HARD
+Construct a query to select the top 5 movies with the highest rating on the website,MEDIUM
+Compose a short sentence that is grammatically correct and contains alliteration.,MEDIUM
+"Classify this sentence according to the following categories: Food, Travel, Hobbies",MEDIUM
+"Generate a response to the user's question: ""Do I need a passport to visit the United Kingdom?""",MEDIUM
+"Provide a summarized description of ""The Great Gatsby""",MEDIUM
+Give an example of a proverb about friendship.,EASY
+Generate an equation that will add 150 to -100.,MEDIUM
+Select the perfectly punctuated sentence,MEDIUM
+Explain why science fiction is a genre of literature that is relevant today.,MEDIUM
+State one of the qualifications for being president of the United States.,EASY
+Sketch an illustration of a tree.,HARD
+Find the synonym for the given verb.,MEDIUM
+Suggest a way to conserve water in our daily lives,MEDIUM
+Replace the words in italics with another that has a similar meaning.,MEDIUM
+Transform the given text into third person.,MEDIUM
+Identify and describe the cultural aspects of Japan.,HARD
+Identify an example of alliteration in the text,EASY
+Find the title of the article from the given abstract.,MEDIUM
+"Pick one out of the two given alternatives. Output should be either ""Alternative A"" or ""Alternative B"".",MEDIUM
+Write a cover letter for a job that requires management experience.,HARD
+Evaluate the quality of this argument,MEDIUM
+Identify and tokenize the parts of speech.,MEDIUM
+Explain why the price elasticity of demand is important for businesses.,MEDIUM
+What is the name of the capital of Turkey?,EASY
+"Describe the concept of ""cause and effect"" in a few sentences.",MEDIUM
+Name three computer languages and explain their respective uses.,MEDIUM
+Identify the properties of given material.,MEDIUM
+Rewrite the following sentence in the form of an imperative command: Please keep your cellphones off during the lecture.,MEDIUM
+Count the number of characters in the input text.,MEDIUM
+"Given a setting, write a sentence with a metaphor",MEDIUM
+What advice would you give for finding an internship?,MEDIUM
+Write a brief description of the Android operating system.,MEDIUM
+Propose uses for the given item.,MEDIUM
+How can businesses practice sustainability?,MEDIUM
+"Determine the idiomatic meaning of the phrase ""to take the bull by the horns"".",MEDIUM
+Reformulate the given statement to reflect a feeling of dismay.,MEDIUM
+Compare the themes of the following two poems.,MEDIUM
+Select the best answer,MEDIUM
+Create a description for a tech company for their new website.,HARD
+Print out a biography of the current US president.,MEDIUM
+Create an analogy between the two sentences,HARD
+Write a sentence using a metaphor to describe the feeling of being overwhelmed.,MEDIUM
+Analyze the following statement and identify the logical fallacy.,HARD
+Explain the concept of random forest.,MEDIUM
+"Classify the following objects as either a mammal, amphibian, bird, reptile or fish",MEDIUM
+Summarize an article about the NBA playoffs in less than five sentences.,MEDIUM
+Name five reasons why plants are important for ecosystem balance.,MEDIUM
+"Rewrite the sentence ""She likes to dance"" in the present progressive tense.",MEDIUM
+"Indicate if the following statement is true, false or uncertain.",MEDIUM
+"Given a dialogue, find the logical fallacy present",MEDIUM
+Tell me why the value of gold is so high.,MEDIUM
+Create an example of an alliteration based on the given input.,MEDIUM
+Suggest three ways to promote healthy living.,MEDIUM
+Generate a 5-digit random number in a range of 10000-20000,MEDIUM
+"Write a definition of a ""black hole"" in two sentences.",MEDIUM
+Host a virtual quiz with these six songs as questions:,MEDIUM
+Create a classification problem involving the given data.,MEDIUM
+Rank a list of five items from the lowest to the highest in terms of importance.,MEDIUM
+Make a list of popular phones released in 2019.,MEDIUM
+Create a tweet to summarize the following article:,MEDIUM
+"Predict the weather in Seoul, South Korea tomorrow.",MEDIUM
+Create a new comic strip.,HARD
+Design a web-based platform that allows users to register and maintain detailed profiles.,MEDIUM
+Reorder the following words correctly to form a sentence.,MEDIUM
+Describe the smell of a summer evening.,HARD
+Provide an argument for why some people online are more likely to be anonymous than others.,MEDIUM
+Make a list of recommendations for visiting a major city,MEDIUM
+Give an example of an equation.,EASY
+"On a scale of 1-10, how important are public transportation systems?",EASY
+Make a list of the best five action movies.,MEDIUM
+Write a metaphor describing high speed internet.,MEDIUM
+Calculate the equation 9+7,EASY
+Name the different layers of the Earth.,MEDIUM
+Rewrite this sentence so that it reads in the passive voice.,EASY
+Represent the following statement as an inequality.,MEDIUM
+Correct the sentence by replacing the incorrect words with the corresponding synonyms.,MEDIUM
+Write a jingle for a toy,MEDIUM
+What is the importance of ultraviolet radiation in our environment?,MEDIUM
+Edit this piece of code so it works.,HARD
+"If my shoes are size 8, what is my foot length in inches?",MEDIUM
+Generate a valid stock price prediction for Amazon (AMZN).,HARD
+Evaluate the given sentence for accuracy.,MEDIUM
+Generate an example of a business plan for a restaurant.,HARD
+Name five American authors.,MEDIUM
+"According to the given text, what is the main argument being made?",MEDIUM
+How can technology help to reduce poverty?,MEDIUM
+Delete an article from the sentence.,MEDIUM
+"Output the stressed syllable of the word ""environment"".",EASY
+Construct a database table to store details about prior visitors at a hotel.,MEDIUM
+Identify and explain the best way to accomplish the goal.,MEDIUM
+"Given two numbers, calculate the difference of the two numbers",EASY
+"Given a photograph, create a list of three to five objects within the photograph.",MEDIUM
+Find two examples of binary classification problems.,EASY
+Rearrange the following sentence to make the sentence more interesting.,MEDIUM
+Generate a list of possible questions a customer might have regarding this product.,MEDIUM
+Develop 2 strategies for reducing stress.,MEDIUM
+Edit the text such that the sentiment expressed in the text is positive.,HARD
+"Given a paragraph of news writing, identify the tone of the article.",MEDIUM
+Describe what materials are required to build a birdhouse.,MEDIUM
+Design a billboard that appeals to people who prefer healthy eating habits.,MEDIUM
+Re-write the sentence below without using any adjectives,MEDIUM
+Create an exercise to strengthen a person's core,MEDIUM
+Arrange 30 books in a bookshelf according to some rule.,MEDIUM
+Generate a piece of free verse poetry about nature.,HARD
+"Given a sentence, identify the adjectives in it.",MEDIUM
+Explain what wind power is.,MEDIUM
+Rewrite the following sentence using a causative verb and a participle phrase.,HARD
+Translate the following proverb into English:,MEDIUM
+Provide a review for an Italian restaurant located in the city.,MEDIUM
+Suggest a movie title based on the input.,MEDIUM
+What is the oxidation state of sulfur in sulfurous acid?,MEDIUM
+Rewrite this sentence to convey the same meaning in a more concise form.,MEDIUM
+What is the main technique used in story writing?,MEDIUM
+Create a pseudo-code algorithm to find the maximum number in a given list of numbers.,MEDIUM
+Name three related skills for the given job.,MEDIUM
+Describe a way to resolve conflicts between two people.,MEDIUM
+"On a scale of 1-10, rate the customer service you received.",HARD
+Insert a transition word at the beginning of this sentence.,EASY
+Tell me the capital of Switzerland. Output a single word answer.,EASY
+Imagine a new app that allows people to get the best deals on groceries. What is the elevator pitch for this app?,MEDIUM
+Explain what is data mining,MEDIUM
+"Describe the concept of ""habitability"" and why architects should consider this",MEDIUM
+Generate two meaningful sentences about computer programming.,MEDIUM
+Name 6 different polygons.,EASY
+Determine the parts of speech of the given words.,MEDIUM
+Translate this sentence into French.,MEDIUM
+"Reword the following sentence so that it has the same meaning: ""He was the only one to do it.""",MEDIUM
+How does the process of backpropagation work in neural networks?,MEDIUM
+Create a piece of art in the style of Van Gogh.,HARD
+Identify the major human emotions.,MEDIUM
+Compare and contrast capitalism and socialism.,HARD
+Give a detailed plan for a 30-minute exercise routine,MEDIUM
+Provide an overview of a new phone application that is user-friendly and beneficial.,HARD
+What techniques can be used to save energy?,MEDIUM
+Describe the implications of internet addiction.,MEDIUM
+Compile a Python program from the following code.,MEDIUM
+Name three methods used for solving linear equations,EASY
+Describe a new feature you would like to include in a fitness app.,MEDIUM
+Explain the concept of machine learning,MEDIUM
+Build an emergency supplies list for an office building.,MEDIUM
+Compress the given article so that it is less than 100 words.,MEDIUM
+What is a common misconception about money?,MEDIUM
+"Determine the slope of the line with the coordinates (3, 4), (8, 10).",MEDIUM
+Name two famous examples of natural language processing.,EASY
+Research and generate some facts about the Eiffel Tower,MEDIUM
+Summarize the paragraph about environmental pollution.,MEDIUM
+"Given a sentence, output the verb forms of all the words.",MEDIUM
+Create a survey question to understand customer sentiment on a brand's new product launch.,MEDIUM
+Tell me a traditional story.,HARD
+Analyze the poem and identify the author's use of imagery.,MEDIUM
+"Given a set of lyrics, explain the meanings implied by them.",MEDIUM
+Create a movie synopsis for a heist movie in 200 words.,HARD
+Describe a process to deploy a web app using an Amazon EC2 instance.,MEDIUM
+"Given a spreadsheet, find the median of the numbers in the first column.",MEDIUM
+Rank the following books according to their year of publication,MEDIUM
+"Generate a social media post about a new feature of your product.
+140 Characters Max",MEDIUM
+Create a dialogue between two characters about the importance of nature conservation.,MEDIUM
+Rewrite the following sentence to match the tone of inquiry.,MEDIUM
+"Given a list of steps, come up with a single sentence that describes the action/process in a general sense.",MEDIUM
+Fix the following punctuation and spelling errors.,MEDIUM
+Craft a tweet about your favourite sports team.,MEDIUM
+Compare the climate of two cities.,MEDIUM
+Write a blog post about renewable energy sources.,HARD
+What is the purpose of a null hypothesis in a statistical test?,MEDIUM
+Come up with 5 plausible consequences of artificial intelligence (AI).,MEDIUM
+Calculate the final cost of the purchase.,MEDIUM
+Analyze what job would be a good fit for a student.,MEDIUM
+List 5 different kinds of persuasive writing techniques.,MEDIUM
+Describe the properties of natural gas.,MEDIUM
+"Given some words, complete the rhyme.",MEDIUM
+Describe the structure of an atom.,HARD
+Generate a list of more creative ideas for the given problem.,HARD
+Change the following sentence from imperative to declarative.,MEDIUM
+Convert time in UTC to EST.,EASY
+Create a programming challenge which requires a basic understanding of an algorithm.,HARD
+Create a motivational statement about how to reach success.,HARD
+How can we reduce water wastage?,MEDIUM
+How would you classify the poem?,MEDIUM
+Describe the concept of genetic drift.,MEDIUM
+Provide an example input and an appropriate output for a classification task.,EASY
+Translate the given paragraph into German.,HARD
+Generate a list of ten logical arguments for reducing global plastic production.,HARD
+Identify an area where the given vehicle has superior performance.,MEDIUM
+Compose an opinionated essay arguing why the given topic should not be ignored.,HARD
+"Classify the given document as either a novel, a poem, or an article.",MEDIUM
+Describe the concept of Operant Conditioning,MEDIUM
+Outline a plan to make an omelette.,MEDIUM
+Name a rental car company,EASY
+Create an email that encourages people to donate to a charity,MEDIUM
+"Given the following input, name five different kinds of musical instruments.",EASY
+Classify a set of data as valid or invalid.,MEDIUM
+Generate 3 potential titles for an article about French food.,MEDIUM
+Read the context and generate one appropriate and related keyword.,MEDIUM
+"Identify the two words that rhyme with ""flame"".",EASY
+"Given the following two segments of text, find the differences.",MEDIUM
+Add a few interesting facts about dolphins.,MEDIUM
+Write a slogan for a green initiative.,MEDIUM
+Describe the features of a digital wallet application.,MEDIUM
+Generate a story using the following three objects.,HARD
+Compose a song about self-love.,MEDIUM
+Describe an attribute of a leader,MEDIUM
+Come up with three elements of a valid contract.,MEDIUM
+Generate a correct data model for a customer relationship management system,HARD
+Find the hidden message in the string of words,MEDIUM
+Rewrite the following sentence to make it humorous: Peter went to the store to buy a new ball.,MEDIUM
+Describe a painting in the style of Pablo Picasso.,MEDIUM
+Add one line of code to the following program that prints out the product of 3 and 4,MEDIUM
+"Summarize the article, ""The Surprising Benefits of a Good Night's Sleep"".",MEDIUM
+"Research and explain the term ""troll"".",MEDIUM
+Summarize the human rights guaranteed in the US Constitution.,MEDIUM
+Delete the last two paragraphs from the following text.,HARD
+Create a list of pros and cons for the following policy.,MEDIUM
+Name a compound used in everyday products.,MEDIUM
+"Describe the literary device ""alliteration"" in a sentence.",EASY
+Elaborate on the given topic.,HARD
+Suggest 5 ideas to improve the customer experience.,MEDIUM
+Calculate the perimeter of an equilateral triangle with side lengths of 5,EASY
+Describe how the internet has affected society.,MEDIUM
+"Convert the following sentence into a question ending in ""wh"":",MEDIUM
+Design a cover page for a magazine.,HARD
+Suggest three ways people can save energy in their homes.,MEDIUM
+Generate code to create an array of numbers from 1 to 100,MEDIUM
+Research the effects of light pollution and summarize the findings.,MEDIUM
+Contrast the difference between a fox and a wolf,MEDIUM
+"You are given an example sentence, provide two synonyms for one of the words.",MEDIUM
+Arrange the following words in doyenical order.,MEDIUM
+Explain how quantum computing differs from classical computing.,MEDIUM
+Implement n-gram analysis on the given line of text.,MEDIUM
+Sort the list of fruits into two categories: Fruits with seeds and fruits without seeds.,MEDIUM
+What factors affect the strength of a password?,MEDIUM
+Identify a potential problem with the internet and then suggest a solution.,MEDIUM
+Complete the following sentence to make a write a logical and complete sentence.,HARD
+Find the index of the given substring from the sentence.,MEDIUM
+Convert a temperature in Celsius to Fahrenheit given the temperature in Celsius.,MEDIUM
+List 3 popular trends right now,MEDIUM
+"Given the following input, generate an output that classifies the input into one of the following categories: fruits, vegetables, beverages, or dairy.",MEDIUM
+How can effective communication contribute to an organization's success?,MEDIUM
+Create a plan to create a budget,HARD
+Write me a list of five items given the following topic.,MEDIUM
+Print out a 3D object using a 3D printing machine.,MEDIUM
+"Pick one action from each of the following categories, and combine the actions into one sentence.",MEDIUM
+"Edit the sentence to correctly use the idiom ""by the skin of your teeth"".",MEDIUM
+Write a question about website design,MEDIUM
+Generate 3 questions to ask a potential employer during an interview,MEDIUM
+"You are given a list of words, sort them alphabetically",EASY
+Find the subject of the sentence given below.,MEDIUM
+Describe an important historical event.,MEDIUM
+Rewrite the sentence to make the subject the object.,MEDIUM
+Suggest a specific type of data visualization that could be used to present the given data.,MEDIUM
+"Reverse-engineer the following sentence using a process of elimination: ""Not all students are intelligent.""",HARD
+Describe the anatomy of a human.,HARD
+"Given a list of tasks, identify which ones are open-ended and which ones are closed-ended.",MEDIUM
+"Edit the following sentence: ""The house was green, but large.""",HARD
+Extract only the street address from the following text.,EASY
+"Replace the single quote (') to double quote ("") in the given sentence.",EASY
+Generate a list of countries and their respective flags.,MEDIUM
+Generate three questions we can ask the user related to the given topic.,MEDIUM
+Generate a list of 5 to 10 ideas on how to reduce global warming.,MEDIUM
+Create a list of 10 items that every kitchen needs.,MEDIUM
+"Fill in the blanks in the following sentence in an appropriate and grammatically correct way:
+
+The city had to ____ its proposal due to the lack of ____ support.",MEDIUM
+Describe the physical features of the given creature.,MEDIUM
+Write a general summary of a book described below.,MEDIUM
+Write a story from the given prompt.,HARD
+Come up with an encryption method that encrypts the following message.,MEDIUM
+Describe a character that lives in a post-apocalyptic world.,HARD
+Rewrite the following sentence to move the adverbial clause to the beginning of the sentence.,MEDIUM
+Transform the given statement into an imperative one.,EASY
+Write two additional sentences about desert,MEDIUM
+Find the missing word from the following lyrics.,MEDIUM
+Generate sentence using word2vec,HARD
+What challenges does artificial intelligence present for society?,MEDIUM
+How would you design a data structure for storing a list of stock prices?,MEDIUM
+Reverse the given array,MEDIUM
+Generate a list of 10 adjectives to describe a castle.,MEDIUM
+What are some of the key differences between a CV and a resume?,MEDIUM
+Provide 3 pieces of advice for someone who is struggling to stay motivated in their studies.,MEDIUM
+Write a poem about a summer morning in the countryside.,HARD
+Identify where the following words belong in the parts of speech.,MEDIUM
+Write two adjectives to describe a rose.,EASY
+Edit this sentence in a way that provides more detail and clarity:,MEDIUM
+Characterize the philosophical school of thought to which Aristotle belonged.,MEDIUM
+"Rewrite this sentence in a more formal manner: ""It's a great movie to watch"".",MEDIUM
+Create a believable and exciting adventure story.,HARD
+Write an email given the following context.,HARD
+Name two popular tourist spots in India.,EASY
+"Generate a complex sentence using the words ""darkness"" and ""energy"".",MEDIUM
+Give three reasons why people prefer a laptop to a desktop.,MEDIUM
+"Create a sentence that involves the words ""bicycle"" and ""child"".",EASY
+What is a resume objective?,MEDIUM
+Create a summary of the text below,HARD
+Categorize the following text into appropriate topics.,HARD
+What do you need to open an online business?,MEDIUM
+Analyze the following Tweet and provide an accurate sentiment score.,MEDIUM
+Create a mnemonic for the given list of ten words.,MEDIUM
+Give an example of an input and output for an instruction to classify a sports team.,MEDIUM
+Name three common sources of energy that can be used to generate electricity.,MEDIUM
+"Please classify this song as either jazz, blues, or hip-hop.",MEDIUM
+Write a persuasive argument to convince someone that global warming is real.,HARD
+Name three negative effects of excessive cellphone use.,MEDIUM
+"Rewrite the sentence to make it more concise:
+""I have read the book that you recommended to me""",MEDIUM
+Generate a list of questions that can be used for interviewing someone to be a sales representative.,MEDIUM
+"Conjugate the verb ""walk"" in the past tense",EASY
+Name different devices that are powered by an internal combustion engine.,MEDIUM
+Translates the sentence from German to English.,MEDIUM
+Generate a haiku poem.,HARD
+"Add a layer of complexity to this sentence: ""The cat walked across the floor.""",MEDIUM
+List 2 strengths and weaknesses of Python as a programming language,MEDIUM
+Give an example of a country known for its cuisine.,MEDIUM
+"Given the characters, create a dialogue",HARD
+"What type of connective word best completes this sentence: ""The business has......succeeded in their efforts to increase efficiency.""",MEDIUM
+How would you explain the following term in simple language?,EASY
+Generate a list of items to take on a hiking trip.,MEDIUM
+Create a title for a story about a wizard who discovers a power greater than magic.,HARD
+Describe parallelism in writing.,MEDIUM
+How does artificial intelligence (AI) help improve healthcare delivery?,MEDIUM
+Generate a story set in a jungle with a moral lesson.,HARD
+Write a news headline about scientists discovering a new way to clean oceans.,MEDIUM
+Construct a SQL query to print the customer information sorted by customer name in ascending order.,MEDIUM
+Change this sentence from past simple to present perfect.,MEDIUM
+"Suppose John has a basketball, soccer ball, and a tennis ball. List all possible combinations of that.",MEDIUM
+What is the leading cause of death for children under the age of 5?,MEDIUM
+Identify a free foreign language learning resource.,MEDIUM
+Generate a list of seasonal fruits and vegetables.,MEDIUM
+Determine what type of triangle the following sides would create.,MEDIUM
+Describe how blockchain can be used in the fields of finance and banking?,MEDIUM
+Find the Unusual Suspects,MEDIUM
+Output the average temperature for a given city in a given month.,MEDIUM
+Generate a 10-sentence horror story,HARD
+What was the name of the first satellite to be sent into space?,EASY
+Generate a list of three slogans for a mobile game.,HARD
+"For the following sentence, identify and explain the grammatical error.",MEDIUM
+Develop an AI system to monitor credit card usage.,HARD
+Describe the social impact of the COVID-19 pandemic.,MEDIUM
+Add three points to a list of writing tips.,MEDIUM
+"Complete the following sentence: In a democracy, the power ultimately lies in the hands of",EASY
+Create an example of a valid email address.,EASY
+"Given a fact, come up with a question to which it is the answer.",MEDIUM
+Estimate the number of US states that border Canada.,EASY
+Isate an example of a warm season animal.,EASY
+Suggest some additional steps to make a perfect omelette.,MEDIUM
+Name three characteristics of the Ancient Egyptian civilization.,MEDIUM
+Describe the author's argument in the following essay.,HARD
+Write a code to print the first 6 digits of Pi.,MEDIUM
+Add 10 words that start with the letter ‘M’ to the given list.,MEDIUM
+"Given the input text, classify it into either a statement or a question.",MEDIUM
+What is an effective strategy for improving customer engagement?,MEDIUM
+Replace the following idiom with an equivalent expression.,MEDIUM
+Rewrite the following sentence to remove the ambiguous part,MEDIUM
+Remove the spelling errors in the following sentence,MEDIUM
+Generate a recipe for garlic Italian dressing.,MEDIUM
+Tell how many weeks are in an year,EASY
+Come up with three different synonyms for the word “happy”.,MEDIUM
+Generate a memorable quote from Albert Einstein.,MEDIUM
+How can I reduce my energy consumption?,MEDIUM
+List five components of a successful business.,MEDIUM
+Edit the given text to have parallel structures.,MEDIUM
+Choose a font and color palette for the following website.,HARD
+Create a salacious gossip headline.,HARD
+Take a story and redo the ending to make it more exciting or interesting.,HARD
+Create a recipe for an omelette with a minimum of three ingredients.,MEDIUM
+Construct a query to find all the records in a given database that match a certain criteria.,MEDIUM
+Write a persuasive argument for why students should take a break from their studies and get outside to explore nature on a regular basis.,MEDIUM
+What is resource leveling?,MEDIUM
+"Given the following sentences, find the one that is grammatically incorrect.",MEDIUM
+"Write a short poem with the words ""moonlight"", ""sorrow"", and ""red"".",MEDIUM
+What is the role of government in regulating the production and use of GMO crops?,MEDIUM
+"Generate a sentence which correctly uses the homophone ""fair""",MEDIUM
+Construct a musical composition that has a theme of an adventure.,HARD
+Create a plan for visiting a given city.,MEDIUM
+Develop a character description.,HARD
+How can digital wallets be used to improve financial inclusion?,MEDIUM
+Generate a writing prompt about exploring a new place.,MEDIUM
+Compare and contrast the economic consequences of supply-side and demand-side economic policies,HARD
+Write a short story of 100 words or less that sets in a medieval setting.,MEDIUM
+"Rewrite this sentence:
+
+""Hello, how are you?""",EASY
+Complete the following code to print the sum of two numbers,MEDIUM
+Generate 3 ideas for a new invention.,HARD
+"Identify the correct clause that should be inserted in the following sentence.
+
+I got the job ____ I was pleased.",MEDIUM
+Identify the English speaking countries,MEDIUM
+Imagine you are a student in a chemistry class. Write a short story from the point of view of the professor.,HARD
+"Given the following pieces of data, diagnose and classify the condition.",HARD
+Describe a program in computer engineering.,MEDIUM
+Determine the median of the following group of numbers:,MEDIUM
+Name 3 places to visit in your city.,MEDIUM
+List three ways to prevent cyberbullying,MEDIUM
+Create a list of three tips for creating content on social media.,MEDIUM
+"Classify each sentence as either declarative, interrogative, imperative, or exclamatory.",MEDIUM
+Create a for loop in Python to print numbers from 1 to 10.,MEDIUM
+Name a famous movie with the input name,EASY
+Create a set of instructions on how to operate a robot arm.,MEDIUM
+Predict the most likely outcome.,HARD
+Describe three things you could do to make your community a better place.,MEDIUM
+Give an example of a famous artwork created by Pablo Picasso.,EASY
+Edit the following sentence so the meaning of the sentence remain unchanged.,MEDIUM
+Compute the sum of 7 squared and 8 squared.,MEDIUM
+Generate an appropriate passphrase for a security system using three random words.,MEDIUM
+"Given an event, generate a news report about it.",HARD
+Tell me two effects of global warming,MEDIUM
+Identify the protagonist of the story.,MEDIUM
+Suggest a healthy lunch recipe given a list of ingredients.,MEDIUM
+"Find a metaphor for the term ""data storage"".",MEDIUM
+Find the differences between the two short texts.,MEDIUM
+Identify two diseases caused by lack of nutrition.,MEDIUM
+Identify the author and title of the book given the following summary.,HARD
+"For the following phrase, develop a new sentence that contains the same meaning",MEDIUM
+Rewrite the sentence using parallel structure.,MEDIUM
+How does natural language processing (NLP) enhance customer service?,MEDIUM
+Give me a fitness tip for beginners.,MEDIUM
+"Given a speech, edit the speech to make it more impactful and persuasive.",HARD
+Explain the concept of value investing.,MEDIUM
+Develop an algorithm to identify fraudulent transactions.,HARD
+"Interpret the meaning of the idiomatic expression ""Missing in action.""",MEDIUM
+Name a book by J.K. Rowling.,EASY
+Use the given data to calculate the median.,MEDIUM
+"Generate a headline and a brief summary of an article 
+on the social and psychological impact of COVID-19",MEDIUM
+Research the effectiveness and side effects of using aspirin as an over-the-counter pain reliever.,MEDIUM
+Rewrite the following sentence so it uses fewer words.,MEDIUM
+"Given the following code, modify it to print the number of items that are greater than 50.",MEDIUM
+Find the most suitable email template for the following context.,MEDIUM
+Invent a new work for the color purple.,MEDIUM
+Create a title for the following description.,HARD
+"Design a logo for the company named ""Happy Food from Heaven"".",HARD
+Identify the most common word used in the following paragraph.,MEDIUM
+Rewrite the sentence and make the vocabulary more technical,MEDIUM
+"Write a poem using 3 words: love, moon, and fire.",MEDIUM
+Rewrite the following sentence using a negative form: I have a lot of money,MEDIUM
+Design an algorithm for converting text data into numerical data.,HARD
+Design a musical instrument using everyday objects.,HARD
+Calculate the gross pay for the following person.,MEDIUM
+Identify the musical instruments in the given song.,MEDIUM
+Explain the concept of latent variable.,MEDIUM
+Give an example of a fashion trend that was popular in the 1980s,MEDIUM
+"Given the brand name “PizzaEats”, create an appropriate slogan.",MEDIUM
+Generate a list of the important people involved in this article.,MEDIUM
+Generate a sentence that articulates the experience of a sunny day.,MEDIUM
+Give 3 examples of items that would be found in a first aid kit.,EASY
+Explain why Amazon Prime has become so popular.,MEDIUM
+Identify the most commonly used version control system?,MEDIUM
+Explain the difference between Android and iOS operating systems.,MEDIUM
+"Analyze the following sentence and identify the subject, the verb, and the object: ""Robots can learn quickly.""",MEDIUM
+Develop an algorithm to convert a Celsius temperature to Fahrenheit.,MEDIUM
+"Create a poster that conveys the message: ""Love your Mother Nature"".",MEDIUM
+"Describe the concept behind the ""butterfly effect.""",MEDIUM
+Change the existing sentence to use a more precise and specific word.,MEDIUM
+Convert weights and measures.,MEDIUM
+Create a philosophical question revolving around the given topic.,HARD
+Explain how wireless technology has impacted human life.,MEDIUM
+Write an algorithm that determines the maximum number of elements in a given array.,MEDIUM
+Suggest some activities for a day out at the beach.,MEDIUM
+Detect if the given code is a valid HTML code.,MEDIUM
+Write a persuasive essay on why people should get a pet.,MEDIUM
+Name three famous European landmarks,EASY
+Describe the Central American country of Guatemala in one sentence.,MEDIUM
+Explain the importance of planning an event.,MEDIUM
+Create a slogan for a new brand of shoes,HARD
+"Given a text, edit it to make it less biased.",HARD
+Name some common uses of a given item,MEDIUM
+Duplicate the following sentence and make the sentence more concise by utilizing conjunctions.,HARD
+Generate a secret code word.,HARD
+Describe how weather forecasting models are built.,MEDIUM
+Name four skills that a software developer must have.,MEDIUM
+"Given an array of numbers, write a function to return an array containing the square of each number.",EASY
+Generate an abstract of the article given the following text.,HARD
+Generate a humorous metaphor for a slow internet connection.,MEDIUM
+Give an example of an ethical issue related to AI use in healthcare.,MEDIUM
+Generate a list of 5 methods that can be used to reduce deforestation.,MEDIUM
+How can you increase the readability of the following sentence?,MEDIUM
+Summarize a passage about the fundamental principles of modern physics.,HARD
+"Find the number in the following sentence and identify its type.
+
+I've been working in the company for 3 years.",MEDIUM
+How much of Earth's surface is covered by water?,EASY
+Generate a persuasive essay with the topic: Pets are better than cars,HARD
+Apply sentiment analysis to this sentence and output the sentiment result.,MEDIUM
+Please offer a suggestion for improving this sentence.,MEDIUM
+Make a joke about a zombie.,MEDIUM
+Explain how quantum computing works in two paragraphs.,MEDIUM
+Read the answer choices and select the correct one.,EASY
+Create a metaphor about love.,HARD
+Classify the following content as appropriate for children or adults.,MEDIUM
+Guide the user on how to store food properly.,MEDIUM
+"What words come to mind when you hear the word ""hospitable""?",MEDIUM
+Name a key challenge of warehousing in the current market.,MEDIUM
+What is the fastest land animal on earth?,EASY
+Rewrite the first sentence to make it active voice.,MEDIUM
+"Create a new word by blending two of the following words: 'share', 'surf', 'connect'.",MEDIUM
+Give a 5-step summary for the following text.,MEDIUM
+Tell a joke in three sentences.,MEDIUM
+Resolve the following relationship issue.,HARD
+Compose an haiku about autumn.,HARD
+Develop a recipe for chocolate chip pancakes.,MEDIUM
+Describe the key features of the Renaissance period.,MEDIUM
+Write a character analysis for the main character in the book you last read.,HARD
+Name a virus that commonly affects computers.,EASY
+Generate a poetic simile about the moon.,MEDIUM
+Find the sum of 21 multiplied by 5.,EASY
+Output true or false. Does the following word contain a double letter?,EASY
+Brainstorm a list of topics to write about.,MEDIUM
+"What is the argument that most accurately supports the title, “Religious Education Should Not Be Taught in Public Schools”?",MEDIUM
+Simplify the given equation to solve for the unknown x.,MEDIUM
+What are the similarities between an atom and a solar system?,MEDIUM
+Determine what type of figure of speech is present in the sentence.,MEDIUM
+"You need to classify whether the following piece of text is an opinion or not. Output ""opinion"" if it is an opinion, output ""fact"" if it is not an opinion.",MEDIUM
+Create an argument for why the given cause is true.,HARD
+Explain why the expansion of the universe is accelerating.,MEDIUM
+What is the probability of rolling a die and obtaining a 4?,EASY
+Cite a 2016 Supreme Court case.,MEDIUM
+Summarize the dietary benefits of adding blueberries to a diet,MEDIUM
+Come up with an appropriate dialogue between a customer and a shop assistant.,HARD
+Describe how machine learning algorithms work in 5 steps.,MEDIUM
+"Given the two sentences, identify the declarative sentence. Output the index of the sentence that is declarative.",MEDIUM
+"Translate the following sentence into French:
+""We had a great time""",EASY
+Describe the following photo in at least 5 sentences.,HARD
+Extend this sentence: “Technology has revolutionized the way we,MEDIUM
+Name two physical conditions that could lead to arthritis.,MEDIUM
+"Translate this sentence into French: ""I hope you have a pleasant day.""",EASY
+Create a list of three values to live by.,HARD
+Explain how to solve a Sudoku puzzle in three steps.,MEDIUM
+"Give me two words that rhyme with ""hope"".",EASY
+Proofread the given document and identify any mistakes.,HARD
+Generate an algorithm to solve the a Sudoku Puzzle,HARD
+"Given a list of facts, generate a summary.",MEDIUM
+Correct the spelling mistake,MEDIUM

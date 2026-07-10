@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+:root {
+  --color-base: #FFFFFF;
+  --color-panel: #F6F6F4;
+  --color-panel2: #EEEEEA;
+  --color-line: #E2E2DD;
+  --color-signal: #C2570C;
+  --color-cool: #0F766E;
+  --color-danger: #B91C1C;
+  --color-primary: #16181C;
+  --color-muted: #6B7078;
+}
+
+.dark {
+  --color-base: #0B0F14;
+  --color-panel: #121821;
+  --color-panel2: #182130;
+  --color-line: #232D3B;
+  --color-signal: #FF9F1C;
+  --color-cool: #3FB8AF;
+  --color-danger: #E85D5D;
+  --color-primary: #E6EDF3;
+  --color-muted: #7C8B9A;
+}
+
+body {
+  background: var(--color-base);
+  color: var(--color-primary);
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+::selection {
+  background: var(--color-signal);
+  color: var(--color-base);
+}

@@ -1,0 +1,2 @@
+backend/models/minilm/** !text !filter !merge !diff
+backend/models/minilm/tf_model.h5 !text !filter !merge !diff
