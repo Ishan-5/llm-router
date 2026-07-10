@@ -15,6 +15,10 @@ from router.config import TIER_MARGIN, MODEL_CONFIG
 app = FastAPI()
 executor = ThreadPoolExecutor()
 
+@app.get("/")
+def root():
+    return {"status": "ok"}
+
 
 app.add_middleware(
     CORSMiddleware,
