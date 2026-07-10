@@ -11,7 +11,7 @@ export default function Footer() {
             </span>
           ))}
         </div>
-        <a href="https://github.com" target="_blank" rel="noreferrer" className="font-mono text-xs text-muted hover:text-primary transition-colors">
+        <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="font-mono text-xs text-muted hover:text-primary transition-colors">
           View source →
         </a>
       </div>
