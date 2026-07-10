@@ -13,10 +13,10 @@ Sending every request — `"hi"`, a summarization job, a system-design question 
 
 ## Screenshots
 
-![Hero — live routing diagram](D:\llm-router\backend\router\screenshots\hero.png)
+![Hero — live routing diagram](llm-router\backend\router\screenshots\hero.png)
 *The right panel is a real circuit diagram of the three tiers, not decoration — the active node lights up based on the actual routing decision for whatever you just typed.*
 
-![Metrics dashboard](D:\llm-router\backend\router\screenshots\metrics.png)
+![Metrics dashboard](llm-router\backend\router\screenshots\metrics.png)
 *Pulled live from `/stats`, aggregating every real request this instance has logged.*
 
 ## How it works
