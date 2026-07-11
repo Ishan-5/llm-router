@@ -168,3 +168,5 @@ llm-router/
 ## Roadmap
 
 No automated test suite, no CI pipeline, no multi-provider failover, no auth/rate-limiting for public API use. Next additions if this moves past portfolio scope.
+
+*Built by [Ishan](https://github.com/Ishan-5) · [LinkedIn](https://linkedin.com/in/devansh584)*
