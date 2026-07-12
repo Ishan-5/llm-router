@@ -1,0 +1,66 @@
+"""
+API key authentication, per-key rate limiting, and daily budget caps.
+
+HONEST LIMITATION: the rate limiter here is in-memory (a plain dict), which
+is fine for a single-process demo deployment but would NOT survive multiple
+server instances or a restart. A real multi-instance production setup needs
+a shared store (Redis) for this. Not built here because this project runs
+as a single Render instance -- documenting the gap rather than pretending
+this scales, since claiming otherwise would be a real overstatement.
+"""
+import time
+from collections import defaultdict
+from datetime import datetime, date
+from fastapi import Header, HTTPException
+from router.db import SessionLocal, ApiKey, RequestLog
+from sqlalchemy import func
+
+RATE_LIMIT_PER_MINUTE = 20
+
+# api_key -> list of request timestamps (sliding window)
+_request_log: dict[str, list[float]] = defaultdict(list)
+
+
+def check_rate_limit(api_key: str):
+    now = time.time()
+    window_start = now - 60
+    _request_log[api_key] = [t for t in _request_log[api_key] if t > window_start]
+    if len(_request_log[api_key]) >= RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail=f"Rate limit: max {RATE_LIMIT_PER_MINUTE} requests/minute per key")
+    _request_log[api_key].append(now)
+
+
+def check_budget(api_key_record: ApiKey) -> bool:
+    """Returns True if this key is still under its daily budget (or has no cap)."""
+    if api_key_record.daily_budget_usd is None:
+        return True
+
+    session = SessionLocal()
+    try:
+        today_start = datetime.combine(date.today(), datetime.min.time())
+        spent_today = session.query(func.sum(RequestLog.cost_usd)).filter(
+            RequestLog.api_key_id == api_key_record.id,
+            RequestLog.created_at >= today_start,
+        ).scalar() or 0.0
+        return spent_today < api_key_record.daily_budget_usd
+    finally:
+        session.close()
+
+
+async def require_api_key(authorization: str = Header(None)) -> ApiKey:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header. Expected: Bearer <key>")
+
+    key = authorization.removeprefix("Bearer ").strip()
+
+    session = SessionLocal()
+    try:
+        record = session.query(ApiKey).filter(ApiKey.key == key, ApiKey.is_active == True).first()
+    finally:
+        session.close()
+
+    if record is None:
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+
+    check_rate_limit(key)
+    return record

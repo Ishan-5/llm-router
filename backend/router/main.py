@@ -2,27 +2,24 @@ import time
 import asyncio
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func
 from router.classifier import get_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, RequestLog
+from router.db import log_request, SessionLocal, RequestLog, ApiKey
+from router.auth import require_api_key, check_budget
 from router.config import TIER_MARGIN, MODEL_CONFIG
 
 app = FastAPI()
 executor = ThreadPoolExecutor()
 
-@app.get("/")
-def root():
-    return {"status": "ok"}
-
-
+# Needed so the React frontend (different port) can call this API at all.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],  # fine for a local demo; restrict this in real prod
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,8 +35,8 @@ class QueryRequest(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("Query cannot be empty")
-        if len(v) > 10000:
-            raise ValueError("Query cannot exceed 10000 characters")
+        if len(v) > 1000:
+            raise ValueError("Query cannot exceed 1000 characters")
         return v
 
     @field_validator("override_tier")
@@ -51,7 +48,7 @@ class QueryRequest(BaseModel):
 
 
 @app.post("/route")
-async def route_query(req: QueryRequest):
+async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
     start = time.time()
     loop = asyncio.get_event_loop()
 
@@ -64,6 +61,7 @@ async def route_query(req: QueryRequest):
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
         log_request({
+            "api_key_id": api_key.id,
             "query": req.query,
             "difficulty_score": None,
             "intended_tier": cached["tier"],
@@ -89,6 +87,12 @@ async def route_query(req: QueryRequest):
     # 2. No cache hit -- use override if given, otherwise the predicted tier
     routing_tier = req.override_tier if req.override_tier else tier
 
+    # 2a. Budget enforcement -- if this key is over its daily cap, force
+    # everything to the cheap tier regardless of predicted difficulty or override
+    over_budget = not check_budget(api_key)
+    if over_budget:
+        routing_tier = "cheap"
+
     try:
         result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query)
     except AllTiersFailedError as e:
@@ -97,6 +101,7 @@ async def route_query(req: QueryRequest):
     latency_ms = round((time.time() - start) * 1000, 2)
 
     log_request({
+        "api_key_id": api_key.id,
         "query": req.query,
         "difficulty_score": difficulty_score,
         "intended_tier": result["intended_tier"],
@@ -120,6 +125,7 @@ async def route_query(req: QueryRequest):
         "intended_tier": result["intended_tier"],
         "predicted_tier": tier,
         "override_used": req.override_tier is not None,
+        "budget_capped": over_budget,
         "fallback_used": result["fallback_used"],
         "cache_hit": False,
         "difficulty_score": difficulty_score,
@@ -130,6 +136,16 @@ async def route_query(req: QueryRequest):
 
 @app.get("/stats")
 def get_stats():
+    """
+    Aggregates real logged requests for the dashboard.
+
+    HONEST LIMITATION: cache-hit rows are logged with input_tokens=output_tokens=0
+    (no provider call happened, so there's nothing to count), which means the
+    "hypothetical cost" for cache hits comes out to $0 too -- understating how
+    much a cache hit actually saved. Fixing this properly would mean estimating
+    token count from query length for cache-hit rows; not done here, so treat
+    total_hypothetical_cost as a slight underestimate of true savings.
+    """
     session = SessionLocal()
     try:
         total_requests = session.query(func.count(RequestLog.id)).scalar() or 0
