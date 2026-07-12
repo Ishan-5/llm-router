@@ -7,13 +7,25 @@ Base = declarative_base()
 engine = create_engine(os.getenv("DATABASE_URL"))
 SessionLocal = sessionmaker(bind=engine)
 
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    id = Column(Integer, primary_key=True)
+    key = Column(String, unique=True, index=True)
+    name = Column(String)  # e.g. "acme-corp-demo"
+    daily_budget_usd = Column(Float, nullable=True)  # None = no cap
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class RequestLog(Base):
     __tablename__ = "request_logs"
     id = Column(Integer, primary_key=True)
+    api_key_id = Column(Integer, nullable=True)  # which key made this request
     query = Column(String)
     difficulty_score = Column(Float)
     intended_tier = Column(String)
-    tier = Column(String)  # tier that actually served the request
+    tier = Column(String)
     fallback_used = Column(Boolean, default=False)
     cache_hit = Column(Boolean, default=False)
     cache_similarity = Column(Float, nullable=True)
@@ -24,10 +36,9 @@ class RequestLog(Base):
     latency_ms = Column(Float)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-try:
-    Base.metadata.create_all(engine)
-except Exception as e:
-    print(f"[db] DB init failed (will retry on first request): {e}")
+
+Base.metadata.create_all(engine)
+
 
 def log_request(data: dict):
     session = SessionLocal()

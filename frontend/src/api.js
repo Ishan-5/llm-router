@@ -1,9 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+const API_KEY = import.meta.env.VITE_API_KEY || ''
 
 export async function routeQuery(query, overrideTier = null) {
   const res = await fetch(`${API_BASE}/route`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
     body: JSON.stringify(
       overrideTier ? { query, override_tier: overrideTier } : { query }
     ),
