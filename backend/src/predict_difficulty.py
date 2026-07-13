@@ -5,6 +5,10 @@ import re
 from sentence_transformers import SentenceTransformer
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "difficulty_regressor.joblib")
+# Local copy of MiniLM committed to the repo -- avoids any HF network call at runtime.
+# Falls back to HF model name if the local dir doesn't exist (e.g. dev without the files).
+_MINILM_LOCAL = os.path.join(os.path.dirname(__file__), "..", "models", "minilm")
+_EMBEDDER_NAME = _MINILM_LOCAL if os.path.isdir(_MINILM_LOCAL) else "sentence-transformers/all-MiniLM-L6-v2"
 
 
 _bundle = None
@@ -15,7 +19,7 @@ def _load():
     global _bundle, _embedder
     if _bundle is None:
         _bundle = joblib.load(MODEL_PATH)
-        _embedder = SentenceTransformer(_bundle["embedder_name"])
+        _embedder = SentenceTransformer(_EMBEDDER_NAME)
     return _bundle, _embedder
 
 
