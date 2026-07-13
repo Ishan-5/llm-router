@@ -2,20 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Disable HuggingFace XET CDN globally -- it blocks unauthenticated access
-# on Render's build and runtime environments. Forces standard LFS path.
-ENV HF_HUB_DISABLE_XET=1
-
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Pre-download the sentence-transformers model at build time so the container
-# never tries to fetch it from HuggingFace at runtime.
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
 
 # Only copy what's actually needed at runtime
 COPY backend/router/ ./router/
