@@ -26,9 +26,9 @@ PROVIDER_DEFAULTS = {
     },
     "frontier": {
         "provider": "groq",
-        "model_id": "qwen/qwen3-32b",
-        "price_per_m_input": 0.29,
-        "price_per_m_output": 0.59,
+        "model_id": MODEL_CONFIG["frontier"]["model_id"],
+        "price_per_m_input": MODEL_CONFIG["frontier"]["price_per_m_input"],
+        "price_per_m_output": MODEL_CONFIG["frontier"]["price_per_m_output"],
     },
 }
 

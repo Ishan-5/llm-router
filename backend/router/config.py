@@ -21,14 +21,14 @@ MODEL_CONFIG = {
         "price_per_m_output": 0.08,
     },
     "mid": {
-        "model_id": "llama-3.3-70b-versatile",
-        "price_per_m_input": 0.59,
-        "price_per_m_output": 0.79,
-    },
-    "frontier": {
         "model_id": "qwen/qwen3-32b",
         "price_per_m_input": 0.29,
         "price_per_m_output": 0.59,
+    },
+    "frontier": {
+        "model_id": "llama-3.3-70b-versatile",
+        "price_per_m_input": 0.59,
+        "price_per_m_output": 0.79,
     },
 }
 
