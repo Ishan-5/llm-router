@@ -213,10 +213,14 @@ def main():
     parser.add_argument("--url", default="http://127.0.0.1:8000", help="Router base URL")
     parser.add_argument("--count", type=int, default=200, help="Total queries to send")
     parser.add_argument("--delay", type=float, default=1.0, help="Seconds between requests")
+    parser.add_argument("--force-tier", choices=["cheap", "mid", "frontier"], default=None, help="Force all queries to a specific tier")
+    parser.add_argument("--skip-cache-pairs", action="store_true", help="Skip near-duplicate cache pairs (useful with --force-tier)")
     args = parser.parse_args()
 
     print(f"Seeding {args.count} queries to {args.url}")
     print(f"Using API key: {args.api_key[:12]}...")
+    if args.force_tier:
+        print(f"Forcing all queries to tier: {args.force_tier}")
     print()
 
     # build query list: ~40% cheap, ~35% mid, ~25% frontier
@@ -230,12 +234,17 @@ def main():
         [(q, None) for q in random.sample(FRONTIER_QUERIES * 4, frontier_count)]
     )
 
-    # add ~10 cache-hit pairs at the end
-    for original, duplicate in CACHE_PAIRS[:5]:
-        queries.append((original, None))
-        queries.append((duplicate, None))
+    # add ~10 cache-hit pairs at the end (skip if --skip-cache-pairs)
+    if not args.skip_cache_pairs:
+        for original, duplicate in CACHE_PAIRS[:5]:
+            queries.append((original, None))
+            queries.append((duplicate, None))
 
     random.shuffle(queries)
+
+    # if force-tier, override all
+    if args.force_tier:
+        queries = [(q, args.force_tier) for q, _ in queries]
 
     total = len(queries)
     success = 0

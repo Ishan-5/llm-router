@@ -26,9 +26,9 @@ MODEL_CONFIG = {
         "price_per_m_output": 0.79,
     },
     "frontier": {
-        "model_id": "deepseek-r1-distill-llama-70b",
-        "price_per_m_input": 0.75,
-        "price_per_m_output": 0.99,
+        "model_id": "qwen/qwen3-32b",
+        "price_per_m_input": 0.29,
+        "price_per_m_output": 0.59,
     },
 }
 
