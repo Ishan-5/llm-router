@@ -9,6 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download the sentence-transformers model at build time so the container
+# never tries to fetch it from HuggingFace at runtime (HF XET CDN blocks
+# unauthenticated requests on Render).
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
 # Only copy what's actually needed at runtime
 COPY backend/router/ ./router/
 COPY backend/src/ ./src/
