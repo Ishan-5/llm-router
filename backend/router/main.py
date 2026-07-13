@@ -148,6 +148,8 @@ def get_providers():
 
 
 class TierConfig(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     provider: str
     model_id: str
     api_key: str
