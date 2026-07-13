@@ -12,6 +12,7 @@ from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey
 from router.auth import require_api_key, check_budget
 from router.config import TIER_MARGIN, MODEL_CONFIG
+from router.guardrails import is_prompt_injection, sanitize_pii
 
 app = FastAPI()
 executor = ThreadPoolExecutor()
@@ -49,6 +50,9 @@ class QueryRequest(BaseModel):
 
 @app.post("/route")
 async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+    if is_prompt_injection(req.query):
+        raise HTTPException(status_code=400, detail="Prompt injection detected")
+
     start = time.time()
     loop = asyncio.get_event_loop()
 
@@ -62,7 +66,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         latency_ms = round((time.time() - start) * 1000, 2)
         log_request({
             "api_key_id": api_key.id,
-            "query": req.query,
+            "query": sanitize_pii(req.query),
             "difficulty_score": None,
             "intended_tier": cached["tier"],
             "tier": cached["tier"],
@@ -102,7 +106,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
 
     log_request({
         "api_key_id": api_key.id,
-        "query": req.query,
+        "query": sanitize_pii(req.query),
         "difficulty_score": difficulty_score,
         "intended_tier": result["intended_tier"],
         "tier": result["tier"],
