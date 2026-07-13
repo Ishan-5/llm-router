@@ -9,15 +9,18 @@ from sqlalchemy import func
 from router.classifier import get_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, RequestLog, ApiKey
+from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig
 from router.auth import require_api_key, check_budget
-from router.config import TIER_MARGIN, MODEL_CONFIG
+from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS
 from router.guardrails import is_prompt_injection, sanitize_pii
+from router.providers_registry import PROVIDERS_REGISTRY
+from router.model_config_loader import get_active_config
+from router.providers import validate_key
 
 app = FastAPI()
 executor = ThreadPoolExecutor()
 
-# Needed so the React frontend (different port) can call this API at all.
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # fine for a local demo; restrict this in real prod
@@ -136,6 +139,93 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms,
     }
+
+
+@app.get("/providers")
+def get_providers():
+    """Returns all supported providers and their known models for frontend dropdowns."""
+    return PROVIDERS_REGISTRY
+
+
+class TierConfig(BaseModel):
+    provider: str
+    model_id: str
+    api_key: str
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, v):
+        if v not in SUPPORTED_PROVIDERS:
+            raise ValueError(f"Unsupported provider '{v}'. Must be one of: {SUPPORTED_PROVIDERS}")
+        return v
+
+    @field_validator("model_id")
+    @classmethod
+    def validate_model_id(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("model_id cannot be empty")
+        return v
+
+
+class UserConfigRequest(BaseModel):
+    cheap: TierConfig | None = None
+    mid: TierConfig | None = None
+    frontier: TierConfig | None = None
+
+
+@app.get("/config")
+def get_config():
+    """Returns the currently active model config (user overrides merged with defaults)."""
+    config = get_active_config()
+    # strip api_key from response -- never send keys back to frontend
+    return {
+        tier: {k: v for k, v in cfg.items() if k != "api_key"}
+        for tier, cfg in config.items()
+    }
+
+
+@app.post("/config")
+def save_config(req: UserConfigRequest):
+    """
+    Saves user model config for each tier provided.
+    1. Format-validates provider + model_id (via pydantic above)
+    2. Makes a test call (max_tokens=1) to verify the key works
+    3. Saves provider + model_id to user_configs table (no api_key stored)
+    API keys are returned to frontend to store in localStorage only.
+    """
+    tiers = {
+        "cheap": req.cheap,
+        "mid": req.mid,
+        "frontier": req.frontier,
+    }
+
+    results = {}
+    session = SessionLocal()
+    try:
+        for tier, cfg in tiers.items():
+            if cfg is None:
+                continue
+
+            # validate key with a real test call
+            try:
+                validate_key(cfg.provider, cfg.model_id, cfg.api_key)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Key validation failed for {tier} tier ({cfg.provider}/{cfg.model_id}): {e}"
+                )
+
+            # save only non-sensitive fields to DB
+            entry = UserConfig(tier=tier, provider=cfg.provider, model_id=cfg.model_id)
+            session.add(entry)
+            results[tier] = {"provider": cfg.provider, "model_id": cfg.model_id, "status": "saved"}
+
+        session.commit()
+    finally:
+        session.close()
+
+    return {"saved": results}
 
 
 @app.get("/stats")

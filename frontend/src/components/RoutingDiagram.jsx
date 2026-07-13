@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { routeQuery, fetchStats } from '../api'
+import { routeQuery, fetchStats, fetchConfig } from '../api'
 
-const TIERS = [
-  { key: 'cheap', label: 'Cheap', sub: 'llama3.2:3b · local', y: 60 },
-  { key: 'mid', label: 'Mid', sub: 'llama-3.3-70b · Groq', y: 160 },
-  { key: 'frontier', label: 'Frontier', sub: 'deepseek-r1 · Groq', y: 260 },
-]
+const TIER_DEFAULTS = {
+  cheap:    { label: 'Cheap',    sub: 'llama3.2:3b · local',      y: 60  },
+  mid:      { label: 'Mid',      sub: 'llama-3.3-70b · Groq',     y: 160 },
+  frontier: { label: 'Frontier', sub: 'deepseek-r1 · Groq',       y: 260 },
+}
 
 export default function RoutingDiagram() {
   const [query, setQuery] = useState('')
@@ -14,10 +14,20 @@ export default function RoutingDiagram() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
+  const [activeConfig, setActiveConfig] = useState({})
 
   useEffect(() => {
     fetchStats().then(setTicker).catch(() => setTicker(null))
+    fetchConfig().then(setActiveConfig).catch(() => {})
   }, [])
+
+  // build TIERS dynamically from active config so diagram reflects custom models
+  const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {
+    const defaults = TIER_DEFAULTS[key]
+    const cfg = activeConfig[key]
+    const sub = cfg ? `${cfg.model_id} · ${cfg.provider}` : defaults.sub
+    return { key, label: defaults.label, sub, y: defaults.y }
+  })
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -29,6 +39,7 @@ export default function RoutingDiagram() {
       const data = await routeQuery(query, override === 'auto' ? null : override)
       setResult(data)
       fetchStats().then(setTicker).catch(() => {})
+      fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
       setError(err.message)
     } finally {
@@ -102,9 +113,9 @@ export default function RoutingDiagram() {
                   title="Force a specific tier instead of using the model's prediction"
                 >
                   <option value="auto">Auto-route</option>
-                  <option value="cheap">Force: Cheap</option>
-                  <option value="mid">Force: Mid</option>
-                  <option value="frontier">Force: Frontier</option>
+                  {TIERS.map((t) => (
+                    <option key={t.key} value={t.key}>Force: {t.label} ({activeConfig[t.key]?.model_id || t.sub})</option>
+                  ))}
                 </select>
                 <button
                   type="submit"

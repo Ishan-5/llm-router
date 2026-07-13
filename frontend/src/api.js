@@ -21,3 +21,29 @@ export async function fetchStats() {
   if (!res.ok) throw new Error('Could not load stats')
   return res.json()
 }
+
+export async function fetchProviders() {
+  const res = await fetch(`${API_BASE}/providers`)
+  if (!res.ok) throw new Error('Could not load providers')
+  return res.json()
+}
+
+export async function fetchConfig() {
+  const res = await fetch(`${API_BASE}/config`)
+  if (!res.ok) throw new Error('Could not load config')
+  return res.json()
+}
+
+export async function saveConfig(tierConfigs) {
+  // tierConfigs: { cheap?: { provider, model_id, api_key }, mid?: {...}, frontier?: {...} }
+  const res = await fetch(`${API_BASE}/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    body: JSON.stringify(tierConfigs),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Save failed' }))
+    throw new Error(err.detail || 'Save failed')
+  }
+  return res.json()
+}
