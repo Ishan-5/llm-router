@@ -3,8 +3,8 @@ import { routeQuery, fetchStats, fetchConfig } from '../api'
 
 const TIER_DEFAULTS = {
   cheap:    { label: 'Cheap',    sub: 'llama3.2:3b · local',      y: 60  },
-  mid:      { label: 'Mid',      sub: 'llama-3.3-70b · Groq',     y: 160 },
-  frontier: { label: 'Frontier', sub: 'qwen3-32b · Groq',        y: 260 },
+  mid:      { label: 'Mid',      sub: 'qwen3-32b · Groq',          y: 160 },
+  frontier: { label: 'Frontier', sub: 'llama-3.3-70b · Groq',       y: 260 },
 }
 
 export default function RoutingDiagram({ configVersion = 0 }) {
