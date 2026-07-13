@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { routeQuery, fetchStats, fetchConfig } from '../api'
 
 const TIER_DEFAULTS = {
@@ -7,19 +7,23 @@ const TIER_DEFAULTS = {
   frontier: { label: 'Frontier', sub: 'llama-3.3-70b · Groq',       y: 260 },
 }
 
-export default function RoutingDiagram({ configVersion = 0 }) {
+export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
   const [query, setQuery] = useState('')
   const [override, setOverride] = useState('auto')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
+  const [lastResult, setLastResult] = useState(null)  // persists during loading so score/tier don't blink
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
+  const [copied, setCopied] = useState(false)
+  const copyTimer = useRef(null)
 
   useEffect(() => {
+    if (!backendOnline) return
     fetchStats().then(setTicker).catch(() => setTicker(null))
     fetchConfig().then(setActiveConfig).catch(() => {})
-  }, [configVersion])  // re-fetch whenever settings are saved
+  }, [configVersion, backendOnline])
 
   // build TIERS dynamically from active config so diagram reflects custom models
   const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {
@@ -35,9 +39,11 @@ export default function RoutingDiagram({ configVersion = 0 }) {
     setLoading(true)
     setError(null)
     setResult(null)
+    // don't clear lastResult here -- keeps score visible while loading
     try {
       const data = await routeQuery(query, override === 'auto' ? null : override)
       setResult(data)
+      setLastResult(data)
       fetchStats().then(setTicker).catch(() => {})
       fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
@@ -47,8 +53,18 @@ export default function RoutingDiagram({ configVersion = 0 }) {
     }
   }
 
-  const activeTier = result?.routed_to
-  const score = result?.difficulty_score
+  function handleCopy() {
+    if (!result?.response) return
+    navigator.clipboard.writeText(result.response).then(() => {
+      setCopied(true)
+      clearTimeout(copyTimer.current)
+      copyTimer.current = setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  // use lastResult for the diagram so score/tier persist during loading
+  const activeTier = loading ? lastResult?.routed_to : result?.routed_to
+  const score = loading ? lastResult?.difficulty_score : result?.difficulty_score
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
     ? Math.round((1 - ticker.total_actual_cost / ticker.total_hypothetical_cost) * 100)
     : null
@@ -132,13 +148,21 @@ export default function RoutingDiagram({ configVersion = 0 }) {
 
           {result && (
             <div className="mt-6 rounded-lg border border-line bg-panel p-5">
-              <div className="flex flex-wrap gap-4 mb-3 font-mono text-xs">
-                <span className="text-cool">${result.cost_usd.toFixed(6)}</span>
-                <span className="text-muted">{result.latency_ms.toFixed(0)}ms</span>
-                <span className={result.cache_hit ? 'text-cool' : 'text-muted'}>
-                  {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
-                </span>
-                {result.fallback_used && <span className="text-danger">FALLBACK</span>}
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+                <div className="flex flex-wrap gap-4 font-mono text-xs">
+                  <span className="text-cool">${result.cost_usd.toFixed(6)}</span>
+                  <span className="text-muted">{result.latency_ms.toFixed(0)}ms</span>
+                  <span className={result.cache_hit ? 'text-cool' : 'text-muted'}>
+                    {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
+                  </span>
+                  {result.fallback_used && <span className="text-danger">FALLBACK</span>}
+                </div>
+                <button
+                  onClick={handleCopy}
+                  className="font-mono text-[10px] px-2.5 py-1 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition shrink-0"
+                >
+                  {copied ? 'copied ✓' : 'copy'}
+                </button>
               </div>
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{result.response}</p>
             </div>

@@ -4,9 +4,27 @@ import { fetchStats } from '../api'
 
 const TIER_ORDER = ['cheap', 'mid', 'frontier']
 
-export default function MetricsDashboard({ isDark }) {
+export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [stats, setStats] = useState(null)
   const [error, setError] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  function loadStats() {
+    return fetchStats().then(setStats).catch((e) => setError(e.message))
+  }
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    await loadStats()
+    setRefreshing(false)
+  }
+
+  useEffect(() => {
+    if (!backendOnline) return
+    loadStats()
+    const id = setInterval(loadStats, 30_000)
+    return () => clearInterval(id)
+  }, [backendOnline])
 
   const palette = isDark
     ? { line: '#232D3B', muted: '#7C8B9A', panel: '#121821', signal: '#FF9F1C', cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D' }
@@ -34,6 +52,10 @@ export default function MetricsDashboard({ isDark }) {
     )
   }
 
+  const tierCostData = TIER_ORDER
+    .filter((t) => stats.tier_costs?.[t] != null)
+    .map((t) => ({ name: t, value: stats.tier_costs[t] }))
+
   const pieData = TIER_ORDER
     .filter((t) => stats.tier_counts?.[t])
     .map((t) => ({ name: t, value: stats.tier_counts[t] }))
@@ -60,7 +82,16 @@ export default function MetricsDashboard({ isDark }) {
 
   return (
     <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
-      <h2 className="font-display text-2xl font-semibold mb-2">Real usage, real savings</h2>
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="font-display text-2xl font-semibold">Real usage, real savings</h2>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition disabled:opacity-50"
+        >
+          {refreshing ? 'refreshing…' : '↻ refresh'}
+        </button>
+      </div>
       <p className="text-sm text-muted mb-12">Computed from every request this router has actually logged.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
@@ -99,6 +130,34 @@ export default function MetricsDashboard({ isDark }) {
               <YAxis tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
               <Tooltip contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }} />
               <Bar dataKey="value" fill={palette.signal} radius={[4, 4, 0, 0]}>
+                <LabelList
+                  dataKey="value"
+                  position="top"
+                  formatter={(v) => `$${v.toFixed(4)}`}
+                  style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fill: palette.muted }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
+        <div>
+          <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-4">Cost by tier</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={tierCostData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={palette.line} vertical={false} />
+              <XAxis dataKey="name" tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
+              <YAxis tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
+              <Tooltip
+                contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }}
+                formatter={(v) => [`$${v.toFixed(6)}`, 'cost']}
+              />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                {tierCostData.map((entry) => (
+                  <Cell key={entry.name} fill={palette[entry.name] || palette.muted} />
+                ))}
                 <LabelList
                   dataKey="value"
                   position="top"
