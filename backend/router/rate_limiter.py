@@ -16,6 +16,7 @@ just another tier of the same infrastructure.
 import time
 from router.config import FALLBACK_CHAIN
 from router.providers import call_model, call_gemini
+from router.model_config_loader import get_active_config
 
 
 class AllTiersFailedError(Exception):
@@ -28,29 +29,30 @@ def _is_rate_limit_error(exc: Exception) -> bool:
     return "429" in msg or "rate_limit" in msg
 
 
-def _call_with_one_retry(tier: str, query: str):
+def _call_with_one_retry(tier: str, query: str, user_config: dict):
     """One quick retry for transient (non-rate-limit) errors only."""
     try:
-        return call_model(tier, query)
+        return call_model(tier, query, user_config.get(tier))
     except Exception as e:
         if _is_rate_limit_error(e):
             raise  # don't retry rate limits, caller will fall back immediately
         time.sleep(1)
-        return call_model(tier, query)  # let this one raise if it fails again
+        return call_model(tier, query, user_config.get(tier))  # let this one raise if it fails again
 
 
 def call_with_failover(intended_tier: str, query: str) -> dict:
     """
     Tries intended_tier, then falls back through FALLBACK_CHAIN on failure.
-    Returns the provider result dict, plus 'intended_tier' and 'fallback_used'
-    so the caller can log whether degradation actually happened.
+    Loads active config (user overrides merged with defaults) once per call
+    and passes the per-tier config to call_model.
     """
+    user_config = get_active_config()
     chain = [intended_tier] + FALLBACK_CHAIN.get(intended_tier, [])
     errors = []
 
     for i, tier in enumerate(chain):
         try:
-            result = _call_with_one_retry(tier, query)
+            result = _call_with_one_retry(tier, query, user_config)
             result["intended_tier"] = intended_tier
             result["fallback_used"] = (tier != intended_tier)
             if result["fallback_used"]:
@@ -63,7 +65,7 @@ def call_with_failover(intended_tier: str, query: str) -> dict:
             print(f"[failover] tier '{tier}' failed -- {error_detail}")
             continue  # try next tier in the chain
 
-    # Entire Groq/Ollama chain failed -- last resort: try a genuinely
+    # Entire chain failed -- last resort: try a genuinely
     # independent provider before giving up completely.
     try:
         result = call_gemini(query)

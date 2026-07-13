@@ -37,6 +37,15 @@ class RequestLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class UserConfig(Base):
+    __tablename__ = "user_configs"
+    id = Column(Integer, primary_key=True)
+    tier = Column(String)        # cheap / mid / frontier
+    provider = Column(String)    # groq / openai / anthropic / ollama
+    model_id = Column(String)    # e.g. gpt-4o-mini
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 Base.metadata.create_all(engine)
 
 

@@ -1,6 +1,6 @@
 import re
 
-# Prompt injection patterns
+
 _INJECTION_PATTERNS = [
     r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions",
     r"you\s+are\s+now\s+(dan|jailbreak|unrestricted|evil)",
@@ -12,7 +12,7 @@ _INJECTION_PATTERNS = [
     r"reveal\s+your\s+(instructions|prompt|system)",
 ]
 
-# PII patterns for sanitizing logs
+
 _PII_PATTERNS = [
     (r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "[EMAIL]"),
     (r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b", "[SSN]"),

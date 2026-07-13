@@ -6,6 +6,13 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# Default provider used when no user config is set for a tier
+DEFAULT_PROVIDER = "groq"
+
+# Pulled from providers_registry -- used for validation in POST /config
+from router.providers_registry import PROVIDERS_REGISTRY
+SUPPORTED_PROVIDERS = list(PROVIDERS_REGISTRY.keys())
+
 
 MODEL_CONFIG = {
     "cheap": {
