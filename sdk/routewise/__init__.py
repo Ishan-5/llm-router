@@ -11,8 +11,43 @@ DEFAULT_BASE_URL = "https://llm-router-d2b2.onrender.com"
 
 
 class RouteWiseError(Exception):
-    """Raised when the API returns an error response."""
+    """Raised when the API returns a non-2xx response."""
     pass
+
+
+class ValidationError(RouteWiseError):
+    """Raised when the API rejects the request due to invalid input (400)."""
+    pass
+
+
+class AuthError(RouteWiseError):
+    """Raised when the API key is missing, invalid, or rate-limited (401/429)."""
+    pass
+
+
+class AllTiersFailedError(RouteWiseError):
+    """Raised when every provider tier failed and no response could be returned (503)."""
+    pass
+
+
+def _raise_for_status(response: requests.Response):
+    if response.ok:
+        return
+    try:
+        detail = response.json().get("detail", response.text)
+    except Exception:
+        detail = response.text
+
+    if response.status_code == 400:
+        raise ValidationError(f"[400] {detail}")
+    elif response.status_code in (401, 403):
+        raise AuthError(f"[{response.status_code}] {detail}")
+    elif response.status_code == 429:
+        raise AuthError(f"[429] {detail}")
+    elif response.status_code == 503:
+        raise AllTiersFailedError(f"[503] {detail}")
+    else:
+        raise RouteWiseError(f"[{response.status_code}] {detail}")
 
 
 class RouteWiseClient:
@@ -20,21 +55,39 @@ class RouteWiseClient:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        # user api keys stored in memory -- never sent to DB, passed per-request
+        self._user_api_keys: dict = {}
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
 
-    def ask(self, query: str, override_tier: str | None = None) -> dict:
+    # ------------------------------------------------------------------
+    # Querying
+    # ------------------------------------------------------------------
+
+    def ask(
+        self,
+        query: str,
+        override_tier: str | None = None,
+        user_api_keys: dict | None = None,
+    ) -> dict:
         """
         Send a query through the router. Returns the full response dict
         (response text, tier used, cost, latency, cache_hit, etc.)
 
         override_tier: optionally force "cheap", "mid", or "frontier"
-        instead of letting the difficulty model decide.
+        user_api_keys: { "cheap": "key", "mid": "key", "frontier": "key" }
+                       overrides keys for this single request only.
+                       If not passed, uses keys set via configure().
         """
         payload = {"query": query}
         if override_tier:
             payload["override_tier"] = override_tier
+
+        # merge instance-level keys with per-call overrides
+        keys = {**self._user_api_keys, **(user_api_keys or {})}
+        if keys:
+            payload["user_api_keys"] = keys
 
         response = requests.post(
             f"{self.base_url}/route",
@@ -42,16 +95,94 @@ class RouteWiseClient:
             json=payload,
             timeout=self.timeout,
         )
+        _raise_for_status(response)
+        return response.json()
 
-        if not response.ok:
-            detail = response.json().get("detail", response.text) if response.content else response.text
-            raise RouteWiseError(f"[{response.status_code}] {detail}")
+    # ------------------------------------------------------------------
+    # BYOM config
+    # ------------------------------------------------------------------
+
+    def configure(
+        self,
+        cheap: dict | None = None,
+        mid: dict | None = None,
+        frontier: dict | None = None,
+    ) -> dict:
+        """
+        Set custom provider/model/api_key for any tier.
+        Omit a tier to leave it at its current config.
+
+        Each tier dict: { "provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..." }
+
+        Also stores the api_keys in memory so they're sent automatically
+        with every subsequent ask() call -- keys are never sent to the DB.
+
+        Example:
+            client.configure(
+                frontier={"provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..."}
+            )
+        """
+        payload = {}
+        if cheap:
+            payload["cheap"] = cheap
+        if mid:
+            payload["mid"] = mid
+        if frontier:
+            payload["frontier"] = frontier
+
+        response = requests.post(
+            f"{self.base_url}/config",
+            headers=self._headers(),
+            json=payload,
+            timeout=self.timeout,
+        )
+        _raise_for_status(response)
+
+        # store keys in memory for automatic use in ask()
+        for tier, cfg in {"cheap": cheap, "mid": mid, "frontier": frontier}.items():
+            if cfg and cfg.get("api_key"):
+                self._user_api_keys[tier] = cfg["api_key"]
 
         return response.json()
+
+    def get_config(self) -> dict:
+        """
+        Returns the currently active model config for all tiers
+        (user overrides merged with defaults). API keys are never returned.
+        """
+        response = requests.get(f"{self.base_url}/config", timeout=self.timeout)
+        _raise_for_status(response)
+        return response.json()
+
+    def reset(self) -> dict:
+        """
+        Resets all tiers back to the default models.
+        Also clears any in-memory api keys stored by configure().
+        """
+        response = requests.delete(
+            f"{self.base_url}/config",
+            headers=self._headers(),
+            timeout=self.timeout,
+        )
+        _raise_for_status(response)
+        self._user_api_keys.clear()
+        return response.json()
+
+    def get_providers(self) -> dict:
+        """
+        Returns all supported providers and their available models.
+        Useful for discovering what you can pass to configure().
+        """
+        response = requests.get(f"{self.base_url}/providers", timeout=self.timeout)
+        _raise_for_status(response)
+        return response.json()
+
+    # ------------------------------------------------------------------
+    # Stats
+    # ------------------------------------------------------------------
 
     def stats(self) -> dict:
         """Fetch aggregate usage stats (total requests, cost saved, tier distribution, etc.)"""
         response = requests.get(f"{self.base_url}/stats", timeout=self.timeout)
-        if not response.ok:
-            raise RouteWiseError(f"[{response.status_code}] {response.text}")
+        _raise_for_status(response)
         return response.json()
