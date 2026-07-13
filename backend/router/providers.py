@@ -5,12 +5,7 @@ from router.ollama_client import call_ollama
 
 client = Groq(api_key=GROQ_API_KEY)
 
-# Genuinely separate infrastructure from Groq -- Google's OpenAI-compatible
-# endpoint, used only as a last resort if the entire Groq/Ollama chain fails.
-_gemini_client = OpenAI(
-    api_key=GEMINI_API_KEY,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
+_gemini_client = None
 
 def _call_groq(model_id: str, price_in: float, price_out: float, query: str, tier_label: str) -> dict:
     response = client.chat.completions.create(
@@ -61,6 +56,12 @@ def call_gemini(query: str) -> dict:
     purpose, since this isn't a routing decision, it's a "everything else
     already failed" safety net.
     """
+    global _gemini_client
+    if _gemini_client is None:
+        _gemini_client = OpenAI(
+            api_key=GEMINI_API_KEY,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
     cfg = GEMINI_FALLBACK_CONFIG
     response = _gemini_client.chat.completions.create(
         model=cfg["model_id"],
