@@ -104,7 +104,8 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     try:
         result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
     except AllTiersFailedError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        print(f"[route] AllTiersFailedError: {e}")  # full detail in server logs only
+        raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
 
     latency_ms = round((time.time() - start) * 1000, 2)
 
