@@ -112,9 +112,16 @@ def call_model(tier: str, query: str, user_config: dict | None = None) -> dict:
     if user_config:
         provider = user_config["provider"]
         model_id = user_config["model_id"]
-        api_key = user_config.get("api_key", "")
+        api_key = user_config.get("api_key", "") or ""
         price_in = user_config.get("price_per_m_input", 0.0)
         price_out = user_config.get("price_per_m_output", 0.0)
+
+        # if no user api_key supplied, use the default key for known providers
+        if not api_key:
+            if provider == "groq":
+                api_key = GROQ_API_KEY
+            elif provider == "gemini":
+                api_key = GEMINI_API_KEY
 
         if provider == "ollama":
             try:
