@@ -61,3 +61,12 @@ export async function saveConfig(tierConfigs) {
   }
   return res.json()
 }
+
+export async function resetConfig() {
+  const res = await fetch(`${API_BASE}/config`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  })
+  if (!res.ok) throw new Error('Reset failed')
+  return res.json()
+}
