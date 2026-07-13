@@ -7,7 +7,7 @@ const TIER_DEFAULTS = {
   frontier: { label: 'Frontier', sub: 'deepseek-r1 · Groq',       y: 260 },
 }
 
-export default function RoutingDiagram() {
+export default function RoutingDiagram({ configVersion = 0 }) {
   const [query, setQuery] = useState('')
   const [override, setOverride] = useState('auto')
   const [loading, setLoading] = useState(false)
@@ -19,7 +19,7 @@ export default function RoutingDiagram() {
   useEffect(() => {
     fetchStats().then(setTicker).catch(() => setTicker(null))
     fetchConfig().then(setActiveConfig).catch(() => {})
-  }, [])
+  }, [configVersion])  // re-fetch whenever settings are saved
 
   // build TIERS dynamically from active config so diagram reflects custom models
   const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {

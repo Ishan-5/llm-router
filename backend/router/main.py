@@ -32,6 +32,7 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     query: str
     override_tier: str | None = None
+    user_api_keys: dict | None = None  # { tier: api_key } from localStorage, never stored
 
     @field_validator("query")
     @classmethod
@@ -101,7 +102,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         routing_tier = "cheap"
 
     try:
-        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query)
+        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
     except AllTiersFailedError as e:
         raise HTTPException(status_code=503, detail=str(e))
 

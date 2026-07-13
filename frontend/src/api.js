@@ -2,12 +2,26 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const API_KEY = import.meta.env.VITE_API_KEY || ''
 
 export async function routeQuery(query, overrideTier = null) {
+  // read user's provider api keys from localStorage to send with request
+  let userKeys = {}
+  try {
+    const saved = localStorage.getItem('byom_config')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      Object.entries(parsed).forEach(([tier, cfg]) => {
+        if (cfg.api_key) userKeys[tier] = cfg.api_key
+      })
+    }
+  } catch {}
+
+  const body = { query }
+  if (overrideTier) body.override_tier = overrideTier
+  if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
+
   const res = await fetch(`${API_BASE}/route`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
-    body: JSON.stringify(
-      overrideTier ? { query, override_tier: overrideTier } : { query }
-    ),
+    body: JSON.stringify(body),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }))
