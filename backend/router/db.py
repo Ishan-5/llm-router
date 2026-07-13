@@ -44,6 +44,7 @@ class UserConfig(Base):
     provider = Column(String)    # groq / openai / anthropic / ollama
     model_id = Column(String)    # e.g. gpt-4o-mini
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 Base.metadata.create_all(engine)

@@ -1,5 +1,6 @@
 import time
 import asyncio
+from datetime import datetime
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends
@@ -189,12 +190,15 @@ def get_config():
     }
 
 
+KEY_VALIDATION_TIMEOUT = 5  # seconds -- provider test calls shouldn't take longer than this
+
+
 @app.post("/config")
-def save_config(req: UserConfigRequest):
+async def save_config(req: UserConfigRequest):
     """
     Saves user model config for each tier provided.
     1. Format-validates provider + model_id (via pydantic above)
-    2. Makes a test call (max_tokens=1) to verify the key works
+    2. Makes a test call (max_tokens=1) to verify the key works, with a 5s timeout
     3. Saves provider + model_id to user_configs table (no api_key stored)
     API keys are returned to frontend to store in localStorage only.
     """
@@ -204,6 +208,7 @@ def save_config(req: UserConfigRequest):
         "frontier": req.frontier,
     }
 
+    loop = asyncio.get_event_loop()
     results = {}
     session = SessionLocal()
     try:
@@ -211,18 +216,31 @@ def save_config(req: UserConfigRequest):
             if cfg is None:
                 continue
 
-            # validate key with a real test call
+            # validate key with a real test call, bounded by timeout
             try:
-                validate_key(cfg.provider, cfg.model_id, cfg.api_key)
+                await asyncio.wait_for(
+                    loop.run_in_executor(executor, validate_key, cfg.provider, cfg.model_id, cfg.api_key),
+                    timeout=KEY_VALIDATION_TIMEOUT,
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(
+                    status_code=408,
+                    detail=f"Key validation timed out for {tier} tier ({cfg.provider}/{cfg.model_id}) — provider took over {KEY_VALIDATION_TIMEOUT}s to respond"
+                )
             except Exception as e:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Key validation failed for {tier} tier ({cfg.provider}/{cfg.model_id}): {e}"
                 )
 
-            # save only non-sensitive fields to DB
-            entry = UserConfig(tier=tier, provider=cfg.provider, model_id=cfg.model_id)
-            session.add(entry)
+            # upsert: update existing row for this tier, or insert if none
+            existing = session.query(UserConfig).filter(UserConfig.tier == tier).first()
+            if existing:
+                existing.provider = cfg.provider
+                existing.model_id = cfg.model_id
+                existing.updated_at = datetime.utcnow()
+            else:
+                session.add(UserConfig(tier=tier, provider=cfg.provider, model_id=cfg.model_id))
             results[tier] = {"provider": cfg.provider, "model_id": cfg.model_id, "status": "saved"}
 
         session.commit()
@@ -242,6 +260,43 @@ def reset_config():
     finally:
         session.close()
     return {"reset": True}
+
+
+@app.get("/logs")
+def get_logs(limit: int = 50):
+    """Returns the most recent request logs. limit capped at 100."""
+    limit = min(limit, 100)
+    session = SessionLocal()
+    try:
+        rows = (
+            session.query(RequestLog)
+            .order_by(RequestLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": r.id,
+                "query": r.query,
+                "tier": r.tier,
+                "intended_tier": r.intended_tier,
+                "model_id": r.model_id,
+                "difficulty_score": r.difficulty_score,
+                "cost_usd": r.cost_usd,
+                "latency_ms": r.latency_ms,
+                "cache_hit": r.cache_hit,
+                "fallback_used": r.fallback_used,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/stats")
@@ -264,6 +319,13 @@ def get_stats():
             session.query(RequestLog.tier, func.count(RequestLog.id))
             .group_by(RequestLog.tier).all()
         )
+
+        tier_costs = {
+            tier: float(cost or 0.0)
+            for tier, cost in session.query(RequestLog.tier, func.sum(RequestLog.cost_usd))
+            .group_by(RequestLog.tier).all()
+            if tier
+        }
 
         total_actual_cost = float(session.query(func.sum(RequestLog.cost_usd)).scalar() or 0.0)
 
@@ -309,6 +371,7 @@ def get_stats():
         return {
             "total_requests": total_requests,
             "tier_counts": tier_counts,
+            "tier_costs": tier_costs,
             "total_actual_cost": total_actual_cost,
             "total_hypothetical_cost": total_hypothetical_cost,
             "cache_hit_rate": cache_hit_rate,
