@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchProviders, fetchConfig, saveConfig } from '../api'
+import { fetchProviders, fetchConfig, saveConfig, resetConfig } from '../api'
 
 const TIERS = ['cheap', 'mid', 'frontier']
 const TIER_LABELS = { cheap: 'Cheap', mid: 'Mid', frontier: 'Frontier' }
@@ -65,6 +65,24 @@ export default function SettingsPanel({ onClose, onSaved }) {
     return t.model_id === 'custom' ? t.custom_model : t.model_id
   }
 
+  async function handleReset() {
+    setError(null)
+    setSuccess(null)
+    setSaving(true)
+    try {
+      await resetConfig()
+      localStorage.removeItem('byom_config')
+      setTiers({ cheap: { ...EMPTY_TIER }, mid: { ...EMPTY_TIER }, frontier: { ...EMPTY_TIER } })
+      fetchConfig().then(setActiveConfig).catch(() => {})
+      setSuccess('Reset to defaults.')
+      setTimeout(() => { onSaved && onSaved() }, 800)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleSave() {
     setError(null)
     setSuccess(null)
@@ -84,8 +102,8 @@ export default function SettingsPanel({ onClose, onSaved }) {
     }
 
     if (Object.keys(payload).length === 0) {
-      setError('Enable at least one tier to save.')
-      setSaving(false)
+      // all tiers disabled = user wants full reset to defaults
+      await handleReset()
       return
     }
 
@@ -246,10 +264,11 @@ export default function SettingsPanel({ onClose, onSaved }) {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={onClose}
-              className="font-mono text-xs px-4 py-2.5 rounded-lg border border-line text-muted hover:text-primary transition-colors"
+              onClick={handleReset}
+              disabled={saving}
+              className="font-mono text-xs px-4 py-2.5 rounded-lg border border-danger text-danger hover:bg-danger/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Cancel
+              Reset to defaults
             </button>
             <button
               onClick={handleSave}

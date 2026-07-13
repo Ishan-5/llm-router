@@ -231,6 +231,18 @@ def save_config(req: UserConfigRequest):
     return {"saved": results}
 
 
+@app.delete("/config")
+def reset_config():
+    """Clears all user config rows -- reverts all tiers to defaults."""
+    session = SessionLocal()
+    try:
+        session.query(UserConfig).delete()
+        session.commit()
+    finally:
+        session.close()
+    return {"reset": True}
+
+
 @app.get("/stats")
 def get_stats():
     """
