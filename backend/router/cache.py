@@ -48,16 +48,17 @@ def check_cache(query: str) -> dict | None:
     rows = session.query(QueryCache).all()
     session.close()
 
-    best_sim = -1.0
-    best_row = None
-    for row in rows:
-        cached_embed = np.array(json.loads(row.embedding))
-        sim = _cosine_sim(query_embed, cached_embed)
-        if sim > best_sim:
-            best_sim = sim
-            best_row = row
+    if not rows:
+        return None
 
-    if best_row is not None and best_sim >= SIMILARITY_THRESHOLD:
+    matrix = np.array([json.loads(r.embedding) for r in rows])
+    norms = np.linalg.norm(matrix, axis=1) * np.linalg.norm(query_embed)
+    sims = matrix @ query_embed / (norms + 1e-8)
+    best_idx = int(np.argmax(sims))
+    best_sim = float(sims[best_idx])
+    best_row = rows[best_idx]
+
+    if best_sim >= SIMILARITY_THRESHOLD:
         return {
             "matched_query": best_row.query,
             "response": best_row.response,

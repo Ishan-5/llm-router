@@ -11,7 +11,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
 Base = declarative_base()
-engine = create_engine(os.getenv("DATABASE_URL"))
+engine = create_engine(os.getenv("DATABASE_URL"), connect_args={"connect_timeout": 10})
 SessionLocal = sessionmaker(bind=engine)
 
 
@@ -67,7 +67,10 @@ class ModelPricing(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-Base.metadata.create_all(engine)
+try:
+    Base.metadata.create_all(engine)
+except Exception as e:
+    print(f"[db] DB init failed (will retry on first request): {e}")
 
 
 def log_request(data: dict):
