@@ -12,6 +12,7 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
 export default function App() {
   const { isDark, toggle } = useTheme()
+  const [page, setPage] = useState('home')
   const [showSettings, setShowSettings] = useState(false)
   const [configVersion, setConfigVersion] = useState(0)
   const [backendOnline, setBackendOnline] = useState(true)
@@ -48,11 +49,16 @@ export default function App() {
           </p>
         </div>
       )}
-      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} />
-      <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
-      <HowItWorks />
-      <PricingTable />
-      <MetricsDashboard isDark={isDark} backendOnline={backendOnline} />
+      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={setPage} />
+      {page === 'pricing' ? (
+        <PricingTable onBack={() => setPage('home')} />
+      ) : (
+        <>
+          <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
+          <HowItWorks />
+          <MetricsDashboard isDark={isDark} backendOnline={backendOnline} />
+        </>
+      )}
       <Footer />
       {showSettings && (
         <SettingsPanel

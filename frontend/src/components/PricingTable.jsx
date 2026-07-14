@@ -7,7 +7,7 @@ const PROVIDER_LABELS = {
   deepseek: 'DeepSeek', mistral: 'Mistral', perplexity: 'Perplexity', xai: 'xAI', ollama: 'Ollama (local)',
 }
 
-export default function PricingTable() {
+export default function PricingTable({ onBack }) {
   const [pricing, setPricing] = useState([])
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('')
@@ -33,7 +33,12 @@ export default function PricingTable() {
 
   return (
     <section id="pricing" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
-      <p className="font-mono text-xs text-signal tracking-wide uppercase mb-3">Model pricing</p>
+      <div className="flex items-center gap-4 mb-3">
+        <button onClick={onBack} className="font-mono text-xs text-muted hover:text-primary transition-colors flex items-center gap-1">
+          ← Back
+        </button>
+        <p className="font-mono text-xs text-signal tracking-wide uppercase">Model pricing</p>
+      </div>
       <h2 className="font-display text-2xl font-semibold mb-2">All supported models & prices</h2>
       <p className="text-sm text-muted mb-8">
         Prices in USD per million tokens. Updated manually — verify with provider before billing.
