@@ -49,6 +49,7 @@ def needs_web_search(query: str) -> bool:
     return any(re.search(p, q) for p in _WEB_PATTERNS)
 
 
+_PII_PATTERNS = [
     (r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", "[EMAIL]"),
     (r"\b\d{3}[-.\s]?\d{2}[-.\s]?\d{4}\b", "[SSN]"),
     (r"\b\d{4}[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{4}\b", "[CARD]"),
