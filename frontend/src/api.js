@@ -70,3 +70,9 @@ export async function resetConfig() {
   if (!res.ok) throw new Error('Reset failed')
   return res.json()
 }
+
+export async function fetchPricing() {
+  const res = await fetch(`${API_BASE}/pricing`)
+  if (!res.ok) throw new Error('Could not load pricing')
+  return res.json()
+}

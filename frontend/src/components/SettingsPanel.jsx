@@ -3,7 +3,7 @@ import { fetchProviders, fetchConfig, saveConfig, resetConfig } from '../api'
 
 const TIERS = ['cheap', 'mid', 'frontier']
 const TIER_LABELS = { cheap: 'Cheap', mid: 'Mid', frontier: 'Frontier' }
-const EMPTY_TIER = { provider: '', model_id: '', custom_model: '', api_key: '', enabled: false }
+const EMPTY_TIER = { provider: '', model_id: '', custom_model: '', api_key: '', price_in: '', price_out: '', enabled: false }
 
 function loadFromLocalStorage() {
   try {
@@ -27,6 +27,8 @@ export default function SettingsPanel({ onClose, onSaved }) {
           model_id: saved[t].is_custom ? 'custom' : (saved[t].model_id || ''),
           custom_model: saved[t].is_custom ? saved[t].model_id : '',
           api_key: saved[t].api_key || '',
+          price_in: saved[t].price_in || '',
+          price_out: saved[t].price_out || '',
           enabled: true,
         }
       }
@@ -106,6 +108,10 @@ export default function SettingsPanel({ onClose, onSaved }) {
         return
       }
       payload[tier] = { provider: t.provider, model_id, api_key: t.api_key }
+      if (t.model_id === 'custom') {
+        payload[tier].price_per_m_input = parseFloat(t.price_in) || 0
+        payload[tier].price_per_m_output = parseFloat(t.price_out) || 0
+      }
     }
 
     if (Object.keys(payload).length === 0) {
@@ -126,6 +132,8 @@ export default function SettingsPanel({ onClose, onSaved }) {
           model_id: getModelId(tier),
           is_custom: t.model_id === 'custom',
           api_key: t.api_key,
+          price_in: t.price_in,
+          price_out: t.price_out,
           enabled: true,
         }
       }
@@ -239,6 +247,35 @@ export default function SettingsPanel({ onClose, onSaved }) {
                           placeholder="e.g. gpt-4o-2024-11-20"
                           className="w-full bg-base border border-line rounded-lg px-3 py-2.5 font-mono text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50"
                         />
+                      </div>
+                    )}
+
+                    {t.model_id === 'custom' && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="font-mono text-[10px] text-muted uppercase tracking-wide block mb-1">Input price ($/1M tokens)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={t.price_in}
+                            onChange={(e) => handleField(tier, 'price_in', e.target.value)}
+                            placeholder="e.g. 0.15"
+                            className="w-full bg-base border border-line rounded-lg px-3 py-2.5 font-mono text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="font-mono text-[10px] text-muted uppercase tracking-wide block mb-1">Output price ($/1M tokens)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={t.price_out}
+                            onChange={(e) => handleField(tier, 'price_out', e.target.value)}
+                            placeholder="e.g. 0.60"
+                            className="w-full bg-base border border-line rounded-lg px-3 py-2.5 font-mono text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50"
+                          />
+                        </div>
                       </div>
                     )}
 

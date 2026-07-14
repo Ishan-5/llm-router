@@ -10,7 +10,7 @@ from sqlalchemy import func
 from router.classifier import get_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig
+from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
 from router.auth import require_api_key, check_budget
 from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS
 from router.guardrails import is_prompt_injection, sanitize_pii
@@ -142,6 +142,27 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms,
     }
+
+
+@app.get("/pricing")
+def get_pricing():
+    """Returns all active model pricing rows for the frontend pricing table."""
+    session = SessionLocal()
+    try:
+        rows = session.query(ModelPricing).filter(ModelPricing.is_active == True).order_by(ModelPricing.provider, ModelPricing.model_id).all()
+        return [
+            {
+                "provider": r.provider,
+                "model_id": r.model_id,
+                "display_name": r.display_name,
+                "price_per_m_input": r.price_per_m_input,
+                "price_per_m_output": r.price_per_m_output,
+                "notes": r.notes,
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
 
 
 @app.get("/providers")

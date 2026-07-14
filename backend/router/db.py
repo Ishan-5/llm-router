@@ -1,5 +1,12 @@
+"""
+Three tables — keys, logs, config. 
+Everything the router tracks flows through RequestLog. 
+The ApiKey table is what makes auth and budget enforcement possible. 
+UserConfig is what makes BYOM possible. Base.metadata.create_all(engine) means zero manual DB setup needed.
+"""
+
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -44,6 +51,19 @@ class UserConfig(Base):
     provider = Column(String)    # groq / openai / anthropic / ollama
     model_id = Column(String)    # e.g. gpt-4o-mini
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ModelPricing(Base):
+    __tablename__ = "model_pricing"
+    id = Column(Integer, primary_key=True)
+    provider = Column(String, nullable=False)           # groq / openai / anthropic / etc.
+    model_id = Column(String, nullable=False, index=True)
+    display_name = Column(String, nullable=False)
+    price_per_m_input = Column(Float, nullable=False)
+    price_per_m_output = Column(Float, nullable=False)
+    notes = Column(Text, nullable=True)                 # e.g. tiered pricing detail
+    is_active = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 

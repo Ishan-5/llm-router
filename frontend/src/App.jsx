@@ -3,6 +3,7 @@ import Header from './components/Header'
 import RoutingDiagram from './components/RoutingDiagram'
 import HowItWorks from './components/HowItWorks'
 import MetricsDashboard from './components/MetricsDashboard'
+import PricingTable from './components/PricingTable'
 import Footer from './components/Footer'
 import SettingsPanel from './components/SettingsPanel'
 import { useTheme } from './useTheme'
@@ -50,6 +51,7 @@ export default function App() {
       <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} />
       <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
       <HowItWorks />
+      <PricingTable />
       <MetricsDashboard isDark={isDark} backendOnline={backendOnline} />
       <Footer />
       {showSettings && (
