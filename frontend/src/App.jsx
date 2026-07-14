@@ -13,6 +13,11 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 export default function App() {
   const { isDark, toggle } = useTheme()
   const [page, setPage] = useState('home')
+
+  function navigate(p) {
+    setPage(p)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const [showSettings, setShowSettings] = useState(false)
   const [configVersion, setConfigVersion] = useState(0)
   const [backendOnline, setBackendOnline] = useState(true)
@@ -49,9 +54,9 @@ export default function App() {
           </p>
         </div>
       )}
-      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={setPage} />
+      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={navigate} page={page} />
       {page === 'pricing' ? (
-        <PricingTable onBack={() => setPage('home')} />
+        <PricingTable onBack={() => navigate('home')} />
       ) : (
         <>
           <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
