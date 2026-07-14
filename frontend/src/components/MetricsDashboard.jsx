@@ -95,6 +95,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
             {refreshing ? 'refreshing…' : '↻ refresh'}
           </button>
         </div>
+      </div>
       <p className="text-sm text-muted mb-12">Computed from every request this router has actually logged.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
