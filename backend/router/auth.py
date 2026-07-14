@@ -1,5 +1,15 @@
 """
-API key authentication, per-key rate limiting, and daily budget caps.
+Three functions, three jobs:
+
+check_rate_limit — sliding window, in-memory, 20 req/min per key
+
+check_budget — DB query, daily spend cap, forces cheap tier if over
+
+require_api_key — the FastAPI dependency that gates every protected endpoint. Validates format → DB lookup → rate limit check → returns the key record
+
+Every protected endpoint (/route, /logs, /config POST, /config DELETE) 
+has Depends(require_api_key) which runs all three of these in sequence 
+before the endpoint logic even starts.
 
 HONEST LIMITATION: the rate limiter here is in-memory (a plain dict), which
 is fine for a single-process demo deployment but would NOT survive multiple
@@ -31,7 +41,6 @@ def check_rate_limit(api_key: str):
 
 
 def check_budget(api_key_record: ApiKey) -> bool:
-    """Returns True if this key is still under its daily budget (or has no cap)."""
     if api_key_record.daily_budget_usd is None:
         return True
 

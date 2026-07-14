@@ -1,3 +1,9 @@
+"""
+It's a 17-line adapter. Its only real job is to bridge the path gap
+between router/ and src/ and expose a clean get_tier() 
+function that returns (score, tier) as a tuple — exactly what main.py needs in one call.
+"""
+
 import sys
 import os
 
@@ -8,7 +14,6 @@ from predict_difficulty import predict_difficulty, score_to_tier
 
 
 def score_difficulty(query: str) -> float:
-    """Returns a 0-10 difficulty score (not 0-1 -- see note in main.py)."""
     return predict_difficulty(query)
 
 

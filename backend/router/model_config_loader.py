@@ -1,13 +1,13 @@
 """
 Merges user-supplied model config (from user_configs table) with the
 hardcoded defaults. Any tier the user hasn't configured falls back to
-the default model for that tier.
+the default model for that tier. Pricing is looked up from model_pricing
+table first -- falls back to hardcoded defaults if not found.
 """
-from router.db import SessionLocal, UserConfig
+from router.db import SessionLocal, UserConfig, ModelPricing
 from router.config import MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG
 from router.providers_registry import PROVIDERS_REGISTRY
 
-# Validate that default providers exist in the registry
 assert "ollama" in PROVIDERS_REGISTRY
 assert "groq" in PROVIDERS_REGISTRY
 
@@ -33,6 +33,18 @@ PROVIDER_DEFAULTS = {
 }
 
 
+def _get_pricing(session, provider: str, model_id: str) -> tuple[float, float]:
+    """Look up input/output pricing from DB. Returns (price_in, price_out) or None if not found."""
+    row = session.query(ModelPricing).filter(
+        ModelPricing.provider == provider,
+        ModelPricing.model_id == model_id,
+        ModelPricing.is_active == True,
+    ).first()
+    if row:
+        return row.price_per_m_input, row.price_per_m_output
+    return None
+
+
 def get_active_config() -> dict:
     """
     Returns the merged config for all 3 tiers.
@@ -42,23 +54,30 @@ def get_active_config() -> dict:
     session = SessionLocal()
     try:
         rows = session.query(UserConfig).order_by(UserConfig.created_at.desc()).all()
+
+        # latest row per tier wins
+        user_overrides = {}
+        for row in rows:
+            if row.tier not in user_overrides:
+                user_overrides[row.tier] = {
+                    "provider": row.provider,
+                    "model_id": row.model_id,
+                }
+
+        merged = {}
+        for tier, defaults in PROVIDER_DEFAULTS.items():
+            if tier in user_overrides:
+                cfg = {**defaults, **user_overrides[tier]}
+            else:
+                cfg = defaults.copy()
+
+            # look up real pricing from DB, fall back to defaults if not found
+            pricing = _get_pricing(session, cfg["provider"], cfg["model_id"])
+            if pricing:
+                cfg["price_per_m_input"], cfg["price_per_m_output"] = pricing
+
+            merged[tier] = cfg
     finally:
         session.close()
-
-    # latest row per tier wins
-    user_overrides = {}
-    for row in rows:
-        if row.tier not in user_overrides:
-            user_overrides[row.tier] = {
-                "provider": row.provider,
-                "model_id": row.model_id,
-            }
-
-    merged = {}
-    for tier, defaults in PROVIDER_DEFAULTS.items():
-        if tier in user_overrides:
-            merged[tier] = {**defaults, **user_overrides[tier]}
-        else:
-            merged[tier] = defaults.copy()
 
     return merged

@@ -1,5 +1,16 @@
-import re
+"""
+"ignore all previous instructions" — classic injection opener
+"you are now DAN" / "you are now unrestricted" — persona hijacking
+"forget your training" / "forget all rules" — training override attempts
+"act as an unrestricted AI" / "act as jailbreak" — role-play jailbreaks
+"do anything now" — DAN (Do Anything Now) shorthand
+"pretend you have no restrictions" — constraint removal
+"system prompt" — trying to reference or manipulate the system prompt
+"reveal your instructions" — trying to extract the system prompt
 
+"""
+
+import re
 
 _INJECTION_PATTERNS = [
     r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions",
@@ -11,6 +22,7 @@ _INJECTION_PATTERNS = [
     r"system\s*prompt",
     r"reveal\s+your\s+(instructions|prompt|system)",
 ]
+
 
 
 _PII_PATTERNS = [

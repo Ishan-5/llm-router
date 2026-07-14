@@ -1,5 +1,15 @@
+"""
+It's the single place where you control what models run, 
+what they cost, how the fallback chain works, and what safety margin to apply.
+If you want to swap the mid model, change pricing, or
+tighten/loosen the frontier boundary — this is the only file you touch.
+"""
+
 import os
 from dotenv import load_dotenv
+from router.providers_registry import PROVIDERS_REGISTRY
+SUPPORTED_PROVIDERS = list(PROVIDERS_REGISTRY.keys())
+
 
 load_dotenv()
 
@@ -12,11 +22,6 @@ ALLOWED_ORIGINS = os.getenv(
 
 # Default provider used when no user config is set for a tier
 DEFAULT_PROVIDER = "groq"
-
-# Pulled from providers_registry -- used for validation in POST /config
-from router.providers_registry import PROVIDERS_REGISTRY
-SUPPORTED_PROVIDERS = list(PROVIDERS_REGISTRY.keys())
-
 
 MODEL_CONFIG = {
     "cheap": {
@@ -39,8 +44,7 @@ MODEL_CONFIG = {
 
 TIER_MARGIN = 1.0
 
-
-# Not a routable tier -- just the backend the "cheap" tier falls back to
+#just the backend the "cheap" tier falls back to
 # if the local Ollama call fails (not running, model missing, etc.)
 OLLAMA_FALLBACK_CONFIG = {
     "model_id": "llama-3.1-8b-instant",
@@ -56,11 +60,7 @@ FALLBACK_CHAIN = {
 }
 
 
-# HONEST NOTE ON PRICING: verify current numbers at ai.google.dev/pricing
-# before trusting this for real cost tracking -- I can't confirm live pricing.
-# This is a genuinely independent provider (different company, different
-# infrastructure than Groq), used as a last resort ONLY if every tier in the
-# normal Groq/Ollama chain fails -- e.g. a full Groq outage.
+# Last-resort fallback if the entire Groq/Ollama chain fails.
 GEMINI_FALLBACK_CONFIG = {
     "model_id": "gemini-1.5-flash",
     "price_per_m_input": 0.075,
