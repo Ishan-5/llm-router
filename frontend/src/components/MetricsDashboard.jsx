@@ -30,10 +30,6 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
     ? { line: '#232D3B', muted: '#7C8B9A', panel: '#121821', signal: '#FF9F1C', cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D' }
     : { line: '#E2E2DD', muted: '#6B7078', panel: '#FFFFFF', signal: '#C2570C', cheap: '#0F766E', mid: '#C2570C', frontier: '#B91C1C' }
 
-  useEffect(() => {
-    fetchStats().then(setStats).catch((e) => setError(e.message))
-  }, [])
-
   if (error) {
     return (
       <section id="metrics" className="max-w-6xl mx-auto px-6 py-16 border-t border-line">
@@ -112,6 +108,12 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
                 ))}
               </Pie>
               <Tooltip contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }} />
+              <Legend
+                iconType="circle"
+                iconSize={8}
+                wrapperStyle={{ fontFamily: 'JetBrains Mono', fontSize: 11, paddingTop: 8 }}
+                formatter={(value) => <span style={{ color: palette.muted }}>{value}</span>}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>

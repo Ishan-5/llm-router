@@ -36,6 +36,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [confirmReset, setConfirmReset] = useState(false)
 
   useEffect(() => {
     fetchProviders().then(setProviders).catch(() => {})
@@ -66,6 +67,12 @@ export default function SettingsPanel({ onClose, onSaved }) {
   }
 
   async function handleReset() {
+    if (!confirmReset) {
+      setConfirmReset(true)
+      setTimeout(() => setConfirmReset(false), 3000)
+      return
+    }
+    setConfirmReset(false)
     setError(null)
     setSuccess(null)
     setSaving(true)
@@ -266,9 +273,13 @@ export default function SettingsPanel({ onClose, onSaved }) {
             <button
               onClick={handleReset}
               disabled={saving}
-              className="font-mono text-xs px-4 py-2.5 rounded-lg border border-danger text-danger hover:bg-danger/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`font-mono text-xs px-4 py-2.5 rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                confirmReset
+                  ? 'border-danger bg-danger text-white'
+                  : 'border-danger text-danger hover:bg-danger/10'
+              }`}
             >
-              Reset to defaults
+              {confirmReset ? 'Sure? (click to confirm)' : 'Reset to defaults'}
             </button>
             <button
               onClick={handleSave}

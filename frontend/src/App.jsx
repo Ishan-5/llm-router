@@ -14,6 +14,10 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [configVersion, setConfigVersion] = useState(0)
   const [backendOnline, setBackendOnline] = useState(true)
+  const [byomActive, setByomActive] = useState(() => {
+    try { return Object.keys(JSON.parse(localStorage.getItem('byom_config') || '{}')).length > 0 }
+    catch { return false }
+  })
 
   useEffect(() => {
     function checkHealth() {
@@ -29,6 +33,8 @@ export default function App() {
   function handleConfigSaved() {
     setConfigVersion((v) => v + 1)
     setShowSettings(false)
+    try { setByomActive(Object.keys(JSON.parse(localStorage.getItem('byom_config') || '{}')).length > 0) }
+    catch { setByomActive(false) }
   }
 
   return (
@@ -41,7 +47,7 @@ export default function App() {
           </p>
         </div>
       )}
-      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} />
+      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} />
       <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
       <HowItWorks />
       <MetricsDashboard isDark={isDark} backendOnline={backendOnline} />
