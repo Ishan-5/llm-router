@@ -12,8 +12,8 @@ from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
 from router.auth import require_api_key, check_budget
-from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS
-from router.guardrails import is_prompt_injection, sanitize_pii
+from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY
+from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.model_config_loader import get_active_config
 from router.providers import validate_key
@@ -57,6 +57,54 @@ class QueryRequest(BaseModel):
 async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
     if is_prompt_injection(req.query):
         raise HTTPException(status_code=400, detail="Prompt injection detected")
+
+    # web search check -- runs before cache/classifier, zero extra latency
+    if needs_web_search(req.query) and TAVILY_API_KEY:
+        start = time.time()
+        try:
+            import httpx
+            resp = await asyncio.get_event_loop().run_in_executor(
+                executor, lambda: httpx.post(
+                    "https://api.tavily.com/search",
+                    json={"api_key": TAVILY_API_KEY, "query": req.query, "search_depth": "advanced", "max_results": 5},
+                    timeout=10,
+                )
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data.get("answer") or "\n\n".join(r["content"] for r in data.get("results", [])[:3])
+        except Exception:
+            pass  # fall through to normal routing
+        else:
+            latency_ms = round((time.time() - start) * 1000, 2)
+            log_request({
+                "api_key_id": api_key.id,
+                "query": sanitize_pii(req.query),
+                "difficulty_score": None,
+                "intended_tier": "web",
+                "tier": "web",
+                "fallback_used": False,
+                "cache_hit": False,
+                "cache_similarity": None,
+                "model_id": "tavily/search",
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "cost_usd": 0.0,
+                "latency_ms": latency_ms,
+            })
+            return {
+                "response": answer,
+                "routed_to": "web",
+                "intended_tier": "web",
+                "predicted_tier": "web",
+                "override_used": False,
+                "budget_capped": False,
+                "fallback_used": False,
+                "cache_hit": False,
+                "difficulty_score": None,
+                "cost_usd": 0.0,
+                "latency_ms": latency_ms,
+            }
 
     start = time.time()
     loop = asyncio.get_event_loop()

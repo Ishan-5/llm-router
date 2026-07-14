@@ -159,6 +159,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                     {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
                   </span>
                   {result.fallback_used && <span className="text-danger">FALLBACK</span>}
+                  {result.routed_to === 'web' && <span className="text-cool">WEB SEARCH</span>}
                 </div>
                 <button
                   onClick={handleCopy}
@@ -174,7 +175,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
         {/* RIGHT: large decorative-but-functional circuit graphic */}
         <div className="relative hidden lg:block">
-          <svg viewBox="0 0 380 300" className="w-full h-auto -mr-8">
+          <svg viewBox="0 0 380 360" className="w-full h-auto -mr-8">
             {/* incoming query node -- score lives here, not floating separately */}
             <circle cx="190" cy="30" r="8" fill="none" stroke="var(--color-muted)" strokeWidth="2" />
             <text x="205" y="27" className="font-mono" fontSize="11" fill="var(--color-muted)">query</text>
@@ -195,6 +196,20 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 </g>
               )
             })}
+
+            {/* Web node */}
+            {(() => {
+              const isActive = activeTier === 'web'
+              const y = 330
+              return (
+                <g>
+                  <line x1="190" y1="30" x2="90" y2={y} stroke={isActive ? 'var(--color-cool)' : 'var(--color-line)'} strokeWidth={isActive ? 2.5 : 1.5} strokeDasharray="4 3" />
+                  <circle cx="90" cy={y} r={isActive ? 12 : 9} fill={isActive ? 'var(--color-cool)' : 'none'} stroke={isActive ? 'var(--color-cool)' : 'var(--color-line)'} strokeWidth="2" className="transition-all duration-500" />
+                  <text x="112" y={y - 8} className="font-display font-semibold" fontSize="15" fill={isActive ? 'var(--color-cool)' : 'var(--color-primary)'}>Web</text>
+                  <text x="112" y={y + 10} className="font-mono" fontSize="10" fill="var(--color-muted)">tavily/search · live</text>
+                </g>
+              )
+            })()}
           </svg>
         </div>
       </div>
