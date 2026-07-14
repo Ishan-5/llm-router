@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { fetchStats } from '../api'
 
-const TIER_ORDER = ['cheap', 'mid', 'frontier']
+const TIER_ORDER = ['cheap', 'mid', 'frontier', 'web']
 
 export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [stats, setStats] = useState(null)
@@ -28,8 +28,8 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
   }, [backendOnline])
 
   const palette = isDark
-    ? { line: '#232D3B', muted: '#7C8B9A', panel: '#121821', signal: '#FF9F1C', cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D' }
-    : { line: '#E2E2DD', muted: '#6B7078', panel: '#FFFFFF', signal: '#C2570C', cheap: '#0F766E', mid: '#C2570C', frontier: '#B91C1C' }
+    ? { line: '#232D3B', muted: '#7C8B9A', panel: '#121821', signal: '#FF9F1C', cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D', web: '#818CF8' }
+    : { line: '#E2E2DD', muted: '#6B7078', panel: '#FFFFFF', signal: '#C2570C', cheap: '#0F766E', mid: '#C2570C', frontier: '#B91C1C', web: '#4F46E5' }
 
   if (error) {
     return (
