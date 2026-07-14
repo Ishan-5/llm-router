@@ -1,6 +1,6 @@
 import ThemeToggle from './ThemeToggle'
 
-export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive }) {
+export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, onNavigate }) {
   return (
     <header className="border-b border-line">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -12,7 +12,7 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
         </div>
         <nav className="flex items-center gap-8 text-sm text-muted font-body">
           <a href="#how" className="hover:text-primary transition-colors">How it works</a>
-          <a href="#pricing" className="hover:text-primary transition-colors">Pricing</a>
+          <button onClick={() => onNavigate('pricing')} className="hover:text-primary transition-colors">Pricing</button>
           <a href="#metrics" className="hover:text-primary transition-colors">Metrics</a>
           <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">GitHub</a>
           <button
