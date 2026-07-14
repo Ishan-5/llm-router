@@ -12,7 +12,7 @@ from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig
 from router.auth import require_api_key, check_budget
-from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS
+from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS
 from router.guardrails import is_prompt_injection, sanitize_pii
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.model_config_loader import get_active_config
@@ -24,7 +24,7 @@ executor = ThreadPoolExecutor()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # fine for a local demo; restrict this in real prod
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
