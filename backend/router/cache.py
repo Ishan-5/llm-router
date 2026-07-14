@@ -14,7 +14,8 @@ SIMILARITY_THRESHOLD = 0.95  # conservative on purpose -- see module docstring
 Base = declarative_base()
 
 _db_url = os.getenv("DATABASE_URL", "")
-engine = create_engine(_db_url, connect_args={"connect_timeout": 10})
+_connect_args = {"connect_timeout": 10} if _db_url.startswith("postgresql") else {}
+engine = create_engine(_db_url, connect_args=_connect_args)
 SessionLocal = sessionmaker(bind=engine)
 
 

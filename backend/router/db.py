@@ -11,7 +11,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
 Base = declarative_base()
-engine = create_engine(os.getenv("DATABASE_URL"), connect_args={"connect_timeout": 10})
+_db_url = os.getenv("DATABASE_URL", "")
+_connect_args = {"connect_timeout": 10} if _db_url.startswith("postgresql") else {}
+engine = create_engine(_db_url, connect_args=_connect_args)
 SessionLocal = sessionmaker(bind=engine)
 
 
