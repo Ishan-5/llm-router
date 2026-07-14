@@ -8,9 +8,10 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [stats, setStats] = useState(null)
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   function loadStats() {
-    return fetchStats().then(setStats).catch((e) => setError(e.message))
+    return fetchStats().then((s) => { setStats(s); setLastUpdated(new Date()) }).catch((e) => setError(e.message))
   }
 
   async function handleRefresh() {
@@ -80,14 +81,20 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
     <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-display text-2xl font-semibold">Real usage, real savings</h2>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition disabled:opacity-50"
-        >
-          {refreshing ? 'refreshing…' : '↻ refresh'}
-        </button>
-      </div>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="font-mono text-[10px] text-muted">
+              updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition disabled:opacity-50"
+          >
+            {refreshing ? 'refreshing…' : '↻ refresh'}
+          </button>
+        </div>
       <p className="text-sm text-muted mb-12">Computed from every request this router has actually logged.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">

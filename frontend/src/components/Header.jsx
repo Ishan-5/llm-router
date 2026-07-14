@@ -1,18 +1,18 @@
 import ThemeToggle from './ThemeToggle'
 
-export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, onNavigate }) {
+export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, onNavigate, page }) {
   return (
     <header className="border-b border-line">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+        <button onClick={() => onNavigate('home')} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
           <div className="w-2 h-2 rounded-full bg-signal" />
           <span className="font-display font-semibold text-lg tracking-tight">
             routewise
           </span>
-        </div>
+        </button>
         <nav className="flex items-center gap-8 text-sm text-muted font-body">
-          <a href="#how" className="hover:text-primary transition-colors">How it works</a>
-          <button onClick={() => onNavigate('pricing')} className="hover:text-primary transition-colors">Pricing</button>
+          <a href="#how" className={`hover:text-primary transition-colors ${page === 'home' ? 'text-primary' : ''}`}>How it works</a>
+          <button onClick={() => onNavigate('pricing')} className={`hover:text-primary transition-colors ${page === 'pricing' ? 'text-primary font-medium' : ''}`}>Pricing</button>
           <a href="#metrics" className="hover:text-primary transition-colors">Metrics</a>
           <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">GitHub</a>
           <button

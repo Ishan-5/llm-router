@@ -112,14 +112,17 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
           <form onSubmit={handleSubmit}>
             <div className="flex flex-col gap-3">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask anything — trivial or hard"
-                className="bg-panel border border-line rounded-lg px-4 py-3 font-body text-sm
-                           placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Ask anything — trivial or hard"
+                  className="w-full bg-panel border border-line rounded-lg px-4 py-3 pr-16 font-body text-sm
+                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted pointer-events-none">↵ send</span>
+              </div>
               <div className="flex gap-3">
                 <select
                   value={override}
