@@ -263,13 +263,14 @@ def reset_config():
 
 
 @app.get("/logs")
-def get_logs(limit: int = 50):
-    """Returns the most recent request logs. limit capped at 100."""
+def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
+    """Returns the most recent request logs for the calling key only. limit capped at 100."""
     limit = min(limit, 100)
     session = SessionLocal()
     try:
         rows = (
             session.query(RequestLog)
+            .filter(RequestLog.api_key_id == api_key.id)
             .order_by(RequestLog.created_at.desc())
             .limit(limit)
             .all()
