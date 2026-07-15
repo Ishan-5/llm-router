@@ -43,8 +43,21 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
 
   if (!stats) {
     return (
-      <section id="metrics" className="max-w-6xl mx-auto px-6 py-16 border-t border-line">
-        <p className="font-mono text-xs text-muted">Loading metrics…</p>
+      <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
+        <div className="h-7 w-48 bg-line rounded animate-pulse mb-2" />
+        <div className="h-4 w-72 bg-line rounded animate-pulse mb-12" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="border-l-2 border-line pl-4">
+              <div className="h-3 w-20 bg-line rounded animate-pulse mb-3" />
+              <div className="h-9 w-16 bg-line rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <div className="h-56 bg-line rounded-lg animate-pulse" />
+          <div className="h-56 bg-line rounded-lg animate-pulse" />
+        </div>
       </section>
     )
   }

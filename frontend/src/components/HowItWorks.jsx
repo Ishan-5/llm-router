@@ -12,7 +12,12 @@ const STEPS = [
   {
     n: '03',
     title: 'Respond',
-    body: 'A semantic cache checks for near-duplicate queries first. If the assigned tier fails or rate-limits, the request automatically steps down instead of erroring out.',
+    body: 'Response streams back token by token. A semantic cache checks for near-duplicates first — hits return instantly. If the assigned tier fails or rate-limits, the request steps down automatically.',
+  },
+  {
+    n: '04',
+    title: 'Web',
+    body: 'Time-sensitive queries — live scores, stock prices, breaking news, "who is the current CEO" — are intercepted before the classifier and routed to Tavily live search instead of an LLM.',
   },
 ]
 
@@ -21,7 +26,7 @@ export default function HowItWorks() {
     <section id="how" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
       <h2 className="font-display text-2xl font-semibold mb-14">How it works</h2>
 
-      <div className="relative grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-8">
+      <div className="relative grid grid-cols-1 md:grid-cols-4 gap-10 md:gap-8">
         {/* connecting line through all three steps, echoing the hero diagram */}
         <div className="hidden md:block absolute top-[7px] left-[8.5%] right-[8.5%] h-px bg-line" />
 
