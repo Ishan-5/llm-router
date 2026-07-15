@@ -220,3 +220,6 @@ llm-router/
 ## Roadmap
 
 No true PII/injection ML classifier (regex-only today). No per-key BYOM isolation. No distributed rate limiting. Next additions if this moves past portfolio scope — not needed to call the current version complete.
+
+```
+*Built by [Ishan](https://github.com/Ishan-5) · [LinkedIn](https://linkedin.com/in/devansh584)*
