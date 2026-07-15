@@ -52,6 +52,7 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   }
 }
 
+export async function routeQuery(query, overrideTier = null, bypassCache = false) {
   // read user's provider api keys from localStorage to send with request
   let userKeys = {}
   try {
