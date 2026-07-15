@@ -10,6 +10,7 @@ const TIER_DEFAULTS = {
 export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
   const [query, setQuery] = useState('')
   const [override, setOverride] = useState('auto')
+  const [bypassCache, setBypassCache] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [lastResult, setLastResult] = useState(null)  // persists during loading so score/tier don't blink
@@ -41,7 +42,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     setResult(null)
     // don't clear lastResult here -- keeps score visible while loading
     try {
-      const data = await routeQuery(query, override === 'auto' ? null : override)
+      const data = await routeQuery(query, override === 'auto' ? null : override, bypassCache)
       setResult(data)
       setLastResult(data)
       fetchStats().then(setTicker).catch(() => {})
@@ -66,7 +67,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const activeTier = loading ? lastResult?.routed_to : result?.routed_to
   const score = loading ? lastResult?.difficulty_score : result?.difficulty_score
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
-    ? Math.round((1 - ticker.total_actual_cost / ticker.total_hypothetical_cost) * 100)
+    ? Math.round((1 - (ticker.total_actual_cost - (ticker.cache_savings_usd || 0)) / ticker.total_hypothetical_cost) * 100)
     : null
 
   return (
@@ -105,7 +106,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
               <span className="text-3xl font-semibold text-signal">{savedPct}%</span>
               <span className="text-xs text-muted leading-snug">
                 cheaper than routing all {ticker.total_requests} logged requests to frontier —
-                ${ticker.total_actual_cost.toFixed(4)} spent vs ${ticker.total_hypothetical_cost.toFixed(4)}
+                ${ticker.total_savings_usd?.toFixed(4) || '0.0000'} saved (routing + cache)
               </span>
             </div>
           )}
@@ -136,6 +137,18 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                     <option key={t.key} value={t.key}>Force: {t.label} ({activeConfig[t.key]?.model_id || t.sub})</option>
                   ))}
                 </select>
+                <button
+                  type="button"
+                  onClick={() => setBypassCache(v => !v)}
+                  className={`font-mono text-xs px-3 py-3 rounded-lg border transition whitespace-nowrap ${
+                    bypassCache
+                      ? 'border-signal text-signal bg-signal/10'
+                      : 'border-line text-muted hover:text-primary hover:border-signal/50'
+                  }`}
+                  title="Skip cache and get a fresh response from the model"
+                >
+                  Fresh response
+                </button>
                 <button
                   type="submit"
                   disabled={loading}
@@ -190,7 +203,10 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
               return (
                 <g key={t.key}>
                   <line x1="190" y1="30" x2="90" y2={t.y} stroke={isActive ? 'var(--color-signal)' : 'var(--color-line)'} strokeWidth={isActive ? 2.5 : 1.5} />
-                  <circle cx="90" cy={t.y} r={isActive ? 12 : 9} fill={isActive ? 'var(--color-signal)' : 'none'} stroke={isActive ? 'var(--color-signal)' : 'var(--color-line)'} strokeWidth="2" className="transition-all duration-500" />
+                  <circle cx="90" cy={t.y} r={isActive ? 12 : 9}
+                    fill={isActive ? (result?.cache_hit ? 'var(--color-cool)' : 'var(--color-signal)') : 'none'}
+                    stroke={isActive ? (result?.cache_hit ? 'var(--color-cool)' : 'var(--color-signal)') : 'var(--color-line)'}
+                    strokeWidth="2" className="transition-all duration-500" />
                   <text x="112" y={t.y - 8} className="font-display font-semibold" fontSize="15" fill={isActive ? 'var(--color-signal)' : 'var(--color-primary)'}>{t.label}</text>
                   <text x="112" y={t.y + 10} className="font-mono" fontSize="10" fill="var(--color-muted)">{t.sub}</text>
                 </g>

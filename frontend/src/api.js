@@ -1,7 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 const API_KEY = import.meta.env.VITE_API_KEY || ''
 
-export async function routeQuery(query, overrideTier = null) {
+export async function routeQuery(query, overrideTier = null, bypassCache = false) {
   // read user's provider api keys from localStorage to send with request
   let userKeys = {}
   try {
@@ -16,6 +16,7 @@ export async function routeQuery(query, overrideTier = null) {
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
+  if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
 
   const res = await fetch(`${API_BASE}/route`, {
