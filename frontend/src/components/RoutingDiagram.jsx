@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { routeQueryStream, fetchStats, fetchConfig } from '../api'
+import { routeQuery, fetchStats, fetchConfig } from '../api'
 
 const TIER_DEFAULTS = {
   cheap:    { label: 'Cheap',    sub: 'llama3.2:3b · local',      y: 60  },
@@ -15,7 +15,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const [bypassCache, setBypassCache] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
-  const [streamingText, setStreamingText] = useState('')
   const [lastResult, setLastResult] = useState(null)  // persists during loading so score/tier don't blink
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
@@ -43,28 +42,13 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     setLoading(true)
     setError(null)
     setResult(null)
-    setStreamingText('')
     try {
-      let metaData = null
-      await routeQueryStream(
-        query,
-        override === 'auto' ? null : override,
-        bypassCache,
-        (chunk) => setStreamingText(t => t + chunk),
-        (meta) => { metaData = meta },
-        (done) => {
-          setStreamingText(t => {
-            const final = { ...metaData, ...done, response: t }
-            setResult(final)
-            setLastResult(final)
-            return t
-          })
-          setBypassCache(false)
-          fetchStats().then(setTicker).catch(() => {})
-          fetchConfig().then(setActiveConfig).catch(() => {})
-        },
-        (errMsg) => setError(errMsg),
-      )
+      const data = await routeQuery(query, override === 'auto' ? null : override, bypassCache)
+      setResult(data)
+      setLastResult(data)
+      setBypassCache(false)
+      fetchStats().then(setTicker).catch(() => {})
+      fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
       setError(err.message)
     } finally {
@@ -73,7 +57,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   }
 
   function handleCopy() {
-    const text = streamingText || result?.response
+    const text = result?.response
     if (!text) return
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
@@ -85,7 +69,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   // use lastResult for the diagram so score/tier persist during loading
   const activeTier = loading ? lastResult?.routed_to : result?.routed_to
   const score = loading ? lastResult?.difficulty_score : result?.difficulty_score
-  const displayText = streamingText || result?.response || null
+  const displayText = result?.response || null
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
     ? Math.round((1 - (ticker.total_actual_cost - (ticker.cache_savings_usd || 0)) / ticker.total_hypothetical_cost) * 100)
     : null
@@ -119,7 +103,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
           <p className="text-muted text-base leading-relaxed max-w-md mb-8">
             A regression model trained on 6,500 labeled queries predicts how hard each
             request actually is, then routes it to the cheapest tier that can handle it.
-            Time-sensitive queries go to live web search. Responses stream back token by token.
+            Time-sensitive queries go to live web search.
           </p>
 
           {savedPct !== null && (
@@ -183,31 +167,25 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             {error && <p className="mt-2 text-xs font-mono text-danger">{error}</p>}
           </form>
 
-          {(displayText) && (
+          {displayText && (
             <div className="mt-6 rounded-lg border border-line bg-panel p-5">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
                 <div className="flex flex-wrap gap-4 font-mono text-xs">
-                  {result ? (
-                    <>
-                      <span className="text-cool">${result.cost_usd?.toFixed(6)}</span>
-                      <span className="text-muted">{result.latency_ms?.toFixed(0)}ms</span>
-                      {result.difficulty_score != null && (
-                        <span className="px-1.5 py-0.5 rounded border border-signal/40 text-signal bg-signal/10">
-                          difficulty {result.difficulty_score.toFixed(1)}
-                        </span>
-                      )}
-                      <span className={result.cache_hit
-                        ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
-                        : 'text-muted'
-                      }>
-                        {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
-                      </span>
-                      {result.fallback_used && <span className="text-danger">FALLBACK</span>}
-                      {result.routed_to === 'web' && <span className="px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10">WEB SEARCH</span>}
-                    </>
-                  ) : (
-                    <span className="text-muted animate-pulse">streaming…</span>
+                  <span className="text-cool">${result.cost_usd?.toFixed(6)}</span>
+                  <span className="text-muted">{result.latency_ms?.toFixed(0)}ms</span>
+                  {result.difficulty_score != null && (
+                    <span className="px-1.5 py-0.5 rounded border border-signal/40 text-signal bg-signal/10">
+                      difficulty {result.difficulty_score.toFixed(1)}
+                    </span>
                   )}
+                  <span className={result.cache_hit
+                    ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
+                    : 'text-muted'
+                  }>
+                    {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
+                  </span>
+                  {result.fallback_used && <span className="text-danger">FALLBACK</span>}
+                  {result.routed_to === 'web' && <span className="px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10">WEB SEARCH</span>}
                 </div>
                 <button
                   onClick={handleCopy}
