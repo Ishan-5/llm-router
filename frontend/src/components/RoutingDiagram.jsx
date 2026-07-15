@@ -53,10 +53,12 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         (chunk) => setStreamingText(t => t + chunk),
         (meta) => { metaData = meta },
         (done) => {
-          const final = { ...metaData, ...done }
-          setResult(final)
-          setLastResult(final)
-          setStreamingText('')
+          setStreamingText(t => {
+            const final = { ...metaData, ...done, response: t }
+            setResult(final)
+            setLastResult(final)
+            return t  // keep streamingText so displayText doesn't flash empty
+          })
           fetchStats().then(setTicker).catch(() => {})
           fetchConfig().then(setActiveConfig).catch(() => {})
         },

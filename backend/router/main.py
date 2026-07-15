@@ -287,15 +287,26 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
     async def _live_stream():
         full_text = []
         meta = None
-        try:
-            gen = await loop.run_in_executor(
-                executor, lambda: list(stream_model(routing_tier, req.query, user_config.get(routing_tier)))
-            )
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
-            return
+        queue = asyncio.Queue()
 
-        for item in gen:
+        def _run_generator():
+            try:
+                for item in stream_model(routing_tier, req.query, user_config.get(routing_tier)):
+                    loop.call_soon_threadsafe(queue.put_nowait, item)
+            except Exception as e:
+                loop.call_soon_threadsafe(queue.put_nowait, Exception(str(e)))
+            finally:
+                loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel
+
+        loop.run_in_executor(executor, _run_generator)
+
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                yield f"data: {json.dumps({'type': 'error', 'detail': str(item)})}\n\n"
+                return
             if isinstance(item, dict):
                 meta = item
             else:
