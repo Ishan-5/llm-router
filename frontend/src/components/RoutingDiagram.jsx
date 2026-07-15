@@ -57,8 +57,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             const final = { ...metaData, ...done, response: t }
             setResult(final)
             setLastResult(final)
-            return t  // keep streamingText so displayText doesn't flash empty
+            return t
           })
+          setBypassCache(false)
           fetchStats().then(setTicker).catch(() => {})
           fetchConfig().then(setActiveConfig).catch(() => {})
         },
@@ -118,6 +119,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
           <p className="text-muted text-base leading-relaxed max-w-md mb-8">
             A regression model trained on 6,500 labeled queries predicts how hard each
             request actually is, then routes it to the cheapest tier that can handle it.
+            Time-sensitive queries go to live web search. Responses stream back token by token.
           </p>
 
           {savedPct !== null && (
@@ -189,6 +191,11 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                     <>
                       <span className="text-cool">${result.cost_usd?.toFixed(6)}</span>
                       <span className="text-muted">{result.latency_ms?.toFixed(0)}ms</span>
+                      {result.difficulty_score != null && (
+                        <span className="px-1.5 py-0.5 rounded border border-signal/40 text-signal bg-signal/10">
+                          difficulty {result.difficulty_score.toFixed(1)}
+                        </span>
+                      )}
                       <span className={result.cache_hit
                         ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
                         : 'text-muted'

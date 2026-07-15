@@ -234,24 +234,11 @@ def stream_model(tier: str, query: str, user_config: dict | None = None):
     Only supports OpenAI-compatible providers -- Ollama falls back to call_model (non-streaming).
     """
     if user_config:
-        provider = user_config["provider"]
-        model_id = user_config["model_id"]
-        api_key = user_config.get("api_key", "") or ""
-        price_in = user_config.get("price_per_m_input", 0.0)
-        price_out = user_config.get("price_per_m_output", 0.0)
-        if not api_key:
-            if provider == "groq":
-                api_key = GROQ_API_KEY
-            elif provider == "gemini":
-                api_key = GEMINI_API_KEY
-        if provider == "ollama":
-            # ollama streaming not implemented -- fall back to non-streaming
-            result = call_model(tier, query, user_config)
-            yield result["text"]
-            yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
-            return
-        base_url = PROVIDERS_REGISTRY[provider]["base_url"]
-        yield from _stream_openai_compatible(model_id, query, tier, price_in, price_out, api_key, base_url)
+        # BYOM: skip streaming entirely -- non-streaming path gives accurate token counts
+        # across all providers regardless of stream_options support
+        result = call_model(tier, query, user_config)
+        yield result["text"]
+        yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
         return
 
     # default path

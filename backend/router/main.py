@@ -56,167 +56,17 @@ class QueryRequest(BaseModel):
         return v
 
 
-@app.post("/route")
-async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
-    if is_prompt_injection(req.query):
-        raise HTTPException(status_code=400, detail="Prompt injection detected")
-
-    # web search check -- runs before cache/classifier, zero extra latency
-    if needs_web_search(req.query) and TAVILY_API_KEY:
-        start = time.time()
-        try:
-            import httpx
-            resp = await asyncio.get_event_loop().run_in_executor(
-                executor, lambda: httpx.post(
-                    "https://api.tavily.com/search",
-                    json={"api_key": TAVILY_API_KEY, "query": req.query, "search_depth": "advanced", "max_results": 5},
-                    timeout=10,
-                )
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            answer = data.get("answer") or "\n\n".join(r["content"] for r in data.get("results", [])[:3])
-        except Exception:
-            pass  # fall through to normal routing
-        else:
-            latency_ms = round((time.time() - start) * 1000, 2)
-            log_request({
-                "api_key_id": api_key.id,
-                "query": sanitize_pii(req.query),
-                "difficulty_score": None,
-                "intended_tier": "web",
-                "tier": "web",
-                "fallback_used": False,
-                "cache_hit": False,
-                "cache_similarity": None,
-                "model_id": "tavily/search",
-                "input_tokens": 0,
-                "output_tokens": 0,
-                "cost_usd": 0.0,
-                "latency_ms": latency_ms,
-            })
-            return {
-                "response": answer,
-                "routed_to": "web",
-                "intended_tier": "web",
-                "predicted_tier": "web",
-                "override_used": False,
-                "budget_capped": False,
-                "fallback_used": False,
-                "cache_hit": False,
-                "difficulty_score": None,
-                "cost_usd": 0.0,
-                "latency_ms": latency_ms,
-            }
-
-    start = time.time()
+async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
+    """
+    Shared pre-processing for both /route and /route/stream.
+    Returns one of three dicts:
+      {"type": "web",   "answer": str, "latency_ms": float}
+      {"type": "cache", "cached": dict, "tokens_saved_usd": float, "latency_ms": float}
+      {"type": "live",  "tier": str, "difficulty_score": float, "over_budget": bool, "user_config": dict}
+    """
     loop = asyncio.get_event_loop()
 
-    # 1. Run cache check and classifier in parallel
-    async def _maybe_check_cache():
-        if req.bypass_cache:
-            return None
-        return await loop.run_in_executor(executor, check_cache, req.query)
-
-    cached, (difficulty_score, tier) = await asyncio.gather(
-        _maybe_check_cache(),
-        loop.run_in_executor(executor, get_tier, req.query, TIER_MARGIN),
-    )
-
-    if cached is not None:
-        latency_ms = round((time.time() - start) * 1000, 2)
-        price_in, price_out = get_pricing_for_model(cached["model_id"])
-        tokens_saved_usd = round(
-            (cached["input_tokens"] / 1_000_000 * price_in)
-            + (cached["output_tokens"] / 1_000_000 * price_out),
-            6,
-        )
-        log_request({
-            "api_key_id": api_key.id,
-            "query": sanitize_pii(req.query),
-            "difficulty_score": None,
-            "intended_tier": cached["tier"],
-            "tier": cached["tier"],
-            "fallback_used": False,
-            "cache_hit": True,
-            "cache_similarity": cached["similarity"],
-            "model_id": cached["model_id"],
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "cost_usd": 0.0,
-            "latency_ms": latency_ms,
-            "tokens_saved_usd": tokens_saved_usd,
-        })
-        return {
-            "response": cached["response"],
-            "routed_to": cached["tier"],
-            "cache_hit": True,
-            "cache_similarity": cached["similarity"],
-            "cost_usd": 0.0,
-            "tokens_saved_usd": tokens_saved_usd,
-            "latency_ms": latency_ms,
-        }
-
-    # 2. No cache hit -- use override if given, otherwise the predicted tier
-    routing_tier = req.override_tier if req.override_tier else tier
-
-    # 2a. Budget enforcement -- if this key is over its daily cap, force
-    # everything to the cheap tier regardless of predicted difficulty or override
-    over_budget = not check_budget(api_key)
-    if over_budget:
-        routing_tier = "cheap"
-
-    try:
-        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
-    except AllTiersFailedError as e:
-        print(f"[route] AllTiersFailedError: {e}")  # full detail in server logs only
-        raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
-
-    latency_ms = round((time.time() - start) * 1000, 2)
-
-    log_request({
-        "api_key_id": api_key.id,
-        "query": sanitize_pii(req.query),
-        "difficulty_score": difficulty_score,
-        "intended_tier": result["intended_tier"],
-        "tier": result["tier"],
-        "fallback_used": result["fallback_used"],
-        "cache_hit": False,
-        "cache_similarity": None,
-        "model_id": result["model_id"],
-        "input_tokens": result["input_tokens"],
-        "output_tokens": result["output_tokens"],
-        "cost_usd": result["cost_usd"],
-        "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
-    })
-
-    # 3. Store in cache async (fire and forget -- don't block the response)
-    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"])
-
-    return {
-        "response": result["text"],
-        "routed_to": result["tier"],
-        "intended_tier": result["intended_tier"],
-        "predicted_tier": tier,
-        "override_used": req.override_tier is not None,
-        "budget_capped": over_budget,
-        "fallback_used": result["fallback_used"],
-        "cache_hit": False,
-        "difficulty_score": difficulty_score,
-        "cost_usd": result["cost_usd"],
-        "latency_ms": latency_ms,
-    }
-
-
-@app.post("/route/stream")
-async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
-    if is_prompt_injection(req.query):
-        raise HTTPException(status_code=400, detail="Prompt injection detected")
-
-    start = time.time()
-    loop = asyncio.get_event_loop()
-
-    # web search -- instant single SSE event
+    # web search -- runs before cache/classifier
     if needs_web_search(req.query) and TAVILY_API_KEY:
         try:
             import httpx
@@ -231,18 +81,17 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             data = resp.json()
             answer = data.get("answer") or "\n\n".join(r["content"] for r in data.get("results", [])[:3])
         except Exception:
-            pass
+            pass  # fall through to normal routing
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
-            log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query), "difficulty_score": None,
-                "intended_tier": "web", "tier": "web", "fallback_used": False, "cache_hit": False,
-                "cache_similarity": None, "model_id": "tavily/search", "input_tokens": 0,
-                "output_tokens": 0, "cost_usd": 0.0, "latency_ms": latency_ms})
-            async def _web_stream():
-                yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms})}\n\n"
-                yield f"data: {json.dumps({'type': 'chunk', 'text': answer})}\n\n"
-                yield f"data: {json.dumps({'type': 'done'})}\n\n"
-            return StreamingResponse(_web_stream(), media_type="text/event-stream")
+            log_request({
+                "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+                "difficulty_score": None, "intended_tier": "web", "tier": "web",
+                "fallback_used": False, "cache_hit": False, "cache_similarity": None,
+                "model_id": "tavily/search", "input_tokens": 0, "output_tokens": 0,
+                "cost_usd": 0.0, "latency_ms": latency_ms,
+            })
+            return {"type": "web", "answer": answer, "latency_ms": latency_ms}
 
     # cache check + classifier in parallel
     async def _maybe_check_cache():
@@ -255,24 +104,22 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         loop.run_in_executor(executor, get_tier, req.query, TIER_MARGIN),
     )
 
-    # cache hit -- instant single SSE event
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
         price_in, price_out = get_pricing_for_model(cached["model_id"])
         tokens_saved_usd = round(
             (cached["input_tokens"] / 1_000_000 * price_in)
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
-        log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query), "difficulty_score": None,
-            "intended_tier": cached["tier"], "tier": cached["tier"], "fallback_used": False,
-            "cache_hit": True, "cache_similarity": cached["similarity"], "model_id": cached["model_id"],
-            "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_ms": latency_ms,
-            "tokens_saved_usd": tokens_saved_usd})
-        async def _cache_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms})}\n\n"
-            yield f"data: {json.dumps({'type': 'chunk', 'text': cached['response']})}\n\n"
-            yield f"data: {json.dumps({'type': 'done'})}\n\n"
-        return StreamingResponse(_cache_stream(), media_type="text/event-stream")
+        log_request({
+            "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+            "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
+            "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
+            "model_id": cached["model_id"], "input_tokens": 0, "output_tokens": 0,
+            "cost_usd": 0.0, "latency_ms": latency_ms, "tokens_saved_usd": tokens_saved_usd,
+        })
+        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms}
 
+    # live model call -- resolve tier + budget
     routing_tier = req.override_tier if req.override_tier else tier
     over_budget = not check_budget(api_key)
     if over_budget:
@@ -283,6 +130,108 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         for t, key in req.user_api_keys.items():
             if t in user_config and key:
                 user_config[t]["api_key"] = key
+
+    return {
+        "type": "live",
+        "tier": routing_tier,
+        "difficulty_score": difficulty_score,
+        "predicted_tier": tier,
+        "over_budget": over_budget,
+        "user_config": user_config,
+    }
+
+
+@app.post("/route")
+async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+    if is_prompt_injection(req.query):
+        raise HTTPException(status_code=400, detail="Prompt injection detected")
+
+    start = time.time()
+    pre = await _preprocess(req, api_key, start)
+
+    if pre["type"] == "web":
+        return {
+            "response": pre["answer"], "routed_to": "web", "intended_tier": "web",
+            "predicted_tier": "web", "override_used": False, "budget_capped": False,
+            "fallback_used": False, "cache_hit": False, "difficulty_score": None,
+            "cost_usd": 0.0, "latency_ms": pre["latency_ms"],
+        }
+
+    if pre["type"] == "cache":
+        cached = pre["cached"]
+        return {
+            "response": cached["response"], "routed_to": cached["tier"],
+            "cache_hit": True, "cache_similarity": cached["similarity"],
+            "cost_usd": 0.0, "tokens_saved_usd": pre["tokens_saved_usd"],
+            "latency_ms": pre["latency_ms"],
+        }
+
+    # live
+    routing_tier = pre["tier"]
+    difficulty_score = pre["difficulty_score"]
+    over_budget = pre["over_budget"]
+    loop = asyncio.get_event_loop()
+
+    try:
+        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
+    except AllTiersFailedError as e:
+        print(f"[route] AllTiersFailedError: {e}")
+        raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
+
+    latency_ms = round((time.time() - start) * 1000, 2)
+    log_request({
+        "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+        "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
+        "tier": result["tier"], "fallback_used": result["fallback_used"],
+        "cache_hit": False, "cache_similarity": None, "model_id": result["model_id"],
+        "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
+        "cost_usd": result["cost_usd"],
+        "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
+    })
+    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"])
+    return {
+        "response": result["text"], "routed_to": result["tier"],
+        "intended_tier": result["intended_tier"], "predicted_tier": pre["predicted_tier"],
+        "override_used": req.override_tier is not None, "budget_capped": over_budget,
+        "fallback_used": result["fallback_used"], "cache_hit": False,
+        "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
+        "latency_ms": latency_ms,
+    }
+
+
+@app.post("/route/stream")
+async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+    if is_prompt_injection(req.query):
+        raise HTTPException(status_code=400, detail="Prompt injection detected")
+
+    start = time.time()
+    pre = await _preprocess(req, api_key, start)
+
+    if pre["type"] == "web":
+        answer = pre["answer"]
+        latency_ms = pre["latency_ms"]
+        async def _web_stream():
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms})}\n\n"
+            yield f"data: {json.dumps({'type': 'chunk', 'text': answer})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        return StreamingResponse(_web_stream(), media_type="text/event-stream")
+
+    if pre["type"] == "cache":
+        cached = pre["cached"]
+        tokens_saved_usd = pre["tokens_saved_usd"]
+        latency_ms = pre["latency_ms"]
+        async def _cache_stream():
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms})}\n\n"
+            yield f"data: {json.dumps({'type': 'chunk', 'text': cached['response']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        return StreamingResponse(_cache_stream(), media_type="text/event-stream")
+
+    # live
+    routing_tier = pre["tier"]
+    difficulty_score = pre["difficulty_score"]
+    over_budget = pre["over_budget"]
+    user_config = pre["user_config"]
+    loop = asyncio.get_event_loop()
 
     async def _live_stream():
         full_text = []
