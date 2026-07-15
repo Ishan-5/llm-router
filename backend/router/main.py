@@ -73,13 +73,16 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
             resp = await loop.run_in_executor(
                 executor, lambda: httpx.post(
                     "https://api.tavily.com/search",
-                    json={"api_key": TAVILY_API_KEY, "query": req.query, "search_depth": "advanced", "max_results": 5},
+                    json={"api_key": TAVILY_API_KEY, "query": req.query, "search_depth": "advanced", "max_results": 5, "include_answer": True},
                     timeout=10,
                 )
             )
             resp.raise_for_status()
             data = resp.json()
-            answer = data.get("answer") or "\n\n".join(r["content"] for r in data.get("results", [])[:3])
+            answer = data.get("answer") or (
+                "\n\n".join(r["content"][:300] for r in data.get("results", [])[:3])
+                + "\n\n[web results truncated — showing first 300 chars per source]"
+            )
         except Exception:
             pass  # fall through to normal routing
         else:
