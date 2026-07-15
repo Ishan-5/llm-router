@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { routeQuery, fetchStats, fetchConfig } from '../api'
+import { routeQueryStream, fetchStats, fetchConfig } from '../api'
 
 const TIER_DEFAULTS = {
   cheap:    { label: 'Cheap',    sub: 'llama3.2:3b · local',      y: 60  },
@@ -15,6 +15,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const [bypassCache, setBypassCache] = useState(false)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
+  const [streamingText, setStreamingText] = useState('')
   const [lastResult, setLastResult] = useState(null)  // persists during loading so score/tier don't blink
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
@@ -42,13 +43,25 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     setLoading(true)
     setError(null)
     setResult(null)
-    // don't clear lastResult here -- keeps score visible while loading
+    setStreamingText('')
     try {
-      const data = await routeQuery(query, override === 'auto' ? null : override, bypassCache)
-      setResult(data)
-      setLastResult(data)
-      fetchStats().then(setTicker).catch(() => {})
-      fetchConfig().then(setActiveConfig).catch(() => {})
+      let metaData = null
+      await routeQueryStream(
+        query,
+        override === 'auto' ? null : override,
+        bypassCache,
+        (chunk) => setStreamingText(t => t + chunk),
+        (meta) => { metaData = meta },
+        (done) => {
+          const final = { ...metaData, ...done }
+          setResult(final)
+          setLastResult(final)
+          setStreamingText('')
+          fetchStats().then(setTicker).catch(() => {})
+          fetchConfig().then(setActiveConfig).catch(() => {})
+        },
+        (errMsg) => setError(errMsg),
+      )
     } catch (err) {
       setError(err.message)
     } finally {
@@ -57,8 +70,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   }
 
   function handleCopy() {
-    if (!result?.response) return
-    navigator.clipboard.writeText(result.response).then(() => {
+    const text = streamingText || result?.response
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
       setCopied(true)
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2000)
@@ -68,6 +82,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   // use lastResult for the diagram so score/tier persist during loading
   const activeTier = loading ? lastResult?.routed_to : result?.routed_to
   const score = loading ? lastResult?.difficulty_score : result?.difficulty_score
+  const displayText = streamingText || result?.response || null
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
     ? Math.round((1 - (ticker.total_actual_cost - (ticker.cache_savings_usd || 0)) / ticker.total_hypothetical_cost) * 100)
     : null
@@ -164,20 +179,26 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             {error && <p className="mt-2 text-xs font-mono text-danger">{error}</p>}
           </form>
 
-          {result && (
-              <div className="mt-6 rounded-lg border border-line bg-panel p-5">
+          {(displayText) && (
+            <div className="mt-6 rounded-lg border border-line bg-panel p-5">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
                 <div className="flex flex-wrap gap-4 font-mono text-xs">
-                  <span className="text-cool">${result.cost_usd.toFixed(6)}</span>
-                  <span className="text-muted">{result.latency_ms.toFixed(0)}ms</span>
-                  <span className={result.cache_hit
-                    ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
-                    : 'text-muted'
-                  }>
-                    {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
-                  </span>
-                  {result.fallback_used && <span className="text-danger">FALLBACK</span>}
-                  {result.routed_to === 'web' && <span className="px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10">WEB SEARCH</span>}
+                  {result ? (
+                    <>
+                      <span className="text-cool">${result.cost_usd?.toFixed(6)}</span>
+                      <span className="text-muted">{result.latency_ms?.toFixed(0)}ms</span>
+                      <span className={result.cache_hit
+                        ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
+                        : 'text-muted'
+                      }>
+                        {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
+                      </span>
+                      {result.fallback_used && <span className="text-danger">FALLBACK</span>}
+                      {result.routed_to === 'web' && <span className="px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10">WEB SEARCH</span>}
+                    </>
+                  ) : (
+                    <span className="text-muted animate-pulse">streaming…</span>
+                  )}
                 </div>
                 <button
                   onClick={handleCopy}
@@ -197,7 +218,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 prose-strong:font-semibold
                 prose-blockquote:border-l-2 prose-blockquote:border-signal prose-blockquote:pl-3 prose-blockquote:text-muted
               ">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.response}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
               </div>
             </div>
           )}
