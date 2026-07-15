@@ -34,6 +34,7 @@ class QueryRequest(BaseModel):
     query: str
     override_tier: str | None = None
     user_api_keys: dict | None = None  # { tier: api_key } from localStorage, never stored
+    bypass_cache: bool = False
 
     @field_validator("query")
     @classmethod
@@ -110,8 +111,13 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     loop = asyncio.get_event_loop()
 
     # 1. Run cache check and classifier in parallel
+    async def _maybe_check_cache():
+        if req.bypass_cache:
+            return None
+        return await loop.run_in_executor(executor, check_cache, req.query)
+
     cached, (difficulty_score, tier) = await asyncio.gather(
-        loop.run_in_executor(executor, check_cache, req.query),
+        _maybe_check_cache(),
         loop.run_in_executor(executor, get_tier, req.query, TIER_MARGIN),
     )
 
