@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { routeQuery, fetchStats, fetchConfig } from '../api'
 
 const TIER_DEFAULTS = {
@@ -163,16 +165,19 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
           </form>
 
           {result && (
-            <div className="mt-6 rounded-lg border border-line bg-panel p-5">
+              <div className="mt-6 rounded-lg border border-line bg-panel p-5">
               <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
                 <div className="flex flex-wrap gap-4 font-mono text-xs">
                   <span className="text-cool">${result.cost_usd.toFixed(6)}</span>
                   <span className="text-muted">{result.latency_ms.toFixed(0)}ms</span>
-                  <span className={result.cache_hit ? 'text-cool' : 'text-muted'}>
+                  <span className={result.cache_hit
+                    ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
+                    : 'text-muted'
+                  }>
                     {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
                   </span>
                   {result.fallback_used && <span className="text-danger">FALLBACK</span>}
-                  {result.routed_to === 'web' && <span className="text-cool">WEB SEARCH</span>}
+                  {result.routed_to === 'web' && <span className="px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10">WEB SEARCH</span>}
                 </div>
                 <button
                   onClick={handleCopy}
@@ -181,7 +186,19 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                   {copied ? 'copied ✓' : 'copy'}
                 </button>
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{result.response}</p>
+              <div className="prose prose-sm dark:prose-invert max-w-none
+                text-sm leading-relaxed
+                prose-headings:font-display prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
+                prose-p:my-1.5
+                prose-ul:my-1.5 prose-ul:pl-4 prose-li:my-0.5
+                prose-ol:my-1.5 prose-ol:pl-4
+                prose-code:font-mono prose-code:text-xs prose-code:bg-line prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                prose-pre:bg-line prose-pre:rounded-lg prose-pre:p-4 prose-pre:overflow-x-auto
+                prose-strong:font-semibold
+                prose-blockquote:border-l-2 prose-blockquote:border-signal prose-blockquote:pl-3 prose-blockquote:text-muted
+              ">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.response}</ReactMarkdown>
+              </div>
             </div>
           )}
         </div>
