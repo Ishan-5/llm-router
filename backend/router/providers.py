@@ -45,6 +45,40 @@ def _call_openai_compatible(
     }
 
 
+def _stream_openai_compatible(
+    model_id: str,
+    query: str,
+    tier_label: str,
+    price_in: float,
+    price_out: float,
+    api_key: str,
+    base_url: str,
+    max_tokens: int = 1000,
+):
+    """
+    Streaming version. Yields text chunks, then a final dict with metadata.
+    Caller collects chunks until it gets a dict (the sentinel).
+    """
+    client = OpenAI(api_key=api_key, base_url=base_url)
+    stream = client.chat.completions.create(
+        model=model_id,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": query}],
+        stream=True,
+        stream_options={"include_usage": True},
+    )
+    input_tokens = 0
+    output_tokens = 0
+    for chunk in stream:
+        if chunk.usage:
+            input_tokens = chunk.usage.prompt_tokens or 0
+            output_tokens = chunk.usage.completion_tokens or 0
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
+    cost = (input_tokens / 1_000_000) * price_in + (output_tokens / 1_000_000) * price_out
+    yield {"tier": tier_label, "model_id": model_id, "input_tokens": input_tokens, "output_tokens": output_tokens, "cost_usd": round(cost, 6)}
+
+
 def _call_anthropic(
     model_id: str,
     query: str,
@@ -192,6 +226,57 @@ def call_gemini(query: str) -> dict:
         "output_tokens": output_tokens,
         "cost_usd": round(cost, 6),
     }
+
+
+def stream_model(tier: str, query: str, user_config: dict | None = None):
+    """
+    Streaming version of call_model. Yields text chunks then a final metadata dict.
+    Only supports OpenAI-compatible providers -- Ollama falls back to call_model (non-streaming).
+    """
+    if user_config:
+        provider = user_config["provider"]
+        model_id = user_config["model_id"]
+        api_key = user_config.get("api_key", "") or ""
+        price_in = user_config.get("price_per_m_input", 0.0)
+        price_out = user_config.get("price_per_m_output", 0.0)
+        if not api_key:
+            if provider == "groq":
+                api_key = GROQ_API_KEY
+            elif provider == "gemini":
+                api_key = GEMINI_API_KEY
+        if provider == "ollama":
+            # ollama streaming not implemented -- fall back to non-streaming
+            result = call_model(tier, query, user_config)
+            yield result["text"]
+            yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
+            return
+        base_url = PROVIDERS_REGISTRY[provider]["base_url"]
+        yield from _stream_openai_compatible(model_id, query, tier, price_in, price_out, api_key, base_url)
+        return
+
+    # default path
+    if tier == "cheap":
+        try:
+            result = call_ollama(query)
+            yield result["text"]
+            yield {"tier": "cheap", "model_id": result["model_id"], "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+            return
+        except Exception as e:
+            print(f"[ollama] local call failed ({e}), falling back to Groq cheap model")
+            cfg = OLLAMA_FALLBACK_CONFIG
+            yield from _stream_openai_compatible(
+                cfg["model_id"], query, "cheap",
+                cfg["price_per_m_input"], cfg["price_per_m_output"],
+                GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+            )
+            return
+
+    cfg = MODEL_CONFIG[tier]
+    yield from _stream_openai_compatible(
+        cfg["model_id"], query, tier,
+        cfg["price_per_m_input"], cfg["price_per_m_output"],
+        GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+    )
 
 
 def validate_key(provider: str, model_id: str, api_key: str) -> bool:

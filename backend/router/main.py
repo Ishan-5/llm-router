@@ -1,3 +1,4 @@
+import json
 import time
 import asyncio
 from datetime import datetime
@@ -5,10 +6,12 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func
 from router.classifier import get_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
+from router.providers import stream_model, validate_key
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
 from router.auth import require_api_key, check_budget
@@ -16,7 +19,6 @@ from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWE
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.model_config_loader import get_active_config, get_pricing_for_model
-from router.providers import validate_key
 
 app = FastAPI()
 executor = ThreadPoolExecutor()
@@ -204,6 +206,123 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms,
     }
+
+
+@app.post("/route/stream")
+async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+    if is_prompt_injection(req.query):
+        raise HTTPException(status_code=400, detail="Prompt injection detected")
+
+    start = time.time()
+    loop = asyncio.get_event_loop()
+
+    # web search -- instant single SSE event
+    if needs_web_search(req.query) and TAVILY_API_KEY:
+        try:
+            import httpx
+            resp = await loop.run_in_executor(
+                executor, lambda: httpx.post(
+                    "https://api.tavily.com/search",
+                    json={"api_key": TAVILY_API_KEY, "query": req.query, "search_depth": "advanced", "max_results": 5},
+                    timeout=10,
+                )
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data.get("answer") or "\n\n".join(r["content"] for r in data.get("results", [])[:3])
+        except Exception:
+            pass
+        else:
+            latency_ms = round((time.time() - start) * 1000, 2)
+            log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query), "difficulty_score": None,
+                "intended_tier": "web", "tier": "web", "fallback_used": False, "cache_hit": False,
+                "cache_similarity": None, "model_id": "tavily/search", "input_tokens": 0,
+                "output_tokens": 0, "cost_usd": 0.0, "latency_ms": latency_ms})
+            async def _web_stream():
+                yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms})}\n\n"
+                yield f"data: {json.dumps({'type': 'chunk', 'text': answer})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return StreamingResponse(_web_stream(), media_type="text/event-stream")
+
+    # cache check + classifier in parallel
+    async def _maybe_check_cache():
+        if req.bypass_cache:
+            return None
+        return await loop.run_in_executor(executor, check_cache, req.query)
+
+    cached, (difficulty_score, tier) = await asyncio.gather(
+        _maybe_check_cache(),
+        loop.run_in_executor(executor, get_tier, req.query, TIER_MARGIN),
+    )
+
+    # cache hit -- instant single SSE event
+    if cached is not None:
+        latency_ms = round((time.time() - start) * 1000, 2)
+        price_in, price_out = get_pricing_for_model(cached["model_id"])
+        tokens_saved_usd = round(
+            (cached["input_tokens"] / 1_000_000 * price_in)
+            + (cached["output_tokens"] / 1_000_000 * price_out), 6)
+        log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query), "difficulty_score": None,
+            "intended_tier": cached["tier"], "tier": cached["tier"], "fallback_used": False,
+            "cache_hit": True, "cache_similarity": cached["similarity"], "model_id": cached["model_id"],
+            "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0, "latency_ms": latency_ms,
+            "tokens_saved_usd": tokens_saved_usd})
+        async def _cache_stream():
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms})}\n\n"
+            yield f"data: {json.dumps({'type': 'chunk', 'text': cached['response']})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        return StreamingResponse(_cache_stream(), media_type="text/event-stream")
+
+    routing_tier = req.override_tier if req.override_tier else tier
+    over_budget = not check_budget(api_key)
+    if over_budget:
+        routing_tier = "cheap"
+
+    user_config = get_active_config()
+    if req.user_api_keys:
+        for t, key in req.user_api_keys.items():
+            if t in user_config and key:
+                user_config[t]["api_key"] = key
+
+    async def _live_stream():
+        full_text = []
+        meta = None
+        try:
+            gen = await loop.run_in_executor(
+                executor, lambda: list(stream_model(routing_tier, req.query, user_config.get(routing_tier)))
+            )
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"
+            return
+
+        for item in gen:
+            if isinstance(item, dict):
+                meta = item
+            else:
+                full_text.append(item)
+                yield f"data: {json.dumps({'type': 'chunk', 'text': item})}\n\n"
+
+        if meta is None:
+            yield f"data: {json.dumps({'type': 'error', 'detail': 'No response from model'})}\n\n"
+            return
+
+        latency_ms = round((time.time() - start) * 1000, 2)
+        full_response = "".join(full_text)
+
+        log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query),
+            "difficulty_score": difficulty_score, "intended_tier": routing_tier,
+            "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
+            "cache_similarity": None, "model_id": meta["model_id"],
+            "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
+            "cost_usd": meta["cost_usd"], "latency_ms": latency_ms})
+
+        loop.run_in_executor(executor, add_to_cache, req.query, full_response,
+            meta["tier"], meta["model_id"], meta["cost_usd"],
+            meta["input_tokens"], meta["output_tokens"])
+
+        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': tier, 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms})}\n\n"
+
+    return StreamingResponse(_live_stream(), media_type="text/event-stream")
 
 
 @app.get("/pricing")
