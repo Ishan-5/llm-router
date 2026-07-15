@@ -67,6 +67,7 @@ def test_route_uses_cache_when_available():
         mock_cache.return_value = {
             "response": "cached answer", "tier": "cheap",
             "model_id": "test-model", "similarity": 0.99,
+            "input_tokens": 10, "output_tokens": 5,
         }
         response = client.post(
             "/route", json={"query": "anything"},
