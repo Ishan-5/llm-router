@@ -6,4 +6,5 @@ __pycache__/
 *.egg-info/
 .DS_Store
 node_modules/
+seed_cache.py
 # do NOT ignore backend/models/ -- minilm files are committed intentionally

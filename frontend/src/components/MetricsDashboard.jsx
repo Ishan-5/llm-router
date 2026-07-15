@@ -203,6 +203,33 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         )}
       </div>
 
+      <div className="mb-16">
+        <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-6">Savings breakdown</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="border border-line rounded-lg p-5">
+            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Cache savings</p>
+            <p className="font-display text-2xl font-semibold text-cool">${(stats.cache_savings_usd || 0).toFixed(4)}</p>
+            <p className="font-mono text-[10px] text-muted mt-2">
+              {Math.round((stats.cache_hit_rate || 0) * 100)}% of requests served from cache
+            </p>
+          </div>
+          <div className="border border-line rounded-lg p-5">
+            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Routing savings</p>
+            <p className="font-display text-2xl font-semibold text-signal">${(stats.routing_savings_usd || 0).toFixed(4)}</p>
+            <p className="font-mono text-[10px] text-muted mt-2">
+              vs. sending everything to frontier
+            </p>
+          </div>
+          <div className="border border-2 border-signal/40 rounded-lg p-5">
+            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Total saved</p>
+            <p className="font-display text-2xl font-semibold text-signal">${(stats.total_savings_usd || 0).toFixed(4)}</p>
+            <p className="font-mono text-[10px] text-muted mt-2">
+              cache + routing combined
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-4">Avg latency by tier</h3>
         <ResponsiveContainer width="100%" height={180}>
