@@ -45,6 +45,30 @@ def _get_pricing(session, provider: str, model_id: str) -> tuple[float, float]:
     return None
 
 
+def get_pricing_for_model(model_id: str) -> tuple[float, float]:
+    """
+    Returns (price_per_m_input, price_per_m_output) for a given model_id.
+    Checks model_pricing table first (any provider), falls back to MODEL_CONFIG defaults.
+    Used to compute exact cache savings against the model that originally served the response.
+    """
+    session = SessionLocal()
+    try:
+        row = session.query(ModelPricing).filter(
+            ModelPricing.model_id == model_id,
+            ModelPricing.is_active == True,
+        ).first()
+        if row:
+            return row.price_per_m_input, row.price_per_m_output
+    finally:
+        session.close()
+    # fall back to hardcoded defaults by matching model_id
+    for cfg in MODEL_CONFIG.values():
+        if cfg["model_id"] == model_id:
+            return cfg["price_per_m_input"], cfg["price_per_m_output"]
+    # unknown model -- use cheap tier pricing as conservative floor
+    return MODEL_CONFIG["cheap"]["price_per_m_input"], MODEL_CONFIG["cheap"]["price_per_m_output"]
+
+
 def get_active_config() -> dict:
     """
     Returns the merged config for all 3 tiers.

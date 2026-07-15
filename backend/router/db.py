@@ -43,6 +43,7 @@ class RequestLog(Base):
     output_tokens = Column(Integer)
     cost_usd = Column(Float)
     latency_ms = Column(Float)
+    tokens_saved_usd = Column(Float, nullable=True)  # dollar value saved on cache hits
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

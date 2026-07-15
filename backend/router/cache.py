@@ -28,6 +28,8 @@ class QueryCache(Base):
     tier = Column(String)
     model_id = Column(String)
     original_cost_usd = Column(Float)
+    input_tokens = Column(Integer, nullable=True)   # tokens from the original provider call
+    output_tokens = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -66,6 +68,8 @@ def check_cache(query: str) -> dict | None:
             "tier": best_row.tier,
             "model_id": best_row.model_id,
             "original_cost_usd": best_row.original_cost_usd,
+            "input_tokens": best_row.input_tokens or 0,
+            "output_tokens": best_row.output_tokens or 0,
             "similarity": best_sim,
         }
     return None
@@ -84,7 +88,7 @@ def _evict(session):
         session.query(QueryCache).filter(QueryCache.id.in_(oldest_ids)).delete(synchronize_session=False)
 
 
-def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float):
+def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float, input_tokens: int = 0, output_tokens: int = 0):
     embedder = get_embedder()
     embedding = embedder.encode([query])[0].tolist()
 
@@ -96,6 +100,8 @@ def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: 
         tier=tier,
         model_id=model_id,
         original_cost_usd=cost_usd,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
     )
     session.add(entry)
     _evict(session)

@@ -15,7 +15,7 @@ from router.auth import require_api_key, check_budget
 from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
-from router.model_config_loader import get_active_config
+from router.model_config_loader import get_active_config, get_pricing_for_model
 from router.providers import validate_key
 
 app = FastAPI()
@@ -117,6 +117,12 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
 
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
+        price_in, price_out = get_pricing_for_model(cached["model_id"])
+        tokens_saved_usd = round(
+            (cached["input_tokens"] / 1_000_000 * price_in)
+            + (cached["output_tokens"] / 1_000_000 * price_out),
+            6,
+        )
         log_request({
             "api_key_id": api_key.id,
             "query": sanitize_pii(req.query),
@@ -131,6 +137,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "output_tokens": 0,
             "cost_usd": 0.0,
             "latency_ms": latency_ms,
+            "tokens_saved_usd": tokens_saved_usd,
         })
         return {
             "response": cached["response"],
@@ -138,6 +145,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "cache_hit": True,
             "cache_similarity": cached["similarity"],
             "cost_usd": 0.0,
+            "tokens_saved_usd": tokens_saved_usd,
             "latency_ms": latency_ms,
         }
 
@@ -175,7 +183,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     })
 
     # 3. Store in cache async (fire and forget -- don't block the response)
-    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"])
+    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"])
 
     return {
         "response": result["text"],
@@ -438,6 +446,14 @@ def get_stats():
             for day, actual in daily_actual
         ]
 
+        cache_savings_usd = float(
+            session.query(func.sum(RequestLog.tokens_saved_usd))
+            .filter(RequestLog.cache_hit == True)
+            .scalar() or 0.0
+        )
+        routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
+        total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
+
         return {
             "total_requests": total_requests,
             "tier_counts": tier_counts,
@@ -448,6 +464,9 @@ def get_stats():
             "fallback_count": fallback_count,
             "avg_latency_by_tier": avg_latency_by_tier,
             "daily_costs": daily_costs,
+            "cache_savings_usd": cache_savings_usd,
+            "routing_savings_usd": routing_savings_usd,
+            "total_savings_usd": total_savings_usd,
         }
     finally:
         session.close()
