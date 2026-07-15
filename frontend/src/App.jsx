@@ -7,6 +7,7 @@ import PricingTable from './components/PricingTable'
 import Footer from './components/Footer'
 import SettingsPanel from './components/SettingsPanel'
 import { useTheme } from './useTheme'
+import AboutPage from './components/AboutPage'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
@@ -57,6 +58,8 @@ export default function App() {
       <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={navigate} page={page} />
       {page === 'pricing' ? (
         <PricingTable onBack={() => navigate('home')} />
+      ) : page === 'about' ? (
+        <AboutPage />
       ) : (
         <>
           <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />

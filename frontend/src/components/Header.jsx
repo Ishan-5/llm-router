@@ -14,6 +14,7 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
           <a href="#how" className={`hover:text-primary transition-colors ${page === 'home' ? 'text-primary' : ''}`}>How it works</a>
           <button onClick={() => onNavigate('pricing')} className={`hover:text-primary transition-colors ${page === 'pricing' ? 'text-primary font-medium' : ''}`}>Pricing</button>
           <a href="#metrics" className="hover:text-primary transition-colors">Metrics</a>
+          <button onClick={() => onNavigate('about')} className={`hover:text-primary transition-colors ${page === 'about' ? 'text-primary font-medium' : ''}`}>About</button>
           <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">GitHub</a>
           <button
             onClick={onOpenSettings}
