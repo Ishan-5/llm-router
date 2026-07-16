@@ -92,7 +92,6 @@ async def require_user(authorization: str = Header(None)) -> str:
             headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY},
             timeout=5,
         )
-        print(f"[auth] supabase url={SUPABASE_URL!r} status={resp.status_code} body={resp.text[:200]}")
         if resp.status_code != 200:
             raise HTTPException(status_code=401, detail="Invalid or expired session")
         return resp.json()["id"]

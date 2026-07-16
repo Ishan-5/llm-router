@@ -346,8 +346,20 @@ class UserConfigRequest(BaseModel):
 
 
 @app.get("/config")
-def get_config(user_id: str = Depends(require_user)):
-    """Returns the active model config for the calling user."""
+def get_config(authorization: str = None):
+    """Returns active model config. If a valid user JWT is provided, returns that user's config. Otherwise returns defaults."""
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            import httpx
+            from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
+            token = authorization.removeprefix("Bearer ").strip()
+            resp = httpx.get(f"{SUPABASE_URL}/auth/v1/user",
+                headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY}, timeout=5)
+            if resp.status_code == 200:
+                user_id = resp.json()["id"]
+        except Exception:
+            pass
     config = get_active_config(user_id)
     return {
         tier: {k: v for k, v in cfg.items() if k != "api_key"}
