@@ -11,7 +11,7 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
         <button onClick={() => onNavigate('home')} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
           <div className="w-2 h-2 rounded-full bg-signal" />
           <span className="font-display font-semibold text-lg tracking-tight">
-            routewise
+            route<span className="text-signal">wise</span>
           </span>
         </button>
         <nav className="flex items-center gap-8 text-sm text-muted font-body">
