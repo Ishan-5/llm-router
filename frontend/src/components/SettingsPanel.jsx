@@ -11,7 +11,16 @@ async function fetchConfigForUser() {
     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
   })
   if (!res.ok) return {}
-  return res.json()
+  const data = await res.json()
+  if (!token) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('byom_config') || '{}')
+      Object.entries(saved).forEach(([tier, cfg]) => {
+        if (cfg.enabled) data[tier] = { model_id: cfg.model_id, provider: cfg.provider }
+      })
+    } catch {}
+  }
+  return data
 }
 
 async function saveConfigForUser(payload) {

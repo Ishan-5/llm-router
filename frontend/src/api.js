@@ -105,7 +105,17 @@ export async function fetchConfig() {
     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
   })
   if (!res.ok) throw new Error('Could not load config')
-  return res.json()
+  const data = await res.json()
+  // for guests, merge localStorage BYOM overrides on top of backend defaults
+  if (!token) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('byom_config') || '{}')
+      Object.entries(saved).forEach(([tier, cfg]) => {
+        if (cfg.enabled) data[tier] = { model_id: cfg.model_id, provider: cfg.provider }
+      })
+    } catch {}
+  }
+  return data
 }
 
 export async function saveConfig(tierConfigs) {
