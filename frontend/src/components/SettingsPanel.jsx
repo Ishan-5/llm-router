@@ -7,9 +7,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 async function fetchConfigForUser() {
   const { data: { session } } = await supabase.auth.getSession()
   const token = session?.access_token
-  if (!token) return {}  // non-logged-in: no DB config, use defaults
   const res = await fetch(`${API_BASE}/config`, {
-    headers: { 'Authorization': `Bearer ${token}` }
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
   })
   if (!res.ok) return {}
   return res.json()
@@ -232,7 +231,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
                   <div>
                     <span className="font-display font-semibold">{TIER_LABELS[tier]}</span>
                     <span className="font-mono text-xs text-muted ml-2">
-                      {t.enabled ? 'custom' : `default: ${activeConfig[tier]?.model_id || '—'}`}
+                      {t.enabled ? 'custom' : (activeConfig[tier]?.model_id ? `default: ${activeConfig[tier].model_id}` : 'default')}
                     </span>
                   </div>
                   <button
