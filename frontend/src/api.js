@@ -95,7 +95,15 @@ export async function fetchProviders() {
 }
 
 export async function fetchConfig() {
-  const res = await fetch(`${API_BASE}/config`)
+  let token = null
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    token = session?.access_token || null
+  } catch {}
+  const res = await fetch(`${API_BASE}/config`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+  })
   if (!res.ok) throw new Error('Could not load config')
   return res.json()
 }
