@@ -18,12 +18,19 @@ export default function App() {
   const { isDark, toggle } = useTheme()
   const [page, setPage] = useState('home')
   const [user, setUser] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 3000)
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
-      if (!session) setPage('home')
+      if (event === 'SIGNED_IN') { showToast('Signed in'); setPage('home') }
+      if (event === 'SIGNED_OUT') { showToast('Signed out'); setPage('home') }
     })
     return () => subscription.unsubscribe()
   }, [])
@@ -67,6 +74,9 @@ export default function App() {
             Backend offline — routing and stats unavailable. Make sure the server is running.
           </p>
         </div>
+      )}
+      {toast && (
+        <span className="fixed top-4 right-4 z-50 bg-surface border border-line text-primary text-xs font-mono px-4 py-2 rounded-full shadow-lg">{toast}</span>
       )}
       <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={navigate} page={page} user={user} />
       {page === 'pricing' ? (

@@ -1,7 +1,6 @@
 import ThemeToggle from './ThemeToggle'
 
 export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, onNavigate, page, user }) {
-
   async function handleSignOut() {
     const { supabase } = await import('../supabase')
     await supabase.auth.signOut()
@@ -28,7 +27,6 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
           ) : (
             <button onClick={() => onNavigate('auth')} className={`hover:text-primary transition-colors ${page === 'auth' ? 'text-primary font-medium' : ''}`}>Sign in</button>
           )}
-          <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">GitHub</a>
           <button
             onClick={onOpenSettings}
             className="relative flex items-center gap-1.5 font-mono text-xs border border-line rounded-full px-3 py-1.5 text-muted hover:text-primary hover:border-signal transition-colors"

@@ -1,5 +1,47 @@
 import { useState, useEffect } from 'react'
-import { fetchProviders, fetchConfig, saveConfig, resetConfig } from '../api'
+import { supabase } from '../supabase'
+import { fetchProviders } from '../api'
+
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+
+async function fetchConfigForUser() {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) return {}  // non-logged-in: no DB config, use defaults
+  const res = await fetch(`${API_BASE}/config`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  if (!res.ok) return {}
+  return res.json()
+}
+
+async function saveConfigForUser(payload) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) return null  // non-logged-in: localStorage only, no DB call
+  const res = await fetch(`${API_BASE}/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Save failed')
+  }
+  return res.json()
+}
+
+async function resetConfigForUser() {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  if (!token) return null  // non-logged-in: localStorage only, no DB call
+  const res = await fetch(`${API_BASE}/config`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  })
+  if (!res.ok) throw new Error('Reset failed')
+  return res.json()
+}
 
 const TIERS = ['cheap', 'mid', 'frontier']
 const TIER_LABELS = { cheap: 'Cheap', mid: 'Mid', frontier: 'Frontier' }
@@ -42,7 +84,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
 
   useEffect(() => {
     fetchProviders().then(setProviders).catch(() => {})
-    fetchConfig().then(setActiveConfig).catch(() => {})
+    fetchConfigForUser().then(setActiveConfig).catch(() => {})
   }, [])
 
   function handleToggle(tier) {
@@ -79,10 +121,10 @@ export default function SettingsPanel({ onClose, onSaved }) {
     setSuccess(null)
     setSaving(true)
     try {
-      await resetConfig()
+      await resetConfigForUser()
       localStorage.removeItem('byom_config')
       setTiers({ cheap: { ...EMPTY_TIER }, mid: { ...EMPTY_TIER }, frontier: { ...EMPTY_TIER } })
-      fetchConfig().then(setActiveConfig).catch(() => {})
+      fetchConfigForUser().then(setActiveConfig).catch(() => {})
       setSuccess('Reset to defaults.')
       setTimeout(() => { onSaved && onSaved() }, 800)
     } catch (e) {
@@ -121,7 +163,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
     }
 
     try {
-      await saveConfig(payload)
+      await saveConfigForUser(payload)
 
       const localStore = {}
       for (const tier of TIERS) {
@@ -139,7 +181,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
       }
       localStorage.setItem('byom_config', JSON.stringify(localStore))
 
-      fetchConfig().then(setActiveConfig).catch(() => {})
+      fetchConfigForUser().then(setActiveConfig).catch(() => {})
       setSuccess('Config saved and validated successfully.')
       setTimeout(() => { onSaved && onSaved() }, 800)
     } catch (e) {
