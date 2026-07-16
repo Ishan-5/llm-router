@@ -1,6 +1,7 @@
 import json
 import time
 import asyncio
+import secrets
 from datetime import datetime
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -14,7 +15,7 @@ from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.providers import stream_model, validate_key
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
-from router.auth import require_api_key, check_budget
+from router.auth import require_api_key, check_budget, require_user
 from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
@@ -128,7 +129,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
     if over_budget:
         routing_tier = "cheap"
 
-    user_config = get_active_config()
+    user_config = get_active_config(api_key.user_id)
     if req.user_api_keys:
         for t, key in req.user_api_keys.items():
             if t in user_config and key:
@@ -345,34 +346,22 @@ class UserConfigRequest(BaseModel):
 
 
 @app.get("/config")
-def get_config():
-    """Returns the currently active model config (user overrides merged with defaults)."""
-    config = get_active_config()
-    # strip api_key from response -- never send keys back to frontend
+def get_config(user_id: str = Depends(require_user)):
+    """Returns the active model config for the calling user."""
+    config = get_active_config(user_id)
     return {
         tier: {k: v for k, v in cfg.items() if k != "api_key"}
         for tier, cfg in config.items()
     }
 
 
-KEY_VALIDATION_TIMEOUT = 5  # seconds -- provider test calls shouldn't take longer than this
+KEY_VALIDATION_TIMEOUT = 5
 
 
 @app.post("/config")
-async def save_config(req: UserConfigRequest):
-    """
-    Saves user model config for each tier provided.
-    1. Format-validates provider + model_id (via pydantic above)
-    2. Makes a test call (max_tokens=1) to verify the key works, with a 5s timeout
-    3. Saves provider + model_id to user_configs table (no api_key stored)
-    API keys are returned to frontend to store in localStorage only.
-    """
-    tiers = {
-        "cheap": req.cheap,
-        "mid": req.mid,
-        "frontier": req.frontier,
-    }
-
+async def save_config(req: UserConfigRequest, user_id: str = Depends(require_user)):
+    """Saves BYOM config per tier for the calling user."""
+    tiers = {"cheap": req.cheap, "mid": req.mid, "frontier": req.frontier}
     loop = asyncio.get_event_loop()
     results = {}
     session = SessionLocal()
@@ -380,51 +369,86 @@ async def save_config(req: UserConfigRequest):
         for tier, cfg in tiers.items():
             if cfg is None:
                 continue
-
-            # validate key with a real test call, bounded by timeout
             try:
                 await asyncio.wait_for(
                     loop.run_in_executor(executor, validate_key, cfg.provider, cfg.model_id, cfg.api_key),
                     timeout=KEY_VALIDATION_TIMEOUT,
                 )
             except asyncio.TimeoutError:
-                raise HTTPException(
-                    status_code=408,
-                    detail=f"Key validation timed out for {tier} tier ({cfg.provider}/{cfg.model_id}) — provider took over {KEY_VALIDATION_TIMEOUT}s to respond"
-                )
+                raise HTTPException(status_code=408, detail=f"Key validation timed out for {tier} tier")
             except Exception as e:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Key validation failed for {tier} tier ({cfg.provider}/{cfg.model_id}): {e}"
-                )
+                raise HTTPException(status_code=400, detail=f"Key validation failed for {tier} tier: {e}")
 
-            # upsert: update existing row for this tier, or insert if none
-            existing = session.query(UserConfig).filter(UserConfig.tier == tier).first()
+            existing = session.query(UserConfig).filter(
+                UserConfig.user_id == user_id, UserConfig.tier == tier
+            ).first()
             if existing:
                 existing.provider = cfg.provider
                 existing.model_id = cfg.model_id
                 existing.updated_at = datetime.utcnow()
             else:
-                session.add(UserConfig(tier=tier, provider=cfg.provider, model_id=cfg.model_id))
+                session.add(UserConfig(user_id=user_id, tier=tier, provider=cfg.provider, model_id=cfg.model_id))
             results[tier] = {"provider": cfg.provider, "model_id": cfg.model_id, "status": "saved"}
-
         session.commit()
     finally:
         session.close()
-
     return {"saved": results}
 
 
 @app.delete("/config")
-def reset_config():
-    """Clears all user config rows -- reverts all tiers to defaults."""
+def reset_config(user_id: str = Depends(require_user)):
+    """Clears BYOM config for the calling user only."""
     session = SessionLocal()
     try:
-        session.query(UserConfig).delete()
+        session.query(UserConfig).filter(UserConfig.user_id == user_id).delete()
         session.commit()
     finally:
         session.close()
     return {"reset": True}
+
+
+@app.get("/keys")
+def get_keys(user_id: str = Depends(require_user)):
+    """Returns all active API keys for the calling user."""
+    session = SessionLocal()
+    try:
+        rows = session.query(ApiKey).filter(ApiKey.user_id == user_id, ApiKey.is_active == True).all()
+        return [{"id": r.id, "key": r.key, "name": r.name, "created_at": r.created_at.isoformat()} for r in rows]
+    finally:
+        session.close()
+
+
+class KeyCreateRequest(BaseModel):
+    name: str
+
+
+@app.post("/keys")
+def create_key(req: KeyCreateRequest, user_id: str = Depends(require_user)):
+    """Generates a new API key for the calling user."""
+    key = "rw_" + secrets.token_urlsafe(32)
+    session = SessionLocal()
+    try:
+        record = ApiKey(key=key, name=req.name.strip(), user_id=user_id)
+        session.add(record)
+        session.commit()
+        return {"key": key, "name": record.name, "created_at": record.created_at.isoformat()}
+    finally:
+        session.close()
+
+
+@app.delete("/keys/{key_id}")
+def revoke_key(key_id: int, user_id: str = Depends(require_user)):
+    """Revokes an API key. Only the owning user can revoke their own keys."""
+    session = SessionLocal()
+    try:
+        record = session.query(ApiKey).filter(ApiKey.id == key_id, ApiKey.user_id == user_id).first()
+        if not record:
+            raise HTTPException(status_code=404, detail="Key not found")
+        record.is_active = False
+        session.commit()
+    finally:
+        session.close()
+    return {"revoked": key_id}
 
 
 @app.get("/logs")
