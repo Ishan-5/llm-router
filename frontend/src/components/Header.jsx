@@ -1,6 +1,11 @@
 import ThemeToggle from './ThemeToggle'
 
-export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, onNavigate, page }) {
+export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, onNavigate, page, user }) {
+
+  async function handleSignOut() {
+    const { supabase } = await import('../supabase')
+    await supabase.auth.signOut()
+  }
   return (
     <header className="border-b border-line">
       <div className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -15,6 +20,14 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
           <button onClick={() => onNavigate('pricing')} className={`hover:text-primary transition-colors ${page === 'pricing' ? 'text-primary font-medium' : ''}`}>Pricing</button>
           <a href="#metrics" className="hover:text-primary transition-colors">Metrics</a>
           <button onClick={() => onNavigate('about')} className={`hover:text-primary transition-colors ${page === 'about' ? 'text-primary font-medium' : ''}`}>About</button>
+          {user ? (
+            <>
+              <button onClick={() => onNavigate('dashboard')} className={`hover:text-primary transition-colors ${page === 'dashboard' ? 'text-primary font-medium' : ''}`}>Dashboard</button>
+              <button onClick={handleSignOut} className="hover:text-primary transition-colors">Sign out</button>
+            </>
+          ) : (
+            <button onClick={() => onNavigate('auth')} className={`hover:text-primary transition-colors ${page === 'auth' ? 'text-primary font-medium' : ''}`}>Sign in</button>
+          )}
           <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="hover:text-primary transition-colors">GitHub</a>
           <button
             onClick={onOpenSettings}

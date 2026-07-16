@@ -69,15 +69,20 @@ def get_pricing_for_model(model_id: str) -> tuple[float, float]:
     return MODEL_CONFIG["cheap"]["price_per_m_input"], MODEL_CONFIG["cheap"]["price_per_m_output"]
 
 
-def get_active_config() -> dict:
+def get_active_config(user_id: str | None = None) -> dict:
     """
     Returns the merged config for all 3 tiers.
-    User config (latest row per tier) overrides defaults.
-    Missing tiers fall back to PROVIDER_DEFAULTS.
+    If user_id is provided, user config rows for that user override defaults.
+    Falls back to PROVIDER_DEFAULTS for any tier not configured.
     """
     session = SessionLocal()
     try:
-        rows = session.query(UserConfig).order_by(UserConfig.created_at.desc()).all()
+        query = session.query(UserConfig).order_by(UserConfig.created_at.desc())
+        if user_id:
+            query = query.filter(UserConfig.user_id == user_id)
+        else:
+            query = query.filter(UserConfig.user_id == None)
+        rows = query.all()
 
         # latest row per tier wins
         user_overrides = {}

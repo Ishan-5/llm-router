@@ -22,6 +22,7 @@ class ApiKey(Base):
     id = Column(Integer, primary_key=True)
     key = Column(String, unique=True, index=True)
     name = Column(String)  # e.g. "acme-corp-demo"
+    user_id = Column(String, nullable=True, index=True)  # Supabase auth user UUID
     daily_budget_usd = Column(Float, nullable=True)  # None = no cap
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -50,6 +51,7 @@ class RequestLog(Base):
 class UserConfig(Base):
     __tablename__ = "user_configs"
     id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=True, index=True)  # Supabase auth user UUID
     tier = Column(String)        # cheap / mid / frontier
     provider = Column(String)    # groq / openai / anthropic / ollama
     model_id = Column(String)    # e.g. gpt-4o-mini

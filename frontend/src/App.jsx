@@ -1,19 +1,32 @@
 import { useState, useEffect } from 'react'
+import { supabase } from './supabase'
 import Header from './components/Header'
 import RoutingDiagram from './components/RoutingDiagram'
 import HowItWorks from './components/HowItWorks'
 import MetricsDashboard from './components/MetricsDashboard'
 import PricingTable from './components/PricingTable'
+import AboutPage from './components/AboutPage'
+import AuthPage from './components/AuthPage'
+import DashboardPage from './components/DashboardPage'
 import Footer from './components/Footer'
 import SettingsPanel from './components/SettingsPanel'
 import { useTheme } from './useTheme'
-import AboutPage from './components/AboutPage'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
 
 export default function App() {
   const { isDark, toggle } = useTheme()
   const [page, setPage] = useState('home')
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+      if (!session) setPage('home')
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   function navigate(p) {
     setPage(p)
@@ -55,11 +68,15 @@ export default function App() {
           </p>
         </div>
       )}
-      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={navigate} page={page} />
+      <Header isDark={isDark} toggleTheme={toggle} onOpenSettings={() => setShowSettings(true)} byomActive={byomActive} onNavigate={navigate} page={page} user={user} />
       {page === 'pricing' ? (
         <PricingTable onBack={() => navigate('home')} />
       ) : page === 'about' ? (
         <AboutPage />
+      ) : page === 'auth' ? (
+        <AuthPage />
+      ) : page === 'dashboard' ? (
+        <DashboardPage />
       ) : (
         <>
           <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
