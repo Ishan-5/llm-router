@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
@@ -346,7 +346,7 @@ class UserConfigRequest(BaseModel):
 
 
 @app.get("/config")
-def get_config(authorization: str = None):
+def get_config(authorization: str | None = Header(default=None)):
     """Returns active model config. If a valid user JWT is provided, returns that user's config. Otherwise returns defaults."""
     user_id = None
     if authorization and authorization.startswith("Bearer "):
