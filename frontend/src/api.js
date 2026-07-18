@@ -1,17 +1,22 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
-const API_KEY = import.meta.env.VITE_API_KEY || ''
+import { API_BASE, API_KEY } from './config'
 
-export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError) {
-  let userKeys = {}
+function _getUserKeys() {
   try {
     const saved = localStorage.getItem('byom_config')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      Object.entries(parsed).forEach(([tier, cfg]) => {
-        if (cfg.api_key) userKeys[tier] = cfg.api_key
-      })
-    }
-  } catch {}
+    if (!saved) return {}
+    const parsed = JSON.parse(saved)
+    const keys = {}
+    Object.entries(parsed).forEach(([tier, cfg]) => {
+      if (cfg.api_key) keys[tier] = cfg.api_key
+    })
+    return keys
+  } catch {
+    return {}
+  }
+}
+
+export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal) {
+  const userKeys = _getUserKeys()
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
@@ -22,6 +27,7 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
     body: JSON.stringify(body),
+    signal,
   })
 
   if (!res.ok) {
@@ -52,18 +58,8 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   }
 }
 
-export async function routeQuery(query, overrideTier = null, bypassCache = false) {
-  // read user's provider api keys from localStorage to send with request
-  let userKeys = {}
-  try {
-    const saved = localStorage.getItem('byom_config')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      Object.entries(parsed).forEach(([tier, cfg]) => {
-        if (cfg.api_key) userKeys[tier] = cfg.api_key
-      })
-    }
-  } catch {}
+export async function routeQuery(query, overrideTier = null, bypassCache = false, signal) {
+  const userKeys = _getUserKeys()
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
@@ -74,6 +70,7 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
     body: JSON.stringify(body),
+    signal,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: 'Request failed' }))
@@ -106,7 +103,6 @@ export async function fetchConfig() {
   })
   if (!res.ok) throw new Error('Could not load config')
   const data = await res.json()
-  // for guests, merge localStorage BYOM overrides on top of backend defaults
   if (!token) {
     try {
       const saved = JSON.parse(localStorage.getItem('byom_config') || '{}')
@@ -119,7 +115,6 @@ export async function fetchConfig() {
 }
 
 export async function saveConfig(tierConfigs) {
-  // tierConfigs: { cheap?: { provider, model_id, api_key }, mid?: {...}, frontier?: {...} }
   const res = await fetch(`${API_BASE}/config`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },

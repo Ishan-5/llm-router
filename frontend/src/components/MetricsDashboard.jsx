@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { fetchStats } from '../api'
+import StatCard from './StatCard'
 
 const TIER_ORDER = ['cheap', 'mid', 'frontier', 'web']
 
@@ -33,7 +34,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
 
   if (error) {
     return (
-      <section id="metrics" className="max-w-6xl mx-auto px-6 py-16 border-t border-line">
+      <section id="metrics" className="max-w-6xl mx-auto px-6 py-16 border-t border-line bg-panel">
         <p className="font-mono text-xs text-danger">
           Couldn't load /stats — make sure the backend is running. ({error})
         </p>
@@ -43,7 +44,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
 
   if (!stats) {
     return (
-      <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
+      <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line bg-panel">
         <div className="h-7 w-48 bg-line rounded animate-pulse mb-2" />
         <div className="h-4 w-72 bg-line rounded animate-pulse mb-12" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
@@ -91,7 +92,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
   }))
 
   return (
-    <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
+    <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line bg-panel">
       <div className="flex items-center justify-between mb-2">
         <h2 className="font-display text-2xl font-semibold">Real usage, real savings</h2>
         <div className="flex items-center gap-3">
@@ -112,10 +113,10 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
       <p className="text-sm text-muted mb-12">Computed from every request this router has actually logged.</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-        <Stat label="Total requests" value={stats.total_requests} />
-        <Stat label="Cache hit rate" value={`${Math.round((stats.cache_hit_rate || 0) * 100)}%`} tone="cool" />
-        <Stat label="Fallback events" value={stats.fallback_count} tone={stats.fallback_count > 0 ? 'danger' : undefined} />
-        <Stat label="Cost saved" value={`${savedPct}%`} tone="signal" big />
+        <StatCard label="Total requests" value={stats.total_requests} />
+        <StatCard label="Cache hit rate" value={`${Math.round((stats.cache_hit_rate || 0) * 100)}%`} tone="cool" />
+        <StatCard label="Fallback events" value={stats.fallback_count} tone={stats.fallback_count > 0 ? 'danger' : undefined} />
+        <StatCard label="Cost saved" value={`${savedPct}%`} tone="signal" big />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
@@ -261,16 +262,5 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         </ResponsiveContainer>
       </div>
     </section>
-  )
-}
-
-function Stat({ label, value, tone, big }) {
-  const color = tone === 'cool' ? 'text-cool' : tone === 'signal' ? 'text-signal' : tone === 'danger' ? 'text-danger' : 'text-primary'
-  const border = tone === 'cool' ? 'border-cool' : tone === 'signal' ? 'border-signal' : tone === 'danger' ? 'border-danger' : 'border-line'
-  return (
-    <div className={`border-l-2 ${border} pl-4`}>
-      <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1.5">{label}</p>
-      <p className={`font-display font-semibold ${big ? 'text-4xl' : 'text-3xl'} ${color}`}>{value}</p>
-    </div>
   )
 }
