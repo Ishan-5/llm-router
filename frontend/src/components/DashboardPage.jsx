@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:8000'
+import { API_BASE } from '../config'
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession()

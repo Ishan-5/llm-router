@@ -1,89 +1,107 @@
 import { useState, useEffect, useRef } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { routeQuery, fetchStats, fetchConfig } from '../api'
-
-const TIER_DEFAULTS = {
-  cheap:    { label: 'Cheap',    sub: 'llama3.2:3b · local',      y: 60  },
-  mid:      { label: 'Mid',      sub: 'qwen3-32b · Groq',          y: 160 },
-  frontier: { label: 'Frontier', sub: 'llama-3.3-70b · Groq',       y: 260 },
-}
+import { fetchStats, fetchConfig } from '../api'
+import TierCircuit from './TierCircuit'
+import QueryForm, { ChatSuggestions } from './QueryForm'
+import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
+import Confetti from './Confetti'
 
 export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
-  const [query, setQuery] = useState('')
-  const [override, setOverride] = useState('auto')
-  const [bypassCache, setBypassCache] = useState(false)
+  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [lastResult, setLastResult] = useState(null)  // persists during loading so score/tier don't blink
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
-  const [copied, setCopied] = useState(false)
-  const copyTimer = useRef(null)
+  const [confetti, setConfetti] = useState(false)
+  const abortRef = useRef(null)
+  const scrollRef = useRef(null)
+  const latestResult = messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.result || null
 
   useEffect(() => {
     if (!backendOnline) return
     fetchStats().then(setTicker).catch(() => setTicker(null))
     fetchConfig().then(setActiveConfig).catch(() => {})
+    return () => abortRef.current?.abort()
   }, [configVersion, backendOnline])
 
-  // build TIERS dynamically from active config so diagram reflects custom models
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages, loading])
+
   const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {
-    const defaults = TIER_DEFAULTS[key]
+    const defaults = {
+      cheap: { label: 'Cheap', sub: 'llama3.2:3b · local', y: 60 },
+      mid: { label: 'Mid', sub: 'qwen3-32b · Groq', y: 160 },
+      frontier: { label: 'Frontier', sub: 'llama-3.3-70b · Groq', y: 260 },
+    }[key]
     const cfg = activeConfig[key]
     const sub = cfg ? `${cfg.model_id} · ${cfg.provider}` : defaults.sub
     return { key, label: defaults.label, sub, y: defaults.y }
   })
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!query.trim()) return
+  async function handleSubmit(query, override, bypassCache) {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    setMessages((prev) => [...prev, { role: 'user', text: query }])
     setLoading(true)
     setError(null)
-    setResult(null)
+
     try {
-      const data = await routeQuery(query, override === 'auto' ? null : override, bypassCache)
-      setResult(data)
-      setLastResult(data)
-      setBypassCache(false)
+      const { routeQuery } = await import('../api')
+      const data = await routeQuery(
+        query,
+        override === 'auto' ? null : override,
+        bypassCache,
+        controller.signal,
+      )
+      setMessages((prev) => [...prev, { role: 'assistant', result: data }])
+      if (data.routed_to !== 'frontier') {
+        setConfetti(true)
+        setTimeout(() => setConfetti(false), 2000)
+      }
       fetchStats().then(setTicker).catch(() => {})
       fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
-      setError(err.message)
+      if (err.name !== 'AbortError') {
+        setError(err.message)
+        setMessages((prev) => [...prev, { role: 'assistant', result: { response: `Error: ${err.message}`, routed_to: 'error', cost_usd: 0, latency_ms: 0 } }])
+      }
     } finally {
       setLoading(false)
     }
   }
 
-  function handleCopy() {
-    const text = result?.response
-    if (!text) return
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      clearTimeout(copyTimer.current)
-      copyTimer.current = setTimeout(() => setCopied(false), 2000)
-    })
+  function handleExitChat() {
+    if (abortRef.current) abortRef.current.abort()
+    setMessages([])
+    setLoading(false)
+    setError(null)
+    setConfetti(false)
   }
 
-  // use lastResult for the diagram so score/tier persist during loading
-  const activeTier = loading ? lastResult?.routed_to : result?.routed_to
-  const score = loading ? lastResult?.difficulty_score : result?.difficulty_score
-  const displayText = result?.response || null
+  const activeTier = loading ? null : latestResult?.routed_to
+  const score = loading ? null : latestResult?.difficulty_score
+
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
     ? Math.round((1 - (ticker.total_actual_cost - (ticker.cache_savings_usd || 0)) / ticker.total_hypothetical_cost) * 100)
     : null
 
+  const isEmpty = messages.length === 0 && !loading
+
+  const queryCount = messages.filter((m) => m.role === 'user').length
+
   return (
-    <section className="relative overflow-hidden border-b border-line">
-      {/* decorative dotted grid, corner accent */}
+    <section className="relative overflow-hidden border-b border-line bg-panel">
+      <Confetti active={confetti} />
+
       <div className="absolute top-8 right-8 grid grid-cols-6 gap-1.5 opacity-40 pointer-events-none hidden lg:grid">
         {Array.from({ length: 24 }).map((_, i) => (
           <span key={i} className="w-1 h-1 rounded-full bg-muted" />
         ))}
       </div>
 
-      {/* rotated vertical label, echoing a "scroll down" style accent */}
       <div className="hidden lg:block absolute left-6 top-1/2 -translate-y-1/2 -rotate-90 origin-left">
         <span className="font-mono text-[10px] tracking-[0.3em] text-muted whitespace-nowrap">
           LIVE · AUTO-ROUTED · REAL COST
@@ -91,167 +109,95 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
       </div>
 
       <div className="max-w-6xl mx-auto px-6 lg:pl-16 pt-16 pb-20 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 items-start">
-
-        {/* LEFT: copy + form */}
-        <div>
-          <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">
-            Difficulty-scored request routing
-          </p>
-          <h1 className="font-display text-[2.75rem] md:text-6xl font-semibold leading-[1.05] tracking-tight mb-6">
-            Most queries<br />don't need your<br /><span className="text-signal">most expensive</span> model.
-          </h1>
-          <p className="text-muted text-base leading-relaxed max-w-md mb-8">
-            A regression model trained on 6,500 labeled queries predicts how hard each
-            request actually is, then routes it to the cheapest tier that can handle it.
-            Time-sensitive queries go to live web search.
-          </p>
-
-          {savedPct !== null && (
-            <div className="flex items-baseline gap-3 mb-8 font-mono border-l-2 border-signal pl-4">
-              <span className="text-3xl font-semibold text-signal">{savedPct}%</span>
-              <span className="text-xs text-muted leading-snug">
-                cheaper than routing all {ticker.total_requests} logged requests to frontier —
-                ${ticker.total_savings_usd?.toFixed(4) || '0.0000'} saved (routing + cache)
-              </span>
-            </div>
+        {/* left column */}
+        <div className="flex flex-col min-h-0">
+          {/* empty state: hero text */}
+          {isEmpty && (
+            <>
+              <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">
+                Difficulty-scored request routing
+              </p>
+              <h1 className="font-display text-[2.75rem] md:text-6xl font-semibold leading-[1.05] tracking-tight mb-6">
+                Most queries<br />don't need your<br /><span className="text-signal">most expensive</span> model.
+              </h1>
+              <p className="text-muted text-base leading-relaxed max-w-md mb-6">
+                A regression model trained on 6,500 labeled queries predicts how hard each
+                request actually is, then routes it to the cheapest tier that can handle it.
+              </p>
+              {savedPct !== null && (
+                <div className="flex items-baseline gap-3 mb-8 font-mono border-l-2 border-signal pl-4">
+                  <span className="text-3xl font-semibold text-signal">{savedPct}%</span>
+                  <span className="text-xs text-muted leading-snug">
+                    cheaper than routing all {ticker.total_requests} logged requests to frontier —
+                    ${ticker.total_savings_usd?.toFixed(4) || '0.0000'} saved
+                  </span>
+                </div>
+              )}
+              <div className="mb-8">
+                <ChatSuggestions onSelect={(q) => handleSubmit(q, 'auto', false)} />
+              </div>
+            </>
           )}
 
-          <form onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-3">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ask anything — trivial or hard"
-                  className="w-full bg-panel border border-line rounded-lg px-4 py-3 pr-16 font-body text-sm
-                             placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted pointer-events-none">↵ send</span>
-              </div>
-              <div className="flex gap-3">
-                <select
-                  value={override}
-                  onChange={(e) => setOverride(e.target.value)}
-                  className="bg-panel border border-line rounded-lg px-3 py-3 font-mono text-xs text-muted flex-1
-                             focus:outline-none focus:ring-2 focus:ring-signal/50"
-                  title="Force a specific tier instead of using the model's prediction"
-                >
-                  <option value="auto">Auto-route</option>
-                  {TIERS.map((t) => (
-                    <option key={t.key} value={t.key}>Force: {t.label} ({activeConfig[t.key]?.model_id || t.sub})</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setBypassCache(v => !v)}
-                  className={`font-mono text-xs px-3 py-3 rounded-lg border transition whitespace-nowrap ${
-                    bypassCache
-                      ? 'border-signal text-signal bg-signal/10'
-                      : 'border-line text-muted hover:text-primary hover:border-signal/50'
-                  }`}
-                  title="Skip cache and get a fresh response from the model"
-                >
-                  Fresh response
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-signal text-white font-semibold text-sm px-6 py-3 rounded-lg
-                             hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
-                  {loading ? 'Routing…' : 'Route it'}
-                </button>
-              </div>
-            </div>
-            {error && <p className="mt-2 text-xs font-mono text-danger">{error}</p>}
-          </form>
-
-          {displayText && (
-            <div className="mt-6 rounded-lg border border-line bg-panel p-5">
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-                <div className="flex flex-wrap gap-4 font-mono text-xs">
-                  <span className="text-cool">${result.cost_usd?.toFixed(6)}</span>
-                  <span className="text-muted">{result.latency_ms?.toFixed(0)}ms</span>
-                  {result.difficulty_score != null && (
-                    <span className="px-1.5 py-0.5 rounded border border-signal/40 text-signal bg-signal/10">
-                      difficulty {result.difficulty_score.toFixed(1)}
-                    </span>
-                  )}
-                  <span className={result.cache_hit
-                    ? 'px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10'
-                    : 'text-muted'
-                  }>
-                    {result.cache_hit ? 'CACHE HIT' : 'CACHE MISS'}
+          {/* chat state: header + messages */}
+          {!isEmpty && (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-signal shrink-0" />
+                  <h2 className="font-display text-lg font-semibold">Routing demo</h2>
+                  <span className="font-mono text-[10px] text-muted">
+                    {queryCount} {queryCount === 1 ? 'query' : 'queries'}
                   </span>
-                  {result.fallback_used && <span className="text-danger">FALLBACK</span>}
-                  {result.routed_to === 'web' && <span className="px-1.5 py-0.5 rounded border border-cool/50 text-cool bg-cool/10">WEB SEARCH</span>}
                 </div>
                 <button
-                  onClick={handleCopy}
-                  className="font-mono text-[10px] px-2.5 py-1 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition shrink-0"
+                  onClick={handleExitChat}
+                  className="flex items-center gap-1.5 font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-primary hover:border-signal transition-colors"
                 >
-                  {copied ? 'copied ✓' : 'copy'}
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <line x1="1" y1="1" x2="9" y2="9" />
+                    <line x1="9" y1="1" x2="1" y2="9" />
+                  </svg>
+                  Exit chat
                 </button>
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none
-                text-sm leading-relaxed
-                prose-headings:font-display prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
-                prose-p:my-1.5
-                prose-ul:my-1.5 prose-ul:pl-4 prose-li:my-0.5
-                prose-ol:my-1.5 prose-ol:pl-4
-                prose-code:font-mono prose-code:text-xs prose-code:bg-line prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                prose-pre:bg-line prose-pre:rounded-lg prose-pre:p-4 prose-pre:overflow-x-auto
-                prose-strong:font-semibold
-                prose-blockquote:border-l-2 prose-blockquote:border-signal prose-blockquote:pl-3 prose-blockquote:text-muted
-              ">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+
+              <div
+                ref={scrollRef}
+                className="flex flex-col max-h-[50vh] overflow-y-auto mb-6 scroll-smooth chat-scroll"
+              >
+                {messages.map((msg, i) =>
+                  msg.role === 'user'
+                    ? <UserBubble key={i} text={msg.text} />
+                    : <AssistantBubble key={i} result={msg.result} />
+                )}
+                {loading && <TypingIndicator />}
               </div>
-            </div>
+
+              {error && !loading && (
+                <p className="font-mono text-xs text-danger mb-3 px-1">{error}</p>
+              )}
+            </>
           )}
+
+          {/* input — always visible */}
+          <QueryForm
+            onSubmit={handleSubmit}
+            loading={loading}
+            tiers={TIERS}
+            activeConfig={activeConfig}
+          />
         </div>
 
-        {/* RIGHT: large decorative-but-functional circuit graphic */}
-        <div className="relative hidden lg:block">
-          <svg viewBox="0 0 380 360" className="w-full h-auto -mr-8">
-            {/* incoming query node -- score lives here, not floating separately */}
-            <circle cx="190" cy="30" r="8" fill="none" stroke="var(--color-muted)" strokeWidth="2" />
-            <text x="205" y="27" className="font-mono" fontSize="11" fill="var(--color-muted)">query</text>
-            {score != null && (
-              <text x="205" y="44" className="font-mono font-semibold" fontSize="13" fill="var(--color-signal)">
-                difficulty {score.toFixed(1)}
-              </text>
-            )}
-
-            {TIERS.map((t) => {
-              const isActive = activeTier === t.key
-              return (
-                <g key={t.key}>
-                  <line x1="190" y1="30" x2="90" y2={t.y} stroke={isActive ? 'var(--color-signal)' : 'var(--color-line)'} strokeWidth={isActive ? 2.5 : 1.5} />
-                  <circle cx="90" cy={t.y} r={isActive ? 12 : 9}
-                    fill={isActive ? (result?.cache_hit ? 'var(--color-cool)' : 'var(--color-signal)') : 'none'}
-                    stroke={isActive ? (result?.cache_hit ? 'var(--color-cool)' : 'var(--color-signal)') : 'var(--color-line)'}
-                    strokeWidth="2" className="transition-all duration-500" />
-                  <text x="112" y={t.y - 8} className="font-display font-semibold" fontSize="15" fill={isActive ? 'var(--color-signal)' : 'var(--color-primary)'}>{t.label}</text>
-                  <text x="112" y={t.y + 10} className="font-mono" fontSize="10" fill="var(--color-muted)">{t.sub}</text>
-                </g>
-              )
-            })}
-
-            {/* Web node */}
-            {(() => {
-              const isActive = activeTier === 'web'
-              const y = 330
-              return (
-                <g>
-                  <line x1="190" y1="30" x2="90" y2={y} stroke={isActive ? 'var(--color-cool)' : 'var(--color-line)'} strokeWidth={isActive ? 2.5 : 1.5} strokeDasharray="4 3" />
-                  <circle cx="90" cy={y} r={isActive ? 12 : 9} fill={isActive ? 'var(--color-cool)' : 'none'} stroke={isActive ? 'var(--color-cool)' : 'var(--color-line)'} strokeWidth="2" className="transition-all duration-500" />
-                  <text x="112" y={y - 8} className="font-display font-semibold" fontSize="15" fill={isActive ? 'var(--color-cool)' : 'var(--color-primary)'}>Web</text>
-                  <text x="112" y={y + 10} className="font-mono" fontSize="10" fill="var(--color-muted)">tavily/search · live</text>
-                </g>
-              )
-            })()}
-          </svg>
+        {/* right column: SVG diagram — always visible */}
+        <div className="hidden sm:block lg:sticky lg:top-24">
+          <TierCircuit
+            tiers={TIERS}
+            activeTier={activeTier}
+            score={score}
+            cacheHit={latestResult?.cache_hit}
+            loading={loading}
+          />
         </div>
       </div>
     </section>

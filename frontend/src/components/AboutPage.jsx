@@ -83,7 +83,7 @@ export default function AboutPage() {
       </div>
 
       {/* Try it */}
-      <div className="border-t border-line pt-12 mb-16">
+      <div className="border-t border-line pt-12 mb-16 bg-panel -mx-6 px-6 py-12 -my-12">
         <h2 className="font-display text-2xl font-semibold mb-4">Try it</h2>
         <p className="text-muted text-base leading-relaxed mb-6">
           The live demo is a real, working instance — type anything into it and watch the actual routing
