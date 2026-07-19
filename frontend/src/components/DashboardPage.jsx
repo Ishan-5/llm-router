@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
 import RequestLogs from './RequestLogs'
+import CostAnalytics from './CostAnalytics'
+import ApiPlayground from './ApiPlayground'
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession()
@@ -57,9 +59,11 @@ export default function DashboardPage() {
   }
 
   async function handleRevoke(id) {
+    const safeId = Math.floor(Number(id))
+    if (!Number.isFinite(safeId) || safeId <= 0) return
     setRevoking(id)
     const headers = await authHeaders()
-    await fetch(`${API_BASE}/keys/${id}`, { method: 'DELETE', headers })
+    await fetch(`${API_BASE}/keys/${safeId}`, { method: 'DELETE', headers })
     setKeys((prev) => prev.filter((k) => k.id !== id))
     setRevoking(null)
   }
@@ -72,13 +76,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-20">
+    <div className="max-w-5xl mx-auto px-6 py-20">
       <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">Dashboard</p>
       <h1 className="font-display text-3xl font-semibold mb-6">Dashboard</h1>
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-line mb-8">
         {[
+          { id: 'playground', label: 'Playground' },
+          { id: 'analytics', label: 'Analytics' },
           { id: 'keys', label: 'API Keys' },
           { id: 'logs', label: 'Request Logs' },
         ].map((tab) => (
@@ -95,6 +101,10 @@ export default function DashboardPage() {
           </button>
         ))}
       </div>
+
+      {activeTab === 'playground' && <ApiPlayground />}
+
+      {activeTab === 'analytics' && <CostAnalytics />}
 
       {activeTab === 'keys' && (
         <>

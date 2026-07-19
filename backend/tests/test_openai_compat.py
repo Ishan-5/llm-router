@@ -202,7 +202,7 @@ def test_streaming_returns_sse_with_done():
     with patch("router.openai_compat.check_cache", return_value=None), \
          patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")), \
          patch("router.openai_compat.stream_model") as mock_stream:
-        def fake_stream(tier, query, messages=None):
+        def fake_stream(tier, query, messages=None, max_tokens=None, temperature=None):
             yield "Hello"
             yield " world"
             yield {"tier": "cheap", "model_id": "test-model", "input_tokens": 5, "output_tokens": 3, "cost_usd": 0.0}

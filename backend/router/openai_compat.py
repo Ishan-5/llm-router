@@ -2,10 +2,13 @@ import json
 import time
 import uuid
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+log = logging.getLogger("routewise.openai_compat")
 
 from router.classifier import get_tier
 from router.cache import check_cache, add_to_cache
@@ -149,8 +152,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
                 "\n\n".join(r["content"][:300] for r in data.get("results", [])[:3])
                 + "\n\n[web results truncated — showing first 300 chars per source]"
             )
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("Web search failed, falling through to normal routing: %s", e)
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
             log_request({
@@ -206,7 +209,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     if not req.stream:
         try:
             result = await loop.run_in_executor(
-                executor, call_with_failover, routing_tier, user_query, None, provider_messages
+                executor, call_with_failover, routing_tier, user_query, None, provider_messages, req.max_tokens, req.temperature
             )
         except AllTiersFailedError:
             raise HTTPException(status_code=503, detail="All model tiers failed to respond.")
@@ -241,7 +244,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
         def _run_generator():
             try:
-                for item in stream_model(routing_tier, user_query, messages=provider_messages):
+                for item in stream_model(routing_tier, user_query, messages=provider_messages, max_tokens=req.max_tokens, temperature=req.temperature):
                     loop.call_soon_threadsafe(queue.put_nowait, item)
             except Exception as e:
                 loop.call_soon_threadsafe(queue.put_nowait, Exception(str(e)))

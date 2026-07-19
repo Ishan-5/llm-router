@@ -1,6 +1,7 @@
 import json
 import time
 import asyncio
+import logging
 import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -23,18 +24,25 @@ from router.providers_registry import PROVIDERS_REGISTRY
 from router.model_config_loader import get_active_config, get_pricing_for_model
 from router.openai_compat import router as openai_compat_router
 
+log = logging.getLogger("routewise")
+
 
 @asynccontextmanager
 async def lifespan(app):
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    )
     # Startup: pre-load ML models
     try:
         import sys
         sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent / 'src'))
         from predict_difficulty import preload_models
         preload_models()
-        print("[startup] ML models loaded successfully")
+        log.info("ML models loaded successfully")
     except Exception as e:
-        print(f"[startup] Warning: ML model preload failed: {e}")
+        log.warning("ML model preload failed: %s", e)
     yield
     # Shutdown: nothing to clean up
 
@@ -48,7 +56,7 @@ app.include_router(openai_compat_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
@@ -104,8 +112,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
                 "\n\n".join(r["content"][:300] for r in data.get("results", [])[:3])
                 + "\n\n[web results truncated — showing first 300 chars per source]"
             )
-        except Exception:
-            pass  # fall through to normal routing
+        except Exception as e:
+            log.debug("Web search failed, falling through to normal routing: %s", e)
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
             log_request({
@@ -201,7 +209,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     try:
         result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
     except AllTiersFailedError as e:
-        print(f"[route] AllTiersFailedError: {e}")
+        log.error("AllTiersFailedError: %s", e)
         raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
 
     latency_ms = round((time.time() - start) * 1000, 2)
@@ -308,7 +316,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             meta["tier"], meta["model_id"], meta["cost_usd"],
             meta["input_tokens"], meta["output_tokens"])
 
-        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': tier, 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms})}\n\n"
 
     return StreamingResponse(_live_stream(), media_type="text/event-stream")
 
@@ -382,8 +390,8 @@ def get_config(authorization: str | None = Header(default=None)):
                 headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY}, timeout=5)
             if resp.status_code == 200:
                 user_id = resp.json()["id"]
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("JWT verification failed for /config: %s", e)
     config = get_active_config(user_id)
     return {
         tier: {k: v for k, v in cfg.items() if k != "api_key"}
@@ -491,7 +499,7 @@ def revoke_key(key_id: int, user_id: str = Depends(require_user)):
 @app.get("/logs")
 def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
     """Returns the most recent request logs for the calling key only. limit capped at 100."""
-    limit = min(limit, 100)
+    limit = max(1, min(limit, 100))
     session = SessionLocal()
     try:
         rows = (
@@ -562,7 +570,7 @@ def health():
 
 
 @app.get("/stats")
-def get_stats():
+def get_stats(api_key: ApiKey = Depends(require_api_key)):
     """
     Aggregates real logged requests for the dashboard.
 
@@ -651,6 +659,132 @@ def get_stats():
             "cache_savings_usd": cache_savings_usd,
             "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd,
+        }
+    finally:
+        session.close()
+
+
+@app.get("/analytics")
+def get_analytics(api_key: ApiKey = Depends(require_api_key)):
+    """Detailed cost analytics for the dashboard. Scoped to the calling key."""
+    session = SessionLocal()
+    try:
+        base_filter = [RequestLog.api_key_id == api_key.id]
+
+        total_requests = session.query(func.count(RequestLog.id)).filter(*base_filter).scalar() or 0
+
+        # Cost by tier
+        tier_costs = dict(
+            session.query(RequestLog.tier, func.sum(RequestLog.cost_usd))
+            .filter(*base_filter)
+            .group_by(RequestLog.tier).all()
+        )
+
+        # Cost by model
+        model_costs = dict(
+            session.query(RequestLog.model_id, func.sum(RequestLog.cost_usd))
+            .filter(*base_filter)
+            .group_by(RequestLog.model_id).all()
+        )
+
+        # Token usage by tier
+        tier_tokens = {}
+        for tier, in_tok, out_tok in session.query(
+            RequestLog.tier,
+            func.sum(RequestLog.input_tokens),
+            func.sum(RequestLog.output_tokens),
+        ).filter(*base_filter).group_by(RequestLog.tier).all():
+            tier_tokens[tier] = {"input": in_tok or 0, "output": out_tok or 0}
+
+        # Daily costs (last 30 days)
+        daily_rows = session.query(
+            func.date(RequestLog.created_at).label("day"),
+            func.sum(RequestLog.cost_usd),
+            func.count(RequestLog.id),
+            func.avg(RequestLog.latency_ms),
+        ).filter(*base_filter).group_by("day").order_by("day").desc().limit(30).all()
+
+        daily = [
+            {
+                "date": str(day),
+                "cost": float(cost or 0),
+                "requests": count,
+                "avg_latency": round(float(avg or 0), 1),
+            }
+            for day, cost, count, avg in reversed(daily_rows)
+        ]
+
+        # Cache stats
+        cache_hits = session.query(func.count(RequestLog.id)).filter(
+            *base_filter, RequestLog.cache_hit == True
+        ).scalar() or 0
+        cache_savings = float(
+            session.query(func.sum(RequestLog.tokens_saved_usd)).filter(
+                *base_filter, RequestLog.cache_hit == True
+            ).scalar() or 0.0
+        )
+
+        # Fallback rate
+        fallbacks = session.query(func.count(RequestLog.id)).filter(
+            *base_filter, RequestLog.fallback_used == True
+        ).scalar() or 0
+
+        # Avg latency by tier
+        latency_by_tier = dict(
+            session.query(RequestLog.tier, func.avg(RequestLog.latency_ms))
+            .filter(*base_filter)
+            .group_by(RequestLog.tier).all()
+        )
+
+        # Top 5 most expensive requests
+        top_expensive = session.query(
+            RequestLog.id, RequestLog.query, RequestLog.tier, RequestLog.model_id,
+            RequestLog.cost_usd, RequestLog.input_tokens, RequestLog.output_tokens,
+            RequestLog.created_at,
+        ).filter(*base_filter).order_by(RequestLog.cost_usd.desc()).limit(5).all()
+
+        top_expensive_list = [
+            {
+                "id": r.id,
+                "query": r.query[:100] + "..." if r.query and len(r.query) > 100 else r.query,
+                "tier": r.tier,
+                "model": r.model_id,
+                "cost": float(r.cost_usd or 0),
+                "tokens": (r.input_tokens or 0) + (r.output_tokens or 0),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in top_expensive
+        ]
+
+        # Total actual cost
+        total_cost = float(session.query(func.sum(RequestLog.cost_usd)).filter(*base_filter).scalar() or 0.0)
+
+        # Hypothetical cost (if everything went to frontier)
+        frontier_cfg = MODEL_CONFIG["frontier"]
+        token_rows = session.query(RequestLog.input_tokens, RequestLog.output_tokens).filter(*base_filter).all()
+        hypothetical = sum(
+            (in_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_input"]
+            + (out_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_output"]
+            for in_tok, out_tok in token_rows
+        )
+
+        return {
+            "summary": {
+                "total_requests": total_requests,
+                "total_cost": round(total_cost, 6),
+                "hypothetical_cost": round(hypothetical, 6),
+                "savings": round(max(0, hypothetical - total_cost), 6),
+                "savings_pct": round((1 - total_cost / hypothetical) * 100, 1) if hypothetical > 0 else 0,
+                "cache_hit_rate": round(cache_hits / total_requests * 100, 1) if total_requests else 0,
+                "cache_savings": round(cache_savings, 6),
+                "fallback_rate": round(fallbacks / total_requests * 100, 1) if total_requests else 0,
+            },
+            "tier_costs": {k: round(float(v or 0), 6) for k, v in tier_costs.items()},
+            "model_costs": {k: round(float(v or 0), 6) for k, v in model_costs.items()},
+            "tier_tokens": tier_tokens,
+            "daily": daily,
+            "latency_by_tier": {k: round(float(v or 0), 1) for k, v in latency_by_tier.items()},
+            "top_expensive": top_expensive_list,
         }
     finally:
         session.close()

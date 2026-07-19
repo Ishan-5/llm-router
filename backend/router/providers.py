@@ -1,3 +1,4 @@
+import logging
 from groq import Groq
 from openai import OpenAI
 from router.config import GROQ_API_KEY, GEMINI_API_KEY, MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG, GEMINI_FALLBACK_CONFIG
@@ -5,9 +6,20 @@ from router.providers_registry import PROVIDERS_REGISTRY
 from router.ollama_client import call_ollama
 from router.load_balancer import get_key_for_tier, report_rate_limit_from_error
 
+log = logging.getLogger("routewise.providers")
+
+# Client cache to avoid creating new HTTP sessions per request (resource leak fix)
+_client_cache: dict[tuple[str, str], OpenAI] = {}
+
+
+def _get_client(api_key: str, base_url: str) -> OpenAI:
+    """Return a cached OpenAI client for the given (api_key, base_url) pair."""
+    key = (api_key, base_url)
+    if key not in _client_cache:
+        _client_cache[key] = OpenAI(api_key=api_key, base_url=base_url)
+    return _client_cache[key]
+
 # default Groq client (used when no user api key supplied)
-_default_groq_client = Groq(api_key=GROQ_API_KEY)
-_gemini_client = None
 
 
 def _get_groq_key(tier: str) -> str:
@@ -28,17 +40,21 @@ def _call_openai_compatible(
     base_url: str,
     max_tokens: int = 1000,
     messages: list[dict] | None = None,
+    temperature: float | None = None,
 ) -> dict:
     """
     Generic caller for any OpenAI-compatible API.
     Covers: Groq, OpenAI, DeepSeek, Perplexity, Mistral, xAI, Gemini.
     """
-    client = OpenAI(api_key=api_key, base_url=base_url)
-    response = client.chat.completions.create(
-        model=model_id,
-        max_tokens=max_tokens,
-        messages=messages if messages else [{"role": "user", "content": query}],
-    )
+    client = _get_client(api_key, base_url)
+    kwargs = {
+        "model": model_id,
+        "max_tokens": max_tokens,
+        "messages": messages if messages else [{"role": "user", "content": query}],
+    }
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    response = client.chat.completions.create(**kwargs)
     input_tokens = response.usage.prompt_tokens
     output_tokens = response.usage.completion_tokens
     cost = (
@@ -65,19 +81,23 @@ def _stream_openai_compatible(
     base_url: str,
     max_tokens: int = 1000,
     messages: list[dict] | None = None,
+    temperature: float | None = None,
 ):
     """
     Streaming version. Yields text chunks, then a final dict with metadata.
     Caller collects chunks until it gets a dict (the sentinel).
     """
-    client = OpenAI(api_key=api_key, base_url=base_url)
-    stream = client.chat.completions.create(
-        model=model_id,
-        max_tokens=max_tokens,
-        messages=messages if messages else [{"role": "user", "content": query}],
-        stream=True,
-        stream_options={"include_usage": True},
-    )
+    client = _get_client(api_key, base_url)
+    kwargs = {
+        "model": model_id,
+        "max_tokens": max_tokens,
+        "messages": messages if messages else [{"role": "user", "content": query}],
+        "stream": True,
+        "stream_options": {"include_usage": True},
+    }
+    if temperature is not None:
+        kwargs["temperature"] = temperature
+    stream = client.chat.completions.create(**kwargs)
     input_tokens = 0
     output_tokens = 0
     for chunk in stream:
@@ -150,7 +170,7 @@ def call_provider(
     return _call_openai_compatible(model_id, query, tier_label, price_in, price_out, api_key, base_url, max_tokens, messages)
 
 
-def call_model(tier: str, query: str, user_config: dict | None = None, messages: list[dict] | None = None) -> dict:
+def call_model(tier: str, query: str, user_config: dict | None = None, messages: list[dict] | None = None, max_tokens: int | None = None, temperature: float | None = None) -> dict:
     """
     Calls the model for the given tier.
     If user_config is provided (from model_config_loader), uses the user's
@@ -175,41 +195,43 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
             try:
                 return call_ollama(query, model=model_id)
             except Exception as e:
-                print(f"[ollama] local call failed ({e}), falling back to Groq cheap model")
+                log.warning("ollama local call failed (%s), falling back to Groq cheap model", e)
                 cfg = OLLAMA_FALLBACK_CONFIG
                 result = _call_openai_compatible(
                     cfg["model_id"], query, tier,
                     cfg["price_per_m_input"], cfg["price_per_m_output"],
                     _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
-                    messages=messages,
+                    messages=messages, max_tokens=max_tokens or 1000, temperature=temperature,
                 )
                 result["ollama_fallback"] = True
                 return result
 
-        return call_provider(provider, model_id, query, tier, api_key, price_in, price_out, messages=messages)
+        effective_max = max_tokens or 1000
+        return call_provider(provider, model_id, query, tier, api_key, price_in, price_out, effective_max, messages)
 
     # --- default path (no user config) ---
     if tier == "cheap":
         try:
             return call_ollama(query)
         except Exception as e:
-            print(f"[ollama] local call failed ({e}), falling back to Groq cheap model")
+            log.warning("ollama local call failed (%s), falling back to Groq cheap model", e)
             cfg = OLLAMA_FALLBACK_CONFIG
             result = _call_openai_compatible(
                 cfg["model_id"], query, "cheap",
                 cfg["price_per_m_input"], cfg["price_per_m_output"],
                 _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
-                messages=messages,
+                messages=messages, max_tokens=max_tokens or 1000, temperature=temperature,
             )
             result["ollama_fallback"] = True
             return result
 
     cfg = MODEL_CONFIG[tier]
+    effective_max = max_tokens or 1000
     return _call_openai_compatible(
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
         _get_groq_key(tier), PROVIDERS_REGISTRY["groq"]["base_url"],
-        messages=messages,
+        messages=messages, max_tokens=effective_max, temperature=temperature,
     )
 
 
@@ -218,14 +240,9 @@ def call_gemini(query: str) -> dict:
     Last-resort fallback: independent provider if entire Groq/Ollama chain fails.
     See rate_limiter.py.
     """
-    global _gemini_client
-    if _gemini_client is None:
-        _gemini_client = OpenAI(
-            api_key=GEMINI_API_KEY,
-            base_url=PROVIDERS_REGISTRY["gemini"]["base_url"],
-        )
     cfg = GEMINI_FALLBACK_CONFIG
-    response = _gemini_client.chat.completions.create(
+    client = _get_client(GEMINI_API_KEY, PROVIDERS_REGISTRY["gemini"]["base_url"])
+    response = client.chat.completions.create(
         model=cfg["model_id"],
         max_tokens=1000,
         messages=[{"role": "user", "content": query}],
@@ -238,6 +255,7 @@ def call_gemini(query: str) -> dict:
     )
     return {
         "text": response.choices[0].message.content,
+        "tier": "gemini",
         "model_id": cfg["model_id"],
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
@@ -245,7 +263,7 @@ def call_gemini(query: str) -> dict:
     }
 
 
-def stream_model(tier: str, query: str, user_config: dict | None = None, messages: list[dict] | None = None):
+def stream_model(tier: str, query: str, user_config: dict | None = None, messages: list[dict] | None = None, max_tokens: int | None = None, temperature: float | None = None):
     """
     Streaming version of call_model. Yields text chunks then a final metadata dict.
     Only supports OpenAI-compatible providers -- Ollama falls back to call_model (non-streaming).
@@ -254,12 +272,13 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
     if user_config:
         # BYOM: skip streaming entirely -- non-streaming path gives accurate token counts
         # across all providers regardless of stream_options support
-        result = call_model(tier, query, user_config, messages=messages)
+        result = call_model(tier, query, user_config, messages=messages, max_tokens=max_tokens, temperature=temperature)
         yield result["text"]
         yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
         return
 
     # default path
+    effective_max = max_tokens or 1000
     if tier == "cheap":
         try:
             result = call_ollama(query)
@@ -267,13 +286,13 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
             yield {"tier": "cheap", "model_id": result["model_id"], "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
             return
         except Exception as e:
-            print(f"[ollama] local call failed ({e}), falling back to Groq cheap model")
+            log.warning("ollama local call failed (%s), falling back to Groq cheap model", e)
             cfg = OLLAMA_FALLBACK_CONFIG
             yield from _stream_openai_compatible(
                 cfg["model_id"], query, "cheap",
                 cfg["price_per_m_input"], cfg["price_per_m_output"],
                 _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
-                messages=messages,
+                messages=messages, max_tokens=effective_max, temperature=temperature,
             )
             return
 
@@ -282,7 +301,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
         _get_groq_key(tier), PROVIDERS_REGISTRY["groq"]["base_url"],
-        messages=messages,
+        messages=messages, max_tokens=effective_max, temperature=temperature,
     )
 
 

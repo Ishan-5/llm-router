@@ -15,10 +15,13 @@ is tried once as a last resort -- a genuinely independent provider, not
 just another tier of the same infrastructure.
 """
 import time
+import logging
 from router.config import FALLBACK_CHAIN
 from router.providers import call_model, call_gemini
 from router.model_config_loader import get_active_config
 from router.load_balancer import report_rate_limit_from_error
+
+log = logging.getLogger("routewise.failover")
 
 
 class AllTiersFailedError(Exception):
@@ -27,23 +30,23 @@ class AllTiersFailedError(Exception):
 
 
 def _is_rate_limit_error(exc: Exception) -> bool:
-    msg = str(exc)
-    return "429" in msg or "rate_limit" in msg
+    msg = str(exc).lower()
+    return "429" in msg or "rate_limit" in msg or "rate limit" in msg or "too many requests" in msg
 
 
-def _call_with_one_retry(tier: str, query: str, user_config: dict, messages: list[dict] | None = None):
+def _call_with_one_retry(tier: str, query: str, user_config: dict, messages: list[dict] | None = None, max_tokens: int | None = None, temperature: float | None = None):
     """One quick retry for transient (non-rate-limit) errors only."""
     try:
-        return call_model(tier, query, user_config.get(tier), messages=messages)
+        return call_model(tier, query, user_config.get(tier), messages=messages, max_tokens=max_tokens, temperature=temperature)
     except Exception as e:
         if _is_rate_limit_error(e):
             report_rate_limit_from_error(tier, e)  # mark key as rate-limited in load balancer
             raise  # don't retry rate limits, caller will fall back immediately
         time.sleep(1)
-        return call_model(tier, query, user_config.get(tier), messages=messages)  # let this one raise if it fails again
+        return call_model(tier, query, user_config.get(tier), messages=messages, max_tokens=max_tokens, temperature=temperature)  # let this one raise if it fails again
 
 
-def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | None = None, messages: list[dict] | None = None) -> dict:
+def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | None = None, messages: list[dict] | None = None, max_tokens: int | None = None, temperature: float | None = None) -> dict:
     """
     Tries intended_tier, then falls back through FALLBACK_CHAIN on failure.
     Loads active config (user overrides merged with defaults) once per call.
@@ -63,17 +66,17 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
 
     for i, tier in enumerate(chain):
         try:
-            result = _call_with_one_retry(tier, query, user_config, messages=messages)
+            result = _call_with_one_retry(tier, query, user_config, messages=messages, max_tokens=max_tokens, temperature=temperature)
             result["intended_tier"] = intended_tier
             result["fallback_used"] = (tier != intended_tier)
             if result["fallback_used"]:
-                print(f"[failover] '{intended_tier}' failed, served by '{tier}' instead. "
-                      f"Reason '{intended_tier}' failed: {errors[-1] if errors else 'unknown'}")
+                log.info("'%s' failed, served by '%s' instead. Reason: %s",
+                      intended_tier, tier, errors[-1] if errors else 'unknown')
             return result
         except Exception as e:
             error_detail = f"{tier}: {type(e).__name__}: {e}"
             errors.append(error_detail)
-            print(f"[failover] tier '{tier}' failed -- {error_detail}")
+            log.warning("tier '%s' failed -- %s", tier, error_detail)
             continue  # try next tier in the chain
 
     # Entire chain failed -- last resort: try a genuinely
@@ -84,12 +87,12 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
         result["intended_tier"] = intended_tier
         result["fallback_used"] = True
         result["cross_provider_fallback"] = True
-        print(f"[failover] entire chain failed for '{intended_tier}', "
-              f"served by Gemini (independent provider) instead")
+        log.info("entire chain failed for '%s', served by Gemini (independent provider) instead",
+              intended_tier)
         return result
     except Exception as e:
         errors.append(f"gemini: {type(e).__name__}: {e}")
-        print(f"[failover] Gemini last-resort also failed -- {errors[-1]}")
+        log.error("Gemini last-resort also failed -- %s", errors[-1])
 
     raise AllTiersFailedError(
         f"All tiers failed for intended_tier='{intended_tier}'. Errors: {errors}"

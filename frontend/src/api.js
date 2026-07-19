@@ -80,7 +80,9 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
 }
 
 export async function fetchStats() {
-  const res = await fetch(`${API_BASE}/stats`)
+  const res = await fetch(`${API_BASE}/stats`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  })
   if (!res.ok) throw new Error('Could not load stats')
   return res.json()
 }
@@ -143,7 +145,8 @@ export async function fetchPricing() {
 }
 
 export async function fetchLogs(limit = 50) {
-  const res = await fetch(`${API_BASE}/logs?limit=${limit}`, {
+  const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 50)))
+  const res = await fetch(`${API_BASE}/logs?limit=${safeLimit}`, {
     headers: { 'Authorization': `Bearer ${API_KEY}` },
   })
   if (!res.ok) throw new Error('Could not load logs')
@@ -151,9 +154,19 @@ export async function fetchLogs(limit = 50) {
 }
 
 export async function fetchLogDetail(logId) {
-  const res = await fetch(`${API_BASE}/logs/${logId}`, {
+  const safeId = Math.floor(Number(logId))
+  if (!Number.isFinite(safeId) || safeId <= 0) throw new Error('Invalid log ID')
+  const res = await fetch(`${API_BASE}/logs/${safeId}`, {
     headers: { 'Authorization': `Bearer ${API_KEY}` },
   })
   if (!res.ok) throw new Error('Log entry not found')
+  return res.json()
+}
+
+export async function fetchAnalytics() {
+  const res = await fetch(`${API_BASE}/analytics`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  })
+  if (!res.ok) throw new Error('Could not load analytics')
   return res.json()
 }

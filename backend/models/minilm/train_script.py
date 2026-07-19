@@ -300,6 +300,14 @@ if __name__ == "__main__":
         print("Output folder already exists.")
         input("Continue?")
 
+    # Validate paths to prevent traversal attacks
+    resolved_output = os.path.realpath(os.path.expanduser(args.output))
+    resolved_data = os.path.realpath(os.path.expanduser(args.data_folder))
+    resolved_config = os.path.realpath(args.data_config)
+    for label, p in [("output", resolved_output), ("data_folder", resolved_data), ("data_config", resolved_config)]:
+        if ".." in os.path.relpath(p, os.getcwd()):
+            raise SystemExit(f"Path traversal detected in {label}: {p}")
+
     # Write train script to output path
     os.makedirs(args.output, exist_ok=True)
 
@@ -322,7 +330,10 @@ if __name__ == "__main__":
     filepaths = []
     dataset_indices = []
     for idx, data in enumerate(data_config):
-        filepaths.append(os.path.join(os.path.expanduser(args.data_folder), data['name']))
+        filepath = os.path.realpath(os.path.join(os.path.expanduser(args.data_folder), data['name']))
+        if not filepath.startswith(resolved_data):
+            raise SystemExit(f"Path traversal detected in dataset '{data['name']}': {filepath}")
+        filepaths.append(filepath)
         dataset_indices.extend([idx]*data['weight'])
 
     # Start producer

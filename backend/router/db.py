@@ -6,9 +6,12 @@ UserConfig is what makes BYOM possible. Base.metadata.create_all(engine) means z
 """
 
 import os
+import logging
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
+
+log = logging.getLogger("routewise.db")
 
 Base = declarative_base()
 _db_url = os.getenv("DATABASE_URL", "")
@@ -30,23 +33,27 @@ class ApiKey(Base):
 
 class RequestLog(Base):
     __tablename__ = "request_logs"
+    __table_args__ = (
+        # Indexes for high-traffic query columns
+        {"sqlite_autoincrement": True},
+    )
     id = Column(Integer, primary_key=True)
-    api_key_id = Column(Integer, nullable=True)  # which key made this request
+    api_key_id = Column(Integer, nullable=True, index=True)  # which key made this request
     query = Column(String)
     response = Column(Text, nullable=True)
     difficulty_score = Column(Float)
-    intended_tier = Column(String)
-    tier = Column(String)
+    intended_tier = Column(String, index=True)
+    tier = Column(String, index=True)
     fallback_used = Column(Boolean, default=False)
-    cache_hit = Column(Boolean, default=False)
+    cache_hit = Column(Boolean, default=False, index=True)
     cache_similarity = Column(Float, nullable=True)
-    model_id = Column(String)
+    model_id = Column(String, index=True)
     input_tokens = Column(Integer)
     output_tokens = Column(Integer)
     cost_usd = Column(Float)
     latency_ms = Column(Float)
     tokens_saved_usd = Column(Float, nullable=True)  # dollar value saved on cache hits
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class UserConfig(Base):
@@ -76,12 +83,16 @@ class ModelPricing(Base):
 try:
     Base.metadata.create_all(engine)
 except Exception as e:
-    print(f"[db] DB init failed (will retry on first request): {e}")
+    log.warning("DB init failed (will retry on first request): %s", e)
 
 
 def log_request(data: dict):
     session = SessionLocal()
-    entry = RequestLog(**data)
-    session.add(entry)
-    session.commit()
-    session.close()
+    try:
+        entry = RequestLog(**data)
+        session.add(entry)
+        session.commit()
+    except Exception:
+        session.rollback()
+    finally:
+        session.close()
