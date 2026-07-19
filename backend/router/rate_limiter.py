@@ -5,7 +5,8 @@ instead of failing the request outright.
 Two distinct error types are handled differently, on purpose:
   - Rate limit (429): retrying the SAME model is pointless -- Groq's error
     tells you to wait minutes, and a live user request can't wait that long.
-    So we skip immediately to the next tier in the fallback chain.
+    So we skip immediately to the next tier in the fallback chain, AND mark
+    the current key as rate-limited in the load balancer.
   - Transient errors (timeouts, connection issues, 5xx): these might
     succeed on a quick retry, so we retry once before falling back.
 
@@ -17,6 +18,7 @@ import time
 from router.config import FALLBACK_CHAIN
 from router.providers import call_model, call_gemini
 from router.model_config_loader import get_active_config
+from router.load_balancer import report_rate_limit_from_error
 
 
 class AllTiersFailedError(Exception):
@@ -35,6 +37,7 @@ def _call_with_one_retry(tier: str, query: str, user_config: dict, messages: lis
         return call_model(tier, query, user_config.get(tier), messages=messages)
     except Exception as e:
         if _is_rate_limit_error(e):
+            report_rate_limit_from_error(tier, e)  # mark key as rate-limited in load balancer
             raise  # don't retry rate limits, caller will fall back immediately
         time.sleep(1)
         return call_model(tier, query, user_config.get(tier), messages=messages)  # let this one raise if it fails again
