@@ -443,8 +443,8 @@ export default function GuidePage() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab.id
-                ? 'border-signal text-white'
-                : 'border-transparent text-muted hover:text-white'
+                ? 'border-signal text-primary'
+                : 'border-transparent text-muted hover:text-primary'
             }`}
           >
             {tab.label}

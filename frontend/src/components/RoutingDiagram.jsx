@@ -3,7 +3,7 @@ import { fetchStats, fetchConfig } from '../api'
 import TierCircuit from './TierCircuit'
 import QueryForm, { ChatSuggestions } from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
-import Confetti from './Confetti'
+
 
 export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
   const [messages, setMessages] = useState([])
@@ -11,7 +11,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
-  const [confetti, setConfetti] = useState(false)
   const abortRef = useRef(null)
   const scrollRef = useRef(null)
   const latestResult = messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.result || null
@@ -57,10 +56,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         controller.signal,
       )
       setMessages((prev) => [...prev, { role: 'assistant', result: data }])
-      if (data.routed_to !== 'frontier') {
-        setConfetti(true)
-        setTimeout(() => setConfetti(false), 2000)
-      }
       fetchStats().then(setTicker).catch(() => {})
       fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
@@ -78,7 +73,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     setMessages([])
     setLoading(false)
     setError(null)
-    setConfetti(false)
   }
 
   const activeTier = loading ? null : latestResult?.routed_to
@@ -94,7 +88,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
   return (
     <section className="relative overflow-hidden border-b border-line bg-panel">
-      <Confetti active={confetti} />
 
       <div className="absolute top-8 right-8 grid grid-cols-6 gap-1.5 opacity-40 pointer-events-none hidden lg:grid">
         {Array.from({ length: 24 }).map((_, i) => (
