@@ -18,6 +18,7 @@ def _call_openai_compatible(
     api_key: str,
     base_url: str,
     max_tokens: int = 1000,
+    messages: list[dict] | None = None,
 ) -> dict:
     """
     Generic caller for any OpenAI-compatible API.
@@ -27,7 +28,7 @@ def _call_openai_compatible(
     response = client.chat.completions.create(
         model=model_id,
         max_tokens=max_tokens,
-        messages=[{"role": "user", "content": query}],
+        messages=messages if messages else [{"role": "user", "content": query}],
     )
     input_tokens = response.usage.prompt_tokens
     output_tokens = response.usage.completion_tokens
@@ -54,6 +55,7 @@ def _stream_openai_compatible(
     api_key: str,
     base_url: str,
     max_tokens: int = 1000,
+    messages: list[dict] | None = None,
 ):
     """
     Streaming version. Yields text chunks, then a final dict with metadata.
@@ -63,7 +65,7 @@ def _stream_openai_compatible(
     stream = client.chat.completions.create(
         model=model_id,
         max_tokens=max_tokens,
-        messages=[{"role": "user", "content": query}],
+        messages=messages if messages else [{"role": "user", "content": query}],
         stream=True,
         stream_options={"include_usage": True},
     )
@@ -87,6 +89,7 @@ def _call_anthropic(
     price_out: float,
     api_key: str,
     max_tokens: int = 1000,
+    messages: list[dict] | None = None,
 ) -> dict:
     """Anthropic has its own SDK and API format -- handled separately."""
     import anthropic
@@ -94,7 +97,7 @@ def _call_anthropic(
     response = client.messages.create(
         model=model_id,
         max_tokens=max_tokens,
-        messages=[{"role": "user", "content": query}],
+        messages=messages if messages else [{"role": "user", "content": query}],
     )
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
@@ -121,6 +124,7 @@ def call_provider(
     price_in: float = 0.0,
     price_out: float = 0.0,
     max_tokens: int = 1000,
+    messages: list[dict] | None = None,
 ) -> dict:
     """
     Routes to the correct provider caller based on provider name.
@@ -130,14 +134,14 @@ def call_provider(
         return call_ollama(query, model=model_id)
 
     if provider == "anthropic":
-        return _call_anthropic(model_id, query, tier_label, price_in, price_out, api_key, max_tokens)
+        return _call_anthropic(model_id, query, tier_label, price_in, price_out, api_key, max_tokens, messages)
 
     # All other providers are OpenAI-compatible
     base_url = PROVIDERS_REGISTRY[provider]["base_url"]
-    return _call_openai_compatible(model_id, query, tier_label, price_in, price_out, api_key, base_url, max_tokens)
+    return _call_openai_compatible(model_id, query, tier_label, price_in, price_out, api_key, base_url, max_tokens, messages)
 
 
-def call_model(tier: str, query: str, user_config: dict | None = None) -> dict:
+def call_model(tier: str, query: str, user_config: dict | None = None, messages: list[dict] | None = None) -> dict:
     """
     Calls the model for the given tier.
     If user_config is provided (from model_config_loader), uses the user's
@@ -167,11 +171,12 @@ def call_model(tier: str, query: str, user_config: dict | None = None) -> dict:
                     cfg["model_id"], query, tier,
                     cfg["price_per_m_input"], cfg["price_per_m_output"],
                     GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+                    messages=messages,
                 )
                 result["ollama_fallback"] = True
                 return result
 
-        return call_provider(provider, model_id, query, tier, api_key, price_in, price_out)
+        return call_provider(provider, model_id, query, tier, api_key, price_in, price_out, messages=messages)
 
     # --- default path (no user config) ---
     if tier == "cheap":
@@ -184,6 +189,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None) -> dict:
                 cfg["model_id"], query, "cheap",
                 cfg["price_per_m_input"], cfg["price_per_m_output"],
                 GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+                messages=messages,
             )
             result["ollama_fallback"] = True
             return result
@@ -193,6 +199,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None) -> dict:
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
         GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+        messages=messages,
     )
 
 
@@ -228,7 +235,7 @@ def call_gemini(query: str) -> dict:
     }
 
 
-def stream_model(tier: str, query: str, user_config: dict | None = None):
+def stream_model(tier: str, query: str, user_config: dict | None = None, messages: list[dict] | None = None):
     """
     Streaming version of call_model. Yields text chunks then a final metadata dict.
     Only supports OpenAI-compatible providers -- Ollama falls back to call_model (non-streaming).
@@ -236,7 +243,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None):
     if user_config:
         # BYOM: skip streaming entirely -- non-streaming path gives accurate token counts
         # across all providers regardless of stream_options support
-        result = call_model(tier, query, user_config)
+        result = call_model(tier, query, user_config, messages=messages)
         yield result["text"]
         yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
         return
@@ -255,6 +262,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None):
                 cfg["model_id"], query, "cheap",
                 cfg["price_per_m_input"], cfg["price_per_m_output"],
                 GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+                messages=messages,
             )
             return
 
@@ -263,6 +271,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None):
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
         GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+        messages=messages,
     )
 
 

@@ -2,6 +2,7 @@ import json
 import time
 import asyncio
 import secrets
+from contextlib import asynccontextmanager
 from datetime import datetime
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
@@ -15,14 +16,33 @@ from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.providers import stream_model, validate_key
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
-from router.auth import require_api_key, check_budget, require_user
+from router.auth import require_api_key, check_budget, require_user, invalidate_key_cache
 from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.model_config_loader import get_active_config, get_pricing_for_model
+from router.openai_compat import router as openai_compat_router
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app):
+    # Startup: pre-load ML models
+    try:
+        import sys
+        sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent / 'src'))
+        from predict_difficulty import preload_models
+        preload_models()
+        print("[startup] ML models loaded successfully")
+    except Exception as e:
+        print(f"[startup] Warning: ML model preload failed: {e}")
+    yield
+    # Shutdown: nothing to clean up
+
+
+app = FastAPI(lifespan=lifespan)
 executor = ThreadPoolExecutor()
+
+app.include_router(openai_compat_router)
 
 
 app.add_middleware(
@@ -90,6 +110,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
             latency_ms = round((time.time() - start) * 1000, 2)
             log_request({
                 "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+                "response": answer,
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
                 "fallback_used": False, "cache_hit": False, "cache_similarity": None,
                 "model_id": "tavily/search", "input_tokens": 0, "output_tokens": 0,
@@ -116,6 +137,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
         log_request({
             "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+            "response": cached["response"],
             "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
             "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
             "model_id": cached["model_id"], "input_tokens": 0, "output_tokens": 0,
@@ -185,6 +207,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     latency_ms = round((time.time() - start) * 1000, 2)
     log_request({
         "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+        "response": result["text"],
         "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
         "tier": result["tier"], "fallback_used": result["fallback_used"],
         "cache_hit": False, "cache_similarity": None, "model_id": result["model_id"],
@@ -274,6 +297,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         full_response = "".join(full_text)
 
         log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query),
+            "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
             "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
             "cache_similarity": None, "model_id": meta["model_id"],
@@ -458,6 +482,7 @@ def revoke_key(key_id: int, user_id: str = Depends(require_user)):
             raise HTTPException(status_code=404, detail="Key not found")
         record.is_active = False
         session.commit()
+        invalidate_key_cache(record.key)
     finally:
         session.close()
     return {"revoked": key_id}
@@ -480,18 +505,53 @@ def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
             {
                 "id": r.id,
                 "query": r.query,
+                "response": (r.response[:500] + "...") if r.response and len(r.response) > 500 else r.response,
                 "tier": r.tier,
                 "intended_tier": r.intended_tier,
                 "model_id": r.model_id,
                 "difficulty_score": r.difficulty_score,
+                "input_tokens": r.input_tokens,
+                "output_tokens": r.output_tokens,
                 "cost_usd": r.cost_usd,
                 "latency_ms": r.latency_ms,
                 "cache_hit": r.cache_hit,
+                "cache_similarity": r.cache_similarity,
                 "fallback_used": r.fallback_used,
+                "tokens_saved_usd": r.tokens_saved_usd,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in rows
         ]
+    finally:
+        session.close()
+
+
+@app.get("/logs/{log_id}")
+def get_log_detail(log_id: int, api_key: ApiKey = Depends(require_api_key)):
+    """Returns the full detail of a single log entry. Only accessible by the owning key."""
+    session = SessionLocal()
+    try:
+        r = session.query(RequestLog).filter(RequestLog.id == log_id, RequestLog.api_key_id == api_key.id).first()
+        if not r:
+            raise HTTPException(status_code=404, detail="Log entry not found")
+        return {
+            "id": r.id,
+            "query": r.query,
+            "response": r.response,
+            "tier": r.tier,
+            "intended_tier": r.intended_tier,
+            "model_id": r.model_id,
+            "difficulty_score": r.difficulty_score,
+            "input_tokens": r.input_tokens,
+            "output_tokens": r.output_tokens,
+            "cost_usd": r.cost_usd,
+            "latency_ms": r.latency_ms,
+            "cache_hit": r.cache_hit,
+            "cache_similarity": r.cache_similarity,
+            "fallback_used": r.fallback_used,
+            "tokens_saved_usd": r.tokens_saved_usd,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
     finally:
         session.close()
 
