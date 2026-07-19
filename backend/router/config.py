@@ -42,7 +42,7 @@ MODEL_CONFIG = {
         "price_per_m_output": 0.08,
     },
     "mid": {
-        "model_id": "qwen/qwen3-32b",
+        "model_id": "qwen/qwen3.6-27b",
         "price_per_m_input": 0.29,
         "price_per_m_output": 0.59,
     },
