@@ -369,21 +369,3 @@ class RouteWiseClient:
         response = requests.get(f"{self.base_url}/pricing", timeout=self.timeout)
         _raise_for_status(response)
         return response.json()
-
-    # ------------------------------------------------------------------
-    # Key management
-    # ------------------------------------------------------------------
-
-    def create_key(self, name: str) -> dict:
-        """
-        Generate a new API key. Returns {"key": "rw_...", "name": "...", "created_at": "..."}.
-        Note: requires user auth (Supabase JWT), not an API key.
-        """
-        response = requests.post(
-            f"{self.base_url}/keys",
-            headers=self._headers(),
-            json={"name": name},
-            timeout=self.timeout,
-        )
-        _raise_for_status(response)
-        return response.json()

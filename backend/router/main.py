@@ -3,6 +3,7 @@ import time
 import asyncio
 import logging
 import secrets
+import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
 from collections import defaultdict
@@ -17,8 +18,8 @@ from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.providers import stream_model, validate_key
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
-from router.auth import require_api_key, check_budget, require_user, invalidate_key_cache
-from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY
+from router.auth import require_api_key, check_budget, require_user, require_admin, require_admin_api_key, require_admin_any, is_admin_user_id, invalidate_key_cache
+from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY, ADMIN_USER_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.model_config_loader import get_active_config, get_pricing_for_model
@@ -117,7 +118,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
             log_request({
-                "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+                "api_key_id": api_key.id, "user_id": api_key.user_id,
+                "query": sanitize_pii(req.query),
                 "response": answer,
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
                 "fallback_used": False, "cache_hit": False, "cache_similarity": None,
@@ -144,7 +146,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
             (cached["input_tokens"] / 1_000_000 * price_in)
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
         log_request({
-            "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "query": sanitize_pii(req.query),
             "response": cached["response"],
             "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
             "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
@@ -214,7 +217,8 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
 
     latency_ms = round((time.time() - start) * 1000, 2)
     log_request({
-        "api_key_id": api_key.id, "query": sanitize_pii(req.query),
+        "api_key_id": api_key.id, "user_id": api_key.user_id,
+        "query": sanitize_pii(req.query),
         "response": result["text"],
         "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
         "tier": result["tier"], "fallback_used": result["fallback_used"],
@@ -304,7 +308,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         latency_ms = round((time.time() - start) * 1000, 2)
         full_response = "".join(full_text)
 
-        log_request({"api_key_id": api_key.id, "query": sanitize_pii(req.query),
+        log_request({"api_key_id": api_key.id, "user_id": api_key.user_id, "query": sanitize_pii(req.query),
             "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
             "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
@@ -382,12 +386,13 @@ def get_config(authorization: str | None = Header(default=None)):
     """Returns active model config. If a valid user JWT is provided, returns that user's config. Otherwise returns defaults."""
     user_id = None
     if authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
         try:
-            import httpx
-            from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
-            token = authorization.removeprefix("Bearer ").strip()
-            resp = httpx.get(f"{SUPABASE_URL}/auth/v1/user",
-                headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY}, timeout=5)
+            resp = httpx.get(
+                f"{SUPABASE_URL}/auth/v1/user",
+                headers={"Authorization": f"Bearer {token}", "apikey": SUPABASE_SERVICE_KEY},
+                timeout=5,
+            )
             if resp.status_code == 200:
                 user_id = resp.json()["id"]
         except Exception as e:
@@ -573,39 +578,39 @@ def health():
 def get_stats(api_key: ApiKey = Depends(require_api_key)):
     """
     Aggregates real logged requests for the dashboard.
-
-    HONEST LIMITATION: cache-hit rows are logged with input_tokens=output_tokens=0
-    (no provider call happened, so there's nothing to count), which means the
-    "hypothetical cost" for cache hits comes out to $0 too -- understating how
-    much a cache hit actually saved. Fixing this properly would mean estimating
-    token count from query length for cache-hit rows; not done here, so treat
-    total_hypothetical_cost as a slight underestimate of true savings.
+    If the calling key belongs to the admin user → global stats (all keys).
+    Otherwise → scoped to the calling key only.
     """
     session = SessionLocal()
     try:
-        total_requests = session.query(func.count(RequestLog.id)).scalar() or 0
+        is_admin = is_admin_user_id(api_key.user_id)
+        base_filter = [] if is_admin else [RequestLog.api_key_id == api_key.id]
+
+        total_requests = session.query(func.count(RequestLog.id)).filter(*base_filter).scalar() or 0
 
         tier_counts = dict(
             session.query(RequestLog.tier, func.count(RequestLog.id))
+            .filter(*base_filter)
             .group_by(RequestLog.tier).all()
         )
 
         tier_costs = {
             tier: float(cost or 0.0)
             for tier, cost in session.query(RequestLog.tier, func.sum(RequestLog.cost_usd))
+            .filter(*base_filter)
             .group_by(RequestLog.tier).all()
             if tier
         }
 
-        total_actual_cost = float(session.query(func.sum(RequestLog.cost_usd)).scalar() or 0.0)
+        total_actual_cost = float(session.query(func.sum(RequestLog.cost_usd)).filter(*base_filter).scalar() or 0.0)
 
-        cache_hits = session.query(func.count(RequestLog.id)).filter(RequestLog.cache_hit == True).scalar() or 0
+        cache_hits = session.query(func.count(RequestLog.id)).filter(RequestLog.cache_hit == True, *base_filter).scalar() or 0
         cache_hit_rate = (cache_hits / total_requests) if total_requests else 0.0
 
-        fallback_count = session.query(func.count(RequestLog.id)).filter(RequestLog.fallback_used == True).scalar() or 0
+        fallback_count = session.query(func.count(RequestLog.id)).filter(RequestLog.fallback_used == True, *base_filter).scalar() or 0
 
         frontier_cfg = MODEL_CONFIG["frontier"]
-        token_rows = session.query(RequestLog.input_tokens, RequestLog.output_tokens, RequestLog.created_at).all()
+        token_rows = session.query(RequestLog.input_tokens, RequestLog.output_tokens, RequestLog.created_at).filter(*base_filter).all()
 
         total_hypothetical_cost = 0.0
         hyp_by_day = defaultdict(float)
@@ -620,14 +625,14 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
 
         avg_latency_by_tier = {
             tier: float(avg) for tier, avg in
-            session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).group_by(RequestLog.tier).all()
+            session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).filter(*base_filter).group_by(RequestLog.tier).all()
             if tier and avg is not None
         }
 
         daily_actual = session.query(
             func.date(RequestLog.created_at).label("day"),
             func.sum(RequestLog.cost_usd),
-        ).group_by("day").order_by("day").all()
+        ).filter(*base_filter).group_by("day").order_by("day").all()
 
         daily_costs = [
             {
@@ -640,7 +645,7 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
 
         cache_savings_usd = float(
             session.query(func.sum(RequestLog.tokens_saved_usd))
-            .filter(RequestLog.cache_hit == True)
+            .filter(RequestLog.cache_hit == True, *base_filter)
             .scalar() or 0.0
         )
         routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
@@ -659,6 +664,7 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "cache_savings_usd": cache_savings_usd,
             "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd,
+            "is_global": is_admin,
         }
     finally:
         session.close()
@@ -786,5 +792,196 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
             "latency_by_tier": {k: round(float(v or 0), 1) for k, v in latency_by_tier.items()},
             "top_expensive": top_expensive_list,
         }
+    finally:
+        session.close()
+
+
+# ------------------------------------------------------------------
+# Admin endpoints (require ADMIN_USER_ID)
+# ------------------------------------------------------------------
+
+@app.get("/admin/stats")
+def admin_stats(user_id: str = Depends(require_admin_any)):
+    """Global stats across all users. Admin only (API key or JWT)."""
+    session = SessionLocal()
+    try:
+        total_requests = session.query(func.count(RequestLog.id)).scalar() or 0
+
+        tier_counts = dict(
+            session.query(RequestLog.tier, func.count(RequestLog.id))
+            .group_by(RequestLog.tier).all()
+        )
+
+        tier_costs = {
+            tier: float(cost or 0.0)
+            for tier, cost in session.query(RequestLog.tier, func.sum(RequestLog.cost_usd))
+            .group_by(RequestLog.tier).all()
+            if tier
+        }
+
+        total_actual_cost = float(session.query(func.sum(RequestLog.cost_usd)).scalar() or 0.0)
+
+        cache_hits = session.query(func.count(RequestLog.id)).filter(RequestLog.cache_hit == True).scalar() or 0
+        cache_hit_rate = (cache_hits / total_requests) if total_requests else 0.0
+
+        fallback_count = session.query(func.count(RequestLog.id)).filter(RequestLog.fallback_used == True).scalar() or 0
+
+        frontier_cfg = MODEL_CONFIG["frontier"]
+        token_rows = session.query(RequestLog.input_tokens, RequestLog.output_tokens, RequestLog.created_at).all()
+
+        total_hypothetical_cost = 0.0
+        hyp_by_day = defaultdict(float)
+        for in_tok, out_tok, created_at in token_rows:
+            hyp_cost = (
+                (in_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_input"]
+                + (out_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_output"]
+            )
+            total_hypothetical_cost += hyp_cost
+            day = created_at.date().isoformat() if created_at else "unknown"
+            hyp_by_day[day] += hyp_cost
+
+        avg_latency_by_tier = {
+            tier: float(avg) for tier, avg in
+            session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).group_by(RequestLog.tier).all()
+            if tier and avg is not None
+        }
+
+        daily_actual = session.query(
+            func.date(RequestLog.created_at).label("day"),
+            func.sum(RequestLog.cost_usd),
+        ).group_by("day").order_by("day").all()
+
+        daily_costs = [
+            {
+                "date": str(day),
+                "actual_cost": float(actual or 0),
+                "hypothetical_cost": hyp_by_day.get(str(day), 0.0),
+            }
+            for day, actual in daily_actual
+        ]
+
+        cache_savings_usd = float(
+            session.query(func.sum(RequestLog.tokens_saved_usd))
+            .filter(RequestLog.cache_hit == True).scalar() or 0.0
+        )
+        routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
+        total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
+
+        # Per-user breakdown
+        user_request_counts = dict(
+            session.query(ApiKey.user_id, func.count(RequestLog.id))
+            .join(ApiKey, RequestLog.api_key_id == ApiKey.id)
+            .filter(ApiKey.user_id.isnot(None))
+            .group_by(ApiKey.user_id).all()
+        )
+
+        user_costs = dict(
+            session.query(ApiKey.user_id, func.sum(RequestLog.cost_usd))
+            .join(ApiKey, RequestLog.api_key_id == ApiKey.id)
+            .filter(ApiKey.user_id.isnot(None))
+            .group_by(ApiKey.user_id).all()
+        )
+
+        user_breakdown = []
+        all_user_ids = set(user_request_counts.keys()) | set(user_costs.keys())
+        for uid in sorted(all_user_ids):
+            user_breakdown.append({
+                "user_id": uid,
+                "requests": user_request_counts.get(uid, 0),
+                "cost_usd": round(float(user_costs.get(uid, 0) or 0), 6),
+            })
+
+        return {
+            "total_requests": total_requests,
+            "tier_counts": tier_counts,
+            "tier_costs": tier_costs,
+            "total_actual_cost": total_actual_cost,
+            "total_hypothetical_cost": total_hypothetical_cost,
+            "cache_hit_rate": cache_hit_rate,
+            "fallback_count": fallback_count,
+            "avg_latency_by_tier": avg_latency_by_tier,
+            "daily_costs": daily_costs,
+            "cache_savings_usd": cache_savings_usd,
+            "routing_savings_usd": routing_savings_usd,
+            "total_savings_usd": total_savings_usd,
+            "user_breakdown": user_breakdown,
+        }
+    finally:
+        session.close()
+
+
+@app.get("/admin/keys")
+def admin_keys(user_id: str = Depends(require_admin_any)):
+    """List all API keys across all users. Admin only (API key or JWT)."""
+    session = SessionLocal()
+    try:
+        rows = session.query(ApiKey).order_by(ApiKey.created_at.desc()).all()
+        return [
+            {
+                "id": r.id,
+                "key": r.key[:8] + "..." + r.key[-4:] if len(r.key) > 16 else r.key,
+                "name": r.name,
+                "user_id": r.user_id,
+                "is_active": r.is_active,
+                "daily_budget_usd": r.daily_budget_usd,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
+
+
+@app.get("/admin/logs")
+def admin_logs(limit: int = 50, user_id: str = Depends(require_admin_any)):
+    """Recent request logs across all keys. Admin only (API key or JWT)."""
+    limit = max(1, min(limit, 200))
+    session = SessionLocal()
+    try:
+        rows = (
+            session.query(RequestLog)
+            .order_by(RequestLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": r.id,
+                "query": r.query,
+                "response": (r.response[:200] + "...") if r.response and len(r.response) > 200 else r.response,
+                "tier": r.tier,
+                "model_id": r.model_id,
+                "cost_usd": r.cost_usd,
+                "latency_ms": r.latency_ms,
+                "cache_hit": r.cache_hit,
+                "api_key_id": r.api_key_id,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
+
+
+@app.get("/admin/users")
+def admin_users(user_id: str = Depends(require_admin_any)):
+    """List all users who have created API keys. Admin only (API key or JWT)."""
+    session = SessionLocal()
+    try:
+        rows = session.query(ApiKey.user_id).filter(ApiKey.user_id.isnot(None)).distinct().all()
+        user_ids = [r[0] for r in rows]
+
+        result = []
+        for uid in user_ids:
+            key_count = session.query(func.count(ApiKey.id)).filter(ApiKey.user_id == uid, ApiKey.is_active == True).scalar() or 0
+            request_count = session.query(func.count(RequestLog.id)).join(ApiKey, RequestLog.api_key_id == ApiKey.id).filter(ApiKey.user_id == uid).scalar() or 0
+            total_cost = float(session.query(func.sum(RequestLog.cost_usd)).join(ApiKey, RequestLog.api_key_id == ApiKey.id).filter(ApiKey.user_id == uid).scalar() or 0.0)
+            result.append({
+                "user_id": uid,
+                "active_keys": key_count,
+                "total_requests": request_count,
+                "total_cost_usd": round(total_cost, 6),
+            })
+        return result
     finally:
         session.close()

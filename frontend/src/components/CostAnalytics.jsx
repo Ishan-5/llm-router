@@ -42,13 +42,13 @@ function TooltipStyle({ active, payload, label }) {
   )
 }
 
-export default function CostAnalytics() {
+export default function CostAnalytics({ apiKey }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchAnalytics().then(setData).catch((e) => setError(e.message))
-  }, [])
+    fetchAnalytics(apiKey).then(setData).catch((e) => setError(e.message))
+  }, [apiKey])
 
   if (error) return <p className="font-mono text-xs text-danger">Failed to load analytics: {error}</p>
   if (!data) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-line rounded-lg animate-pulse" />)}</div>

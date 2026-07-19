@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
+import { fetchLogs, fetchLogDetail, fetchAnalytics } from '../api'
 import RequestLogs from './RequestLogs'
 import CostAnalytics from './CostAnalytics'
 import ApiPlayground from './ApiPlayground'
@@ -23,8 +24,15 @@ export default function DashboardPage() {
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('keys')
+  const [selectedKeyId, setSelectedKeyId] = useState(null)
 
   useEffect(() => { loadKeys() }, [])
+
+  useEffect(() => {
+    if (keys.length > 0 && !selectedKeyId) {
+      setSelectedKeyId(keys[0].id)
+    }
+  }, [keys])
 
   async function loadKeys() {
     setLoadingKeys(true)
@@ -65,6 +73,7 @@ export default function DashboardPage() {
     const headers = await authHeaders()
     await fetch(`${API_BASE}/keys/${safeId}`, { method: 'DELETE', headers })
     setKeys((prev) => prev.filter((k) => k.id !== id))
+    if (selectedKeyId === id) setSelectedKeyId(keys.find((k) => k.id !== id)?.id || null)
     setRevoking(null)
   }
 
@@ -75,6 +84,14 @@ export default function DashboardPage() {
     })
   }
 
+  function maskKey(key) {
+    if (!key || key.length < 16) return key
+    return key.slice(0, 8) + '...' + key.slice(-4)
+  }
+
+  const selectedKey = keys.find((k) => k.id === selectedKeyId)
+  const hasKeys = keys.length > 0
+
   return (
     <div className="max-w-5xl mx-auto px-6 py-20">
       <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">Dashboard</p>
@@ -83,28 +100,26 @@ export default function DashboardPage() {
       {/* Tabs */}
       <div className="flex gap-1 border-b border-line mb-8">
         {[
-          { id: 'playground', label: 'Playground' },
-          { id: 'analytics', label: 'Analytics' },
           { id: 'keys', label: 'API Keys' },
-          { id: 'logs', label: 'Request Logs' },
+          ...(hasKeys ? [
+            { id: 'playground', label: 'Playground' },
+            { id: 'analytics', label: 'Analytics' },
+            { id: 'logs', label: 'Request Logs' },
+          ] : []),
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors ${
               activeTab === tab.id
-                ? 'border-signal text-white'
-                : 'border-transparent text-muted hover:text-white'
+                ? 'border-signal text-primary'
+                : 'border-transparent text-muted hover:text-primary'
             }`}
           >
             {tab.label}
           </button>
         ))}
       </div>
-
-      {activeTab === 'playground' && <ApiPlayground />}
-
-      {activeTab === 'analytics' && <CostAnalytics />}
 
       {activeTab === 'keys' && (
         <>
@@ -135,7 +150,7 @@ export default function DashboardPage() {
           {/* Newly created key — show once */}
           {newKey && (
             <div className="border border-signal/40 bg-signal/5 rounded-lg p-4 mb-8">
-              <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-2">Copy this key now — it won't be shown again</p>
+              <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-2">Copy your key — you can view it anytime from the keys list</p>
               <div className="flex items-center gap-3">
                 <code className="font-mono text-xs text-primary break-all flex-1">{newKey}</code>
                 <button
@@ -161,18 +176,26 @@ export default function DashboardPage() {
             ) : (
               keys.map((k) => (
                 <div key={k.id} className="flex items-center justify-between py-4 border-b border-line gap-4">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <p className="font-body text-sm font-medium">{k.name}</p>
-                    <p className="font-mono text-[10px] text-muted">{k.key.slice(0, 12)}••••••••••••••••••••••••••••••••</p>
+                    <p className="font-mono text-[10px] text-muted">{maskKey(k.key)}</p>
                     <p className="font-mono text-[10px] text-muted">created {new Date(k.created_at).toLocaleDateString()}</p>
                   </div>
-                  <button
-                    onClick={() => handleRevoke(k.id)}
-                    disabled={revoking === k.id}
-                    className="font-mono text-[10px] px-3 py-1.5 rounded border border-danger/40 text-danger hover:bg-danger/10 transition disabled:opacity-50 shrink-0"
-                  >
-                    {revoking === k.id ? 'revoking…' : 'revoke'}
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => copyKey(k.key)}
+                      className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
+                    >
+                      {copied ? 'copied ✓' : 'copy'}
+                    </button>
+                    <button
+                      onClick={() => handleRevoke(k.id)}
+                      disabled={revoking === k.id}
+                      className="font-mono text-[10px] px-3 py-1.5 rounded border border-danger/40 text-danger hover:bg-danger/10 transition disabled:opacity-50"
+                    >
+                      {revoking === k.id ? 'revoking…' : 'revoke'}
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -180,7 +203,49 @@ export default function DashboardPage() {
         </>
       )}
 
-      {activeTab === 'logs' && <RequestLogs />}
+      {activeTab === 'playground' && hasKeys && <ApiPlayground />}
+
+      {activeTab === 'analytics' && hasKeys && (
+        <div>
+          {/* Key selector */}
+          {keys.length > 1 && (
+            <div className="flex items-center gap-3 mb-6">
+              <label className="font-mono text-[10px] text-muted uppercase tracking-wide">Viewing key:</label>
+              <select
+                value={selectedKeyId || ''}
+                onChange={(e) => setSelectedKeyId(Number(e.target.value))}
+                className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono"
+              >
+                {keys.map((k) => (
+                  <option key={k.id} value={k.id}>{k.name} ({maskKey(k.key)})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <CostAnalytics apiKey={selectedKey?.key} />
+        </div>
+      )}
+
+      {activeTab === 'logs' && hasKeys && (
+        <div>
+          {/* Key selector */}
+          {keys.length > 1 && (
+            <div className="flex items-center gap-3 mb-6">
+              <label className="font-mono text-[10px] text-muted uppercase tracking-wide">Viewing key:</label>
+              <select
+                value={selectedKeyId || ''}
+                onChange={(e) => setSelectedKeyId(Number(e.target.value))}
+                className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono"
+              >
+                {keys.map((k) => (
+                  <option key={k.id} value={k.id}>{k.name} ({maskKey(k.key)})</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <RequestLogs apiKey={selectedKey?.key} />
+        </div>
+      )}
     </div>
   )
 }

@@ -157,7 +157,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
             log_request({
-                "api_key_id": api_key.id, "query": sanitize_pii(user_query),
+                "api_key_id": api_key.id, "user_id": api_key.user_id,
+                "query": sanitize_pii(user_query),
                 "response": answer,
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
                 "fallback_used": False, "cache_hit": False, "cache_similarity": None,
@@ -184,7 +185,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
         log_request({
-            "api_key_id": api_key.id, "query": sanitize_pii(user_query),
+            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "query": sanitize_pii(user_query),
             "response": cached["response"],
             "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
             "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
@@ -216,7 +218,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
         latency_ms = round((time.time() - start) * 1000, 2)
         log_request({
-            "api_key_id": api_key.id, "query": sanitize_pii(user_query),
+            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "query": sanitize_pii(user_query),
             "response": result["text"],
             "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
             "tier": result["tier"], "fallback_used": result["fallback_used"],
@@ -283,7 +286,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         full_response = "".join(full_text)
 
         log_request({
-            "api_key_id": api_key.id, "query": sanitize_pii(user_query),
+            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "query": sanitize_pii(user_query),
             "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
             "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
