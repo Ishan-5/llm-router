@@ -1,4 +1,4 @@
-import{r,j as e,A as s,l as i}from"./index-CEfiGuh9.js";const c=2e3,d=[{id:"quickstart",label:"Quick Start"},{id:"sdk",label:"Python SDK"},{id:"openai",label:"OpenAI SDK"},{id:"rest",label:"REST API"},{id:"streaming",label:"Streaming"},{id:"byom",label:"BYOM"},{id:"config",label:"Configuration"}],p={quickstart:{title:"Get started in 30 seconds",description:"Install the SDK, set your key, and start routing.",sections:[{label:"Install",code:"pip install routewise",lang:"bash"},{label:"Python",code:`from routewise import RouteWiseClient
+import{r,j as e,A as s,l as i}from"./index-DGktTCEq.js";const c=2e3,d=[{id:"quickstart",label:"Quick Start"},{id:"sdk",label:"Python SDK"},{id:"openai",label:"OpenAI SDK"},{id:"rest",label:"REST API"},{id:"streaming",label:"Streaming"},{id:"byom",label:"BYOM"},{id:"config",label:"Configuration"}],p={quickstart:{title:"Get started in 30 seconds",description:"Install the SDK, set your key, and start routing.",sections:[{label:"Install",code:"pip install routewise",lang:"bash"},{label:"Python",code:`from routewise import RouteWiseClient
 
 client = RouteWiseClient(api_key="rw_your_key_here")
 

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function AuthPage() {
@@ -86,6 +87,12 @@ export default function AuthPage() {
             {mode === 'login' ? 'Sign up' : 'Sign in'}
           </button>
         </p>
+
+        <div className="mt-8 pt-6 border-t border-line text-center">
+          <Link to="/playground" className="font-mono text-xs text-muted hover:text-primary transition-colors">
+            Continue without account →
+          </Link>
+        </div>
       </div>
     </div>
   )

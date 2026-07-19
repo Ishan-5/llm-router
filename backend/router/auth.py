@@ -20,7 +20,7 @@ from collections import defaultdict
 from datetime import datetime, date
 from fastapi import Header, HTTPException
 from router.db import SessionLocal, ApiKey, RequestLog
-from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
+from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_USER_ID
 from sqlalchemy import func
 
 log = logging.getLogger("routewise.auth")
@@ -127,3 +127,44 @@ async def require_user(authorization: str = Header(None)) -> str:
     except Exception as e:
         log.warning("require_user exception: %s", e)
         raise HTTPException(status_code=401, detail="Could not verify session")
+
+
+async def require_admin(authorization: str = Header(None)) -> str:
+    """Verifies Supabase JWT and returns user_id only if it matches ADMIN_USER_ID."""
+    user_id = await require_user(authorization)
+    if user_id != ADMIN_USER_ID:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user_id
+
+
+async def require_admin_api_key(authorization: str = Header(None)) -> ApiKey:
+    """API-key-based admin check. Returns the ApiKey record if key belongs to admin user."""
+    api_key = await require_api_key(authorization)
+    if not is_admin_user_id(api_key.user_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return api_key
+
+
+async def require_admin_any(authorization: str = Header(None)) -> str:
+    """Accepts either API key (rw_...) or Supabase JWT. Returns admin user_id."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth")
+
+    token = authorization.removeprefix("Bearer ").strip()
+
+    if token.startswith("rw_"):
+        record = _lookup_key_cached(token)
+        if record and record.user_id and is_admin_user_id(record.user_id):
+            check_rate_limit(token)
+            return record.user_id
+        raise HTTPException(status_code=403, detail="Admin access required (API key)")
+
+    user_id = await require_user(authorization)
+    if not is_admin_user_id(user_id):
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return user_id
+
+
+def is_admin_user_id(user_id: str | None) -> bool:
+    """Check if a user_id belongs to the admin. Used for optional admin checks."""
+    return bool(user_id) and user_id == ADMIN_USER_ID

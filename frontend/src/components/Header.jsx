@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { ADMIN_USER_ID } from '../config'
 import ThemeToggle from './ThemeToggle'
 
 export default function Header({ isDark, toggleTheme, onOpenSettings, onOpenCmd, byomActive, user }) {
@@ -60,9 +61,20 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, onOpenCmd,
             </Link>
             {user ? (
               <>
+                <span className="text-muted font-mono text-xs flex items-center gap-1.5">
+                  {user.email}
+                  {user.id === ADMIN_USER_ID && (
+                    <span className="px-1.5 py-0.5 rounded border border-signal/30 bg-signal/10 text-signal text-[10px] font-semibold uppercase">admin</span>
+                  )}
+                </span>
                 <Link to="/dashboard" className={`hover:text-primary transition-colors ${isActive('/dashboard') ? 'text-primary font-medium' : ''}`}>
                   Dashboard
                 </Link>
+                {user.id === ADMIN_USER_ID && (
+                  <Link to="/admin" className={`hover:text-primary transition-colors ${isActive('/admin') ? 'text-primary font-medium' : ''}`}>
+                    Admin
+                  </Link>
+                )}
                 <button onClick={handleSignOut} className="hover:text-primary transition-colors">Sign out</button>
               </>
             ) : (
@@ -149,10 +161,22 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, onOpenCmd,
               <div className="border-t border-line my-2" />
               {user ? (
                 <>
+                  <div className="flex items-center gap-1.5 py-2.5">
+                    <span className="text-sm text-muted font-mono truncate">{user.email}</span>
+                    {user.id === ADMIN_USER_ID && (
+                      <span className="px-1.5 py-0.5 rounded border border-signal/30 bg-signal/10 text-signal text-[10px] font-semibold uppercase shrink-0">admin</span>
+                    )}
+                  </div>
                   <Link to="/dashboard" onClick={() => setMobileOpen(false)}
                     className="text-sm text-muted hover:text-primary transition-colors py-2.5">
                     Dashboard
                   </Link>
+                  {user.id === ADMIN_USER_ID && (
+                    <Link to="/admin" onClick={() => setMobileOpen(false)}
+                      className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                      Admin
+                    </Link>
+                  )}
                   <button onClick={() => { handleSignOut(); setMobileOpen(false) }}
                     className="text-sm text-muted hover:text-primary transition-colors py-2.5 text-left">
                     Sign out

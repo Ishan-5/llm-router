@@ -17,12 +17,14 @@ const DashboardPage = lazy(() => import('./components/DashboardPage'))
 const MetricsDashboard = lazy(() => import('./components/MetricsDashboard'))
 const ApiPlayground = lazy(() => import('./components/ApiPlayground'))
 const GuidePage = lazy(() => import('./components/GuidePage'))
+const AdminPage = lazy(() => import('./components/AdminPage'))
 
 const TITLES = {
   '/': 'Routewise — Cost-aware LLM routing',
   '/pricing': 'Routewise — Models & Pricing',
   '/playground': 'Routewise — API Playground',
   '/guide': 'Routewise — Developer Guide',
+  '/admin': 'Routewise — Admin',
   '/about': 'Routewise — About',
   '/auth': 'Routewise — Sign in',
   '/dashboard': 'Routewise — Dashboard',
@@ -233,6 +235,7 @@ export default function App() {
               </div>
             } />
             <Route path="/guide" element={<GuidePage />} />
+            <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </Suspense>
       </div>

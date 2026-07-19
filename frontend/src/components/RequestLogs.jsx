@@ -18,14 +18,14 @@ function formatTime(iso) {
   })
 }
 
-function LogRow({ log, isExpanded, onToggle }) {
+function LogRow({ log, isExpanded, onToggle, apiKey }) {
   const [detail, setDetail] = useState(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (isExpanded && !detail) {
       setLoading(true)
-      fetchLogDetail(log.id).then(setDetail).catch(() => {}).finally(() => setLoading(false))
+      fetchLogDetail(log.id, apiKey).then(setDetail).catch(() => {}).finally(() => setLoading(false))
     }
   }, [isExpanded])
 
@@ -131,7 +131,7 @@ function DetailSection({ title, children }) {
   )
 }
 
-export default function RequestLogs() {
+export default function RequestLogs({ apiKey }) {
   const [logs, setLogs] = useState([])
   const [error, setError] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
@@ -139,10 +139,10 @@ export default function RequestLogs() {
 
   function load() {
     setError(null)
-    fetchLogs(limit).then(setLogs).catch((e) => setError(e.message))
+    fetchLogs(limit, apiKey).then(setLogs).catch((e) => setError(e.message))
   }
 
-  useEffect(load, [limit])
+  useEffect(load, [limit, apiKey])
 
   return (
     <div className="space-y-4">
@@ -182,6 +182,7 @@ export default function RequestLogs() {
               log={log}
               isExpanded={expandedId === log.id}
               onToggle={() => setExpandedId(expandedId === log.id ? null : log.id)}
+              apiKey={apiKey}
             />
           ))}
         </div>

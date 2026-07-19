@@ -79,10 +79,11 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
   return res.json()
 }
 
-export async function fetchStats() {
-  const res = await fetch(`${API_BASE}/stats`, {
-    headers: { 'Authorization': `Bearer ${API_KEY}` },
-  })
+export async function fetchStats(key) {
+  const headers = key
+    ? { 'Authorization': `Bearer ${key}` }
+    : { 'Authorization': `Bearer ${API_KEY}` }
+  const res = await fetch(`${API_BASE}/stats`, { headers })
   if (!res.ok) throw new Error('Could not load stats')
   return res.json()
 }
@@ -144,29 +145,70 @@ export async function fetchPricing() {
   return res.json()
 }
 
-export async function fetchLogs(limit = 50) {
+export async function fetchLogs(limit = 50, key) {
   const safeLimit = Math.max(1, Math.min(100, Math.floor(Number(limit) || 50)))
+  const authKey = key || API_KEY
   const res = await fetch(`${API_BASE}/logs?limit=${safeLimit}`, {
-    headers: { 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Authorization': `Bearer ${authKey}` },
   })
   if (!res.ok) throw new Error('Could not load logs')
   return res.json()
 }
 
-export async function fetchLogDetail(logId) {
+export async function fetchLogDetail(logId, key) {
   const safeId = Math.floor(Number(logId))
   if (!Number.isFinite(safeId) || safeId <= 0) throw new Error('Invalid log ID')
+  const authKey = key || API_KEY
   const res = await fetch(`${API_BASE}/logs/${safeId}`, {
-    headers: { 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Authorization': `Bearer ${authKey}` },
   })
   if (!res.ok) throw new Error('Log entry not found')
   return res.json()
 }
 
-export async function fetchAnalytics() {
+export async function fetchAnalytics(key) {
+  const authKey = key || API_KEY
   const res = await fetch(`${API_BASE}/analytics`, {
-    headers: { 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Authorization': `Bearer ${authKey}` },
   })
   if (!res.ok) throw new Error('Could not load analytics')
+  return res.json()
+}
+
+// ------------------------------------------------------------------
+// Admin API (requires Supabase JWT from admin user)
+// ------------------------------------------------------------------
+
+async function _adminHeaders() {
+  let { supabase } = await import('./supabase')
+  const { data: { session } } = await supabase.auth.getSession()
+  return { 'Authorization': `Bearer ${session?.access_token}` }
+}
+
+export async function fetchAdminStats() {
+  const headers = await _adminHeaders()
+  const res = await fetch(`${API_BASE}/admin/stats`, { headers })
+  if (!res.ok) throw new Error('Could not load admin stats')
+  return res.json()
+}
+
+export async function fetchAdminKeys() {
+  const headers = await _adminHeaders()
+  const res = await fetch(`${API_BASE}/admin/keys`, { headers })
+  if (!res.ok) throw new Error('Could not load admin keys')
+  return res.json()
+}
+
+export async function fetchAdminLogs(limit = 50) {
+  const headers = await _adminHeaders()
+  const res = await fetch(`${API_BASE}/admin/logs?limit=${limit}`, { headers })
+  if (!res.ok) throw new Error('Could not load admin logs')
+  return res.json()
+}
+
+export async function fetchAdminUsers() {
+  const headers = await _adminHeaders()
+  const res = await fetch(`${API_BASE}/admin/users`, { headers })
+  if (!res.ok) throw new Error('Could not load admin users')
   return res.json()
 }
