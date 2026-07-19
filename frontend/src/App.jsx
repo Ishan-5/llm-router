@@ -179,7 +179,7 @@ export default function App() {
 
   useEffect(() => {
     function checkHealth() {
-      fetch('/health')
+      fetch(`${import.meta.env.VITE_API_BASE}/health`)
         .then((r) => setBackendOnline(r.ok))
         .catch(() => setBackendOnline(false))
     }
