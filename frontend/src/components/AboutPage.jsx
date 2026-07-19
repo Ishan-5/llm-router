@@ -1,4 +1,31 @@
+import { useState } from 'react'
+import emailjs from '@emailjs/browser'
+
 export default function AboutPage() {
+  const [feedback, setFeedback] = useState({ name: '', email: '', message: '' })
+  const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!feedback.name.trim() || !feedback.email.trim() || !feedback.message.trim()) return
+    setSending(true)
+    setError(null)
+    try {
+      await emailjs.send(
+        'service_05o8qzp',
+        'template_702pyo5',
+        { name: feedback.name, email: feedback.email, message: feedback.message },
+        'u6Le31Mh1YxjCQXaK'
+      )
+      setSent(true)
+    } catch {
+      setError('Failed to send. Please email devansh.7711@gmail.com directly.')
+    } finally {
+      setSending(false)
+    }
+  }
   return (
     <div className="max-w-3xl mx-auto px-6 py-20">
 
@@ -126,6 +153,55 @@ export default function AboutPage() {
             devansh.7711@gmail.com
           </a>
         </div>
+      </div>
+
+      {/* Feedback */}
+      <div className="border-t border-line pt-12">
+        <h2 className="font-display text-2xl font-semibold mb-2">Get in touch</h2>
+        <p className="text-muted text-sm leading-relaxed mb-6 max-w-xl">
+          Have feedback, a feature request, or just want to connect? Drop a message.
+        </p>
+        {sent ? (
+          <div className="bg-cool/10 border border-cool/30 rounded-lg px-5 py-4 max-w-lg">
+            <p className="font-mono text-xs text-cool font-semibold mb-1">Message sent!</p>
+            <p className="text-muted text-sm">Thanks, I'll get back to you soon.</p>
+            <button onClick={() => { setSent(false); setFeedback({ name: '', email: '', message: '' }) }} className="font-mono text-xs text-muted hover:text-primary mt-3 transition-colors">Send another</button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="max-w-lg flex flex-col gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Name"
+                value={feedback.name}
+                onChange={(e) => setFeedback((f) => ({ ...f, name: e.target.value }))}
+                className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={feedback.email}
+                onChange={(e) => setFeedback((f) => ({ ...f, email: e.target.value }))}
+                className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors"
+              />
+            </div>
+            <textarea
+              placeholder="Your message..."
+              rows={4}
+              value={feedback.message}
+              onChange={(e) => setFeedback((f) => ({ ...f, message: e.target.value }))}
+              className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors resize-none"
+            />
+            {error && <p className="font-mono text-xs text-red-400">{error}</p>}
+            <button
+              type="submit"
+              disabled={sending}
+              className="self-start font-mono text-xs px-5 py-2.5 rounded-lg bg-signal text-white font-semibold hover:brightness-110 transition disabled:opacity-50"
+            >
+              {sending ? 'Sending...' : 'Send message'}
+            </button>
+          </form>
+        )}
       </div>
 
     </div>

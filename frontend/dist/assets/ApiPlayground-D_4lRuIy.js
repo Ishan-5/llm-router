@@ -1,4 +1,4 @@
-import{r as n,j as e,M as E,c as B,i as Q,k as J,A as g,l as b}from"./index-hNhuwOI7.js";const L=15,G=["curl","Python","JavaScript"];function W(i,u,r,l){const a=u.replace(/\\/g,"\\\\").replace(/"/g,'\\"');if(i==="curl"){const h=r!=="auto"?`  "override_tier": "${r}",
+import{r as n,j as e,M as E,c as B,i as Q,k as J,A as g,l as b}from"./index-CEfiGuh9.js";const L=15,G=["curl","Python","JavaScript"];function W(i,u,r,l){const a=u.replace(/\\/g,"\\\\").replace(/"/g,'\\"');if(i==="curl"){const h=r!=="auto"?`  "override_tier": "${r}",
 `:"";return`curl -X POST ${g}/route${l?"/stream":""} \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${b}" \\

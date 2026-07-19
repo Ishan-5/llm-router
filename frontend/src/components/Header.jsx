@@ -79,25 +79,11 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, onOpenCmd,
               <span>&#9881;</span>
               <span>Models</span>
             </button>
-            <button
-              onClick={onOpenCmd}
-              className="hidden lg:flex items-center gap-1.5 font-mono text-[10px] text-muted border border-line rounded-full px-2.5 py-1 hover:text-primary hover:border-signal transition-colors"
-              aria-label="Open command palette"
-            >
-              <span>&#8984;K</span>
-            </button>
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
           </nav>
 
           {/* Mobile controls */}
           <div className="flex items-center gap-3 md:hidden">
-            <button
-              onClick={onOpenCmd}
-              className="font-mono text-[10px] text-muted border border-line rounded-full px-2 py-1"
-              aria-label="Open command palette"
-            >
-              &#8984;K
-            </button>
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
