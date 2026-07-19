@@ -56,7 +56,7 @@ app.include_router(openai_compat_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "DELETE", "HEAD"],
     allow_headers=["*"],
 )
 
@@ -564,7 +564,7 @@ def get_log_detail(log_id: int, api_key: ApiKey = Depends(require_api_key)):
         session.close()
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
 
