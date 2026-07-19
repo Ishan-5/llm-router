@@ -23,6 +23,15 @@ ALLOWED_ORIGINS = os.getenv(
     "http://localhost:5173,http://localhost:4173"
 ).split(",")
 
+# Multi-key support: comma-separated keys per tier for load balancing
+GROQ_KEYS_CHEAP = os.getenv("GROQ_KEYS_CHEAP", "")
+GROQ_KEYS_MID = os.getenv("GROQ_KEYS_MID", "")
+GROQ_KEYS_FRONTIER = os.getenv("GROQ_KEYS_FRONTIER", "")
+
+# Initialize load balancer with multi-key config
+from router.load_balancer import init_load_balancer
+init_load_balancer(GROQ_KEYS_CHEAP, GROQ_KEYS_MID, GROQ_KEYS_FRONTIER)
+
 # Default provider used when no user config is set for a tier
 DEFAULT_PROVIDER = "groq"
 

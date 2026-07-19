@@ -3,10 +3,19 @@ from openai import OpenAI
 from router.config import GROQ_API_KEY, GEMINI_API_KEY, MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG, GEMINI_FALLBACK_CONFIG
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.ollama_client import call_ollama
+from router.load_balancer import get_key_for_tier, report_rate_limit_from_error
 
 # default Groq client (used when no user api key supplied)
 _default_groq_client = Groq(api_key=GROQ_API_KEY)
 _gemini_client = None
+
+
+def _get_groq_key(tier: str) -> str:
+    """Get a Groq API key for the tier. Uses load balancer if multi-key configured, else falls back to single key."""
+    key = get_key_for_tier(tier)
+    if key:
+        return key
+    return GROQ_API_KEY
 
 
 def _call_openai_compatible(
@@ -146,6 +155,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
     Calls the model for the given tier.
     If user_config is provided (from model_config_loader), uses the user's
     provider/model/api_key. Otherwise falls back to the hardcoded defaults.
+    Uses load balancer for key rotation when multiple keys are configured.
     """
     if user_config:
         provider = user_config["provider"]
@@ -157,7 +167,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
         # if no user api_key supplied, use the default key for known providers
         if not api_key:
             if provider == "groq":
-                api_key = GROQ_API_KEY
+                api_key = _get_groq_key(tier)
             elif provider == "gemini":
                 api_key = GEMINI_API_KEY
 
@@ -170,7 +180,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
                 result = _call_openai_compatible(
                     cfg["model_id"], query, tier,
                     cfg["price_per_m_input"], cfg["price_per_m_output"],
-                    GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+                    _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
                     messages=messages,
                 )
                 result["ollama_fallback"] = True
@@ -188,7 +198,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
             result = _call_openai_compatible(
                 cfg["model_id"], query, "cheap",
                 cfg["price_per_m_input"], cfg["price_per_m_output"],
-                GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+                _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
                 messages=messages,
             )
             result["ollama_fallback"] = True
@@ -198,7 +208,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
     return _call_openai_compatible(
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
-        GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+        _get_groq_key(tier), PROVIDERS_REGISTRY["groq"]["base_url"],
         messages=messages,
     )
 
@@ -239,6 +249,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
     """
     Streaming version of call_model. Yields text chunks then a final metadata dict.
     Only supports OpenAI-compatible providers -- Ollama falls back to call_model (non-streaming).
+    Uses load balancer for key rotation when multiple keys are configured.
     """
     if user_config:
         # BYOM: skip streaming entirely -- non-streaming path gives accurate token counts
@@ -261,7 +272,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
             yield from _stream_openai_compatible(
                 cfg["model_id"], query, "cheap",
                 cfg["price_per_m_input"], cfg["price_per_m_output"],
-                GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+                _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
                 messages=messages,
             )
             return
@@ -270,7 +281,7 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
     yield from _stream_openai_compatible(
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
-        GROQ_API_KEY, PROVIDERS_REGISTRY["groq"]["base_url"],
+        _get_groq_key(tier), PROVIDERS_REGISTRY["groq"]["base_url"],
         messages=messages,
     )
 
