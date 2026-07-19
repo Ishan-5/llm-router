@@ -28,12 +28,15 @@ _embedder = None
 
 def _load():
     global _bundle, _embedder
-    if _bundle is None:  # only loads if not already loaded. First call loads everything, every subsequent call just returns the already-loaded objects instantly
+    if _bundle is None:
         _bundle = joblib.load(MODEL_PATH)
         _embedder = SentenceTransformer(_EMBEDDER_NAME)
     return _bundle, _embedder
-#This pattern is called lazy loading — load on first use, cache forever. 
-# In a web server context this means the first request after startup is slow (model loading), every request after that is fast.
+
+
+def preload_models():
+    _load()
+    return True
 
 def get_embedder():  #Expose the shared embedder so other modules (e.g. semantic cache) reuse it instead of loading MiniLM a second time.
     _load()

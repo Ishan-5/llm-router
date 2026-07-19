@@ -10,6 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from predict_difficulty import get_embedder
 
 SIMILARITY_THRESHOLD = 0.95  # conservative on purpose -- see module docstring
+MAX_SCAN_ROWS = 500  # only check most recent rows for similarity (full table scan is too slow)
 
 Base = declarative_base()
 
@@ -48,8 +49,10 @@ def check_cache(query: str) -> dict | None:
     query_embed = embedder.encode([query])[0]
 
     session = SessionLocal()
-    rows = session.query(QueryCache).all()
-    session.close()
+    try:
+        rows = session.query(QueryCache).order_by(QueryCache.created_at.desc()).limit(MAX_SCAN_ROWS).all()
+    finally:
+        session.close()
 
     if not rows:
         return None

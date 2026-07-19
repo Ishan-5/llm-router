@@ -141,3 +141,19 @@ export async function fetchPricing() {
   if (!res.ok) throw new Error('Could not load pricing')
   return res.json()
 }
+
+export async function fetchLogs(limit = 50) {
+  const res = await fetch(`${API_BASE}/logs?limit=${limit}`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  })
+  if (!res.ok) throw new Error('Could not load logs')
+  return res.json()
+}
+
+export async function fetchLogDetail(logId) {
+  const res = await fetch(`${API_BASE}/logs/${logId}`, {
+    headers: { 'Authorization': `Bearer ${API_KEY}` },
+  })
+  if (!res.ok) throw new Error('Log entry not found')
+  return res.json()
+}

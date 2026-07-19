@@ -16,7 +16,7 @@ def test_succeeds_on_intended_tier_no_fallback():
 
 
 def test_falls_back_to_next_tier_when_intended_fails():
-    def side_effect(tier, query, user_config=None):
+    def side_effect(tier, query, user_config=None, messages=None):
         if tier == "frontier":
             raise Exception("simulated failure")
         return _fake_result(tier)
@@ -36,7 +36,7 @@ def test_raises_when_every_tier_in_chain_fails():
 
 
 def test_rate_limit_error_skips_retry_and_falls_back_immediately():
-    def side_effect(tier, query, user_config=None):
+    def side_effect(tier, query, user_config=None, messages=None):
         if tier == "mid":
             raise Exception("Error code: 429 rate_limit_exceeded")
         return _fake_result(tier)

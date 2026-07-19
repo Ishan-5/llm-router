@@ -29,18 +29,18 @@ def _is_rate_limit_error(exc: Exception) -> bool:
     return "429" in msg or "rate_limit" in msg
 
 
-def _call_with_one_retry(tier: str, query: str, user_config: dict):
+def _call_with_one_retry(tier: str, query: str, user_config: dict, messages: list[dict] | None = None):
     """One quick retry for transient (non-rate-limit) errors only."""
     try:
-        return call_model(tier, query, user_config.get(tier))
+        return call_model(tier, query, user_config.get(tier), messages=messages)
     except Exception as e:
         if _is_rate_limit_error(e):
             raise  # don't retry rate limits, caller will fall back immediately
         time.sleep(1)
-        return call_model(tier, query, user_config.get(tier))  # let this one raise if it fails again
+        return call_model(tier, query, user_config.get(tier), messages=messages)  # let this one raise if it fails again
 
 
-def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | None = None) -> dict:
+def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | None = None, messages: list[dict] | None = None) -> dict:
     """
     Tries intended_tier, then falls back through FALLBACK_CHAIN on failure.
     Loads active config (user overrides merged with defaults) once per call.
@@ -60,7 +60,7 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
 
     for i, tier in enumerate(chain):
         try:
-            result = _call_with_one_retry(tier, query, user_config)
+            result = _call_with_one_retry(tier, query, user_config, messages=messages)
             result["intended_tier"] = intended_tier
             result["fallback_used"] = (tier != intended_tier)
             if result["fallback_used"]:

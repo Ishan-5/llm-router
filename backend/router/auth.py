@@ -12,13 +12,6 @@ require_user — extracts and verifies the Supabase JWT from Authorization heade
 Every protected endpoint (/route, /logs, /config POST, /config DELETE) 
 has Depends(require_api_key) which runs all three of these in sequence 
 before the endpoint logic even starts.
-
-HONEST LIMITATION: the rate limiter here is in-memory (a plain dict), which
-is fine for a single-process demo deployment but would NOT survive multiple
-server instances or a restart. A real multi-instance production setup needs
-a shared store (Redis) for this. Not built here because this project runs
-as a single Render instance -- documenting the gap rather than pretending
-this scales, since claiming otherwise would be a real overstatement.
 """
 import time
 import httpx
@@ -33,6 +26,19 @@ RATE_LIMIT_PER_MINUTE = 20
 
 # api_key -> list of request timestamps (sliding window)
 _request_log: dict[str, list[float]] = defaultdict(list)
+
+# In-memory API key cache: key_string -> (record_or_None, timestamp)
+# Avoids hitting Supabase on every request. TTL: 30 seconds.
+_KEY_CACHE_TTL = 30
+_key_cache: dict[str, tuple[ApiKey | None, float]] = {}
+
+
+def invalidate_key_cache(key_string: str = None):
+    """Clear cached key. Call after key creation/revocation."""
+    if key_string:
+        _key_cache.pop(key_string, None)
+    else:
+        _key_cache.clear()
 
 
 def check_rate_limit(api_key: str):
@@ -60,17 +66,28 @@ def check_budget(api_key_record: ApiKey) -> bool:
         session.close()
 
 
-async def require_api_key(authorization: str = Header(None)) -> ApiKey:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header. Expected: Bearer <key>")
-
-    key = authorization.removeprefix("Bearer ").strip()
-
+def _lookup_key_cached(key: str) -> ApiKey | None:
+    """Look up API key with in-memory cache. Returns record or None."""
+    now = time.time()
+    if key in _key_cache:
+        record, ts = _key_cache[key]
+        if now - ts < _KEY_CACHE_TTL:
+            return record
     session = SessionLocal()
     try:
         record = session.query(ApiKey).filter(ApiKey.key == key, ApiKey.is_active == True).first()
     finally:
         session.close()
+    _key_cache[key] = (record, now)
+    return record
+
+
+async def require_api_key(authorization: str = Header(None)) -> ApiKey:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or malformed Authorization header. Expected: Bearer <key>")
+
+    key = authorization.removeprefix("Bearer ").strip()
+    record = _lookup_key_cached(key)
 
     if record is None:
         raise HTTPException(status_code=401, detail="Invalid or inactive API key")

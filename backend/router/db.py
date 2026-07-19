@@ -33,6 +33,7 @@ class RequestLog(Base):
     id = Column(Integer, primary_key=True)
     api_key_id = Column(Integer, nullable=True)  # which key made this request
     query = Column(String)
+    response = Column(Text, nullable=True)
     difficulty_score = Column(Float)
     intended_tier = Column(String)
     tier = Column(String)
