@@ -14,6 +14,7 @@ has Depends(require_api_key) which runs all three of these in sequence
 before the endpoint logic even starts.
 """
 import time
+import logging
 import httpx
 from collections import defaultdict
 from datetime import datetime, date
@@ -22,10 +23,13 @@ from router.db import SessionLocal, ApiKey, RequestLog
 from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY
 from sqlalchemy import func
 
+log = logging.getLogger("routewise.auth")
+
 RATE_LIMIT_PER_MINUTE = 20
 
 # api_key -> list of request timestamps (sliding window)
 _request_log: dict[str, list[float]] = defaultdict(list)
+_MAX_TRACKED_KEYS = 10_000  # prevent unbounded memory growth
 
 # In-memory API key cache: key_string -> (record_or_None, timestamp)
 # Avoids hitting Supabase on every request. TTL: 30 seconds.
@@ -48,6 +52,12 @@ def check_rate_limit(api_key: str):
     if len(_request_log[api_key]) >= RATE_LIMIT_PER_MINUTE:
         raise HTTPException(status_code=429, detail=f"Rate limit: max {RATE_LIMIT_PER_MINUTE} requests/minute per key")
     _request_log[api_key].append(now)
+    # Evict oldest tracked keys if memory growing too large
+    if len(_request_log) > _MAX_TRACKED_KEYS:
+        cutoff = now - 120  # remove keys with no activity in 2 minutes
+        stale = [k for k, ts in _request_log.items() if not ts or max(ts) < cutoff]
+        for k in stale[:len(stale) // 2]:
+            del _request_log[k]
 
 
 def check_budget(api_key_record: ApiKey) -> bool:
@@ -115,5 +125,5 @@ async def require_user(authorization: str = Header(None)) -> str:
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[auth] require_user exception: {e}")
+        log.warning("require_user exception: %s", e)
         raise HTTPException(status_code=401, detail="Could not verify session")

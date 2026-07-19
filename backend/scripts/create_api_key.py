@@ -19,20 +19,32 @@ def create_key(name: str, daily_budget_usd: float | None = None):
         record = ApiKey(key=key, name=name, daily_budget_usd=daily_budget_usd, is_active=True)
         session.add(record)
         session.commit()
-        print(f"Created key for '{name}':")
-        print(f"  {key}")
+        # Write key to stderr to avoid polluting stdout logs
+        print(f"Created key for '{name}':", file=sys.stderr)
+        print(f"  {key}", file=sys.stderr)
         if daily_budget_usd:
-            print(f"  Daily budget: ${daily_budget_usd:.2f}")
+            print(f"  Daily budget: ${daily_budget_usd:.2f}", file=sys.stderr)
         else:
-            print("  No daily budget cap")
+            print("  No daily budget cap", file=sys.stderr)
     finally:
         session.close()
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python scripts/create_api_key.py <name> [daily_budget_usd]")
+        print("Usage: python scripts/create_api_key.py <name> [daily_budget_usd]", file=sys.stderr)
         sys.exit(1)
     name = sys.argv[1]
-    budget = float(sys.argv[2]) if len(sys.argv) > 2 else None
-    create_key(name, budget)
+    if not name.strip():
+        print("Error: name cannot be empty", file=sys.stderr)
+        sys.exit(1)
+    budget = None
+    if len(sys.argv) > 2:
+        try:
+            budget = float(sys.argv[2])
+            if budget <= 0:
+                raise ValueError("budget must be positive")
+        except ValueError as e:
+            print(f"Error: invalid budget value '{sys.argv[2]}': {e}", file=sys.stderr)
+            sys.exit(1)
+    create_key(name.strip(), budget)

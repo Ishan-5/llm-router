@@ -4,7 +4,15 @@ routewise -- a thin Python client for the routewise cost-aware LLM router.
 This does NOT contain any routing logic. It just wraps HTTP calls to the
 real API so callers don't have to write requests.post()/headers/error
 handling by hand every time.
+
+Supports:
+- /route (standard routing)
+- /route/stream (SSE streaming)
+- /v1/chat/completions (OpenAI-compatible)
+- /analytics, /logs, /logs/{id} (observability)
+- /config, /providers, /stats (management)
 """
+import json
 import requests
 
 DEFAULT_BASE_URL = "https://llm-router-d2b2.onrender.com"
@@ -62,13 +70,14 @@ class RouteWiseClient:
         return {"Authorization": f"Bearer {self.api_key}"}
 
     # ------------------------------------------------------------------
-    # Querying
+    # Querying (native endpoint)
     # ------------------------------------------------------------------
 
     def ask(
         self,
         query: str,
         override_tier: str | None = None,
+        bypass_cache: bool = False,
         user_api_keys: dict | None = None,
     ) -> dict:
         """
@@ -76,6 +85,7 @@ class RouteWiseClient:
         (response text, tier used, cost, latency, cache_hit, etc.)
 
         override_tier: optionally force "cheap", "mid", or "frontier"
+        bypass_cache: skip semantic cache for this request
         user_api_keys: { "cheap": "key", "mid": "key", "frontier": "key" }
                        overrides keys for this single request only.
                        If not passed, uses keys set via configure().
@@ -83,6 +93,8 @@ class RouteWiseClient:
         payload = {"query": query}
         if override_tier:
             payload["override_tier"] = override_tier
+        if bypass_cache:
+            payload["bypass_cache"] = True
 
         # merge instance-level keys with per-call overrides
         keys = {**self._user_api_keys, **(user_api_keys or {})}
@@ -97,6 +109,130 @@ class RouteWiseClient:
         )
         _raise_for_status(response)
         return response.json()
+
+    def ask_stream(
+        self,
+        query: str,
+        override_tier: str | None = None,
+        bypass_cache: bool = False,
+        user_api_keys: dict | None = None,
+    ):
+        """
+        Streaming version of ask(). Yields text chunks, then a final dict
+        with metadata (tier, cost, model_id, tokens).
+
+        Usage:
+            for item in client.ask_stream("Explain quantum computing"):
+                if isinstance(item, str):
+                    print(item, end="", flush=True)
+                else:
+                    print(f"\n--- {item['tier']} | ${item['cost_usd']:.4f} ---")
+        """
+        payload = {"query": query}
+        if override_tier:
+            payload["override_tier"] = override_tier
+        if bypass_cache:
+            payload["bypass_cache"] = True
+
+        keys = {**self._user_api_keys, **(user_api_keys or {})}
+        if keys:
+            payload["user_api_keys"] = keys
+
+        response = requests.post(
+            f"{self.base_url}/route/stream",
+            headers=self._headers(),
+            json=payload,
+            timeout=self.timeout,
+            stream=True,
+        )
+        _raise_for_status(response)
+
+        for line in response.iter_lines():
+            if not line:
+                continue
+            decoded = line.decode()
+            if not decoded.startswith("data: "):
+                continue
+            try:
+                event = json.loads(decoded[6:])
+            except json.JSONDecodeError:
+                continue
+
+            if event.get("type") == "chunk":
+                yield event.get("text", "")
+            elif event.get("type") == "done":
+                yield {
+                    "tier": event.get("routed_to"),
+                    "model_id": event.get("routed_to"),
+                    "cost_usd": event.get("cost_usd", 0),
+                    "latency_ms": event.get("latency_ms", 0),
+                    "cache_hit": event.get("cache_hit", False),
+                    "difficulty_score": event.get("difficulty_score"),
+                }
+                return
+            elif event.get("type") == "error":
+                raise RouteWiseError(event.get("detail", "Stream error"))
+            elif event.get("type") == "meta":
+                pass  # intermediate metadata, skip
+
+    # ------------------------------------------------------------------
+    # OpenAI-compatible endpoint
+    # ------------------------------------------------------------------
+
+    def chat(
+        self,
+        messages: list[dict],
+        model: str = "auto",
+        stream: bool = False,
+        max_tokens: int | None = None,
+        temperature: float | None = None,
+    ) -> dict:
+        """
+        OpenAI-compatible /v1/chat/completions endpoint.
+        Drop-in replacement for openai.ChatCompletion.create().
+
+        model: "auto" for ML routing, or "cheap"/"mid"/"frontier" to force tier
+        messages: [{"role": "user", "content": "..."}] (same as OpenAI format)
+        stream: if True, returns an iterator of chunk dicts
+        max_tokens: optional token limit
+        temperature: optional temperature
+
+        Returns a dict matching the OpenAI chat completion response format.
+        """
+        payload = {"model": model, "messages": messages}
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if stream:
+            payload["stream"] = True
+
+        response = requests.post(
+            f"{self.base_url}/v1/chat/completions",
+            headers={**self._headers(), "Content-Type": "application/json"},
+            json=payload,
+            timeout=self.timeout,
+            stream=stream,
+        )
+        _raise_for_status(response)
+
+        if not stream:
+            return response.json()
+
+        # streaming: yield chunk dicts
+        for line in response.iter_lines():
+            if not line:
+                continue
+            decoded = line.decode()
+            if decoded == "data: [DONE]":
+                return
+            if not decoded.startswith("data: "):
+                continue
+            try:
+                chunk = json.loads(decoded[6:])
+                yield chunk
+            except json.JSONDecodeError:
+                continue
 
     # ------------------------------------------------------------------
     # BYOM config
@@ -178,11 +314,76 @@ class RouteWiseClient:
         return response.json()
 
     # ------------------------------------------------------------------
-    # Stats
+    # Observability
     # ------------------------------------------------------------------
 
     def stats(self) -> dict:
         """Fetch aggregate usage stats (total requests, cost saved, tier distribution, etc.)"""
-        response = requests.get(f"{self.base_url}/stats", timeout=self.timeout)
+        response = requests.get(f"{self.base_url}/stats", headers=self._headers(), timeout=self.timeout)
+        _raise_for_status(response)
+        return response.json()
+
+    def get_logs(self, limit: int = 50) -> list[dict]:
+        """
+        Fetch recent request logs for this API key.
+        Returns a list of dicts with query, tier, cost, latency, etc.
+        """
+        response = requests.get(
+            f"{self.base_url}/logs",
+            headers=self._headers(),
+            params={"limit": min(limit, 100)},
+            timeout=self.timeout,
+        )
+        _raise_for_status(response)
+        return response.json()
+
+    def get_log_detail(self, log_id: int) -> dict:
+        """
+        Fetch full detail of a single log entry (including full response text).
+        """
+        response = requests.get(
+            f"{self.base_url}/logs/{log_id}",
+            headers=self._headers(),
+            timeout=self.timeout,
+        )
+        _raise_for_status(response)
+        return response.json()
+
+    def get_analytics(self) -> dict:
+        """
+        Fetch detailed cost analytics for this API key:
+        tier costs, model costs, daily breakdown, latency, top expensive queries.
+        """
+        response = requests.get(
+            f"{self.base_url}/analytics",
+            headers=self._headers(),
+            timeout=self.timeout,
+        )
+        _raise_for_status(response)
+        return response.json()
+
+    def get_pricing(self) -> list[dict]:
+        """
+        Fetch all active model pricing rows.
+        """
+        response = requests.get(f"{self.base_url}/pricing", timeout=self.timeout)
+        _raise_for_status(response)
+        return response.json()
+
+    # ------------------------------------------------------------------
+    # Key management
+    # ------------------------------------------------------------------
+
+    def create_key(self, name: str) -> dict:
+        """
+        Generate a new API key. Returns {"key": "rw_...", "name": "...", "created_at": "..."}.
+        Note: requires user auth (Supabase JWT), not an API key.
+        """
+        response = requests.post(
+            f"{self.base_url}/keys",
+            headers=self._headers(),
+            json={"name": name},
+            timeout=self.timeout,
+        )
         _raise_for_status(response)
         return response.json()

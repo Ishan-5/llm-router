@@ -15,10 +15,14 @@ const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPage = lazy(() => import('./components/AuthPage'))
 const DashboardPage = lazy(() => import('./components/DashboardPage'))
 const MetricsDashboard = lazy(() => import('./components/MetricsDashboard'))
+const ApiPlayground = lazy(() => import('./components/ApiPlayground'))
+const GuidePage = lazy(() => import('./components/GuidePage'))
 
 const TITLES = {
   '/': 'Routewise — Cost-aware LLM routing',
   '/pricing': 'Routewise — Models & Pricing',
+  '/playground': 'Routewise — API Playground',
+  '/guide': 'Routewise — Developer Guide',
   '/about': 'Routewise — About',
   '/auth': 'Routewise — Sign in',
   '/dashboard': 'Routewise — Dashboard',
@@ -220,6 +224,15 @@ export default function App() {
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/playground" element={
+              <div className="max-w-3xl mx-auto px-6 py-20">
+                <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">API Playground</p>
+                <h1 className="font-display text-3xl font-semibold mb-2">Playground</h1>
+                <p className="text-muted text-sm mb-8">Test your router with live queries. Try different tiers, streaming, and see code snippets.</p>
+                <ApiPlayground />
+              </div>
+            } />
+            <Route path="/guide" element={<GuidePage />} />
           </Routes>
         </Suspense>
       </div>

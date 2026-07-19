@@ -9,8 +9,11 @@ Supports:
 """
 
 import time
+import logging
 import threading
 from collections import defaultdict
+
+log = logging.getLogger("routewise.loadbalancer")
 
 
 class KeyPool:
@@ -50,7 +53,9 @@ class KeyPool:
     def mark_rate_limited_from_exception(self, key: str, error: Exception):
         """Check if an exception is a rate limit error and mark accordingly."""
         error_str = str(error).lower()
-        if "429" in error_str or "rate" in error_str or "limit" in error_str:
+        # Check for specific rate-limit indicators, avoiding false positives
+        # from unrelated errors that happen to contain "rate" or "limit"
+        if "429" in error_str or "rate_limit" in error_str or "rate limit" in error_str or "too many requests" in error_str:
             self.mark_rate_limited(key)
 
 
@@ -78,7 +83,7 @@ def init_load_balancer(groq_keys_cheap: str = "", groq_keys_mid: str = "", groq_
 
     total = len(cheap_keys) + len(mid_keys) + len(frontier_keys)
     if total > 0:
-        print(f"[loadbalancer] Initialized with {len(cheap_keys)} cheap, {len(mid_keys)} mid, {len(frontier_keys)} frontier keys")
+        log.info("Initialized with %d cheap, %d mid, %d frontier keys", len(cheap_keys), len(mid_keys), len(frontier_keys))
 
 
 def get_key_for_tier(tier: str) -> str | None:

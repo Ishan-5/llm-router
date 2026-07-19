@@ -1,10 +1,13 @@
 import sys
 import os
 import json
+import logging
 import numpy as np
 from sqlalchemy import create_engine, Column, Integer, String, Float, Text, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime, timedelta
+
+log = logging.getLogger("routewise.cache")
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from predict_difficulty import get_embedder
@@ -37,7 +40,7 @@ class QueryCache(Base):
 try:
     Base.metadata.create_all(engine)
 except Exception as e:
-    print(f"[cache] DB init failed (will retry on first request): {e}")
+    log.warning("DB init failed (will retry on first request): %s", e)
 
 
 def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
@@ -96,17 +99,21 @@ def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: 
     embedding = embedder.encode([query])[0].tolist()
 
     session = SessionLocal()
-    entry = QueryCache(
-        query=query,
-        embedding=json.dumps(embedding),
-        response=response,
-        tier=tier,
-        model_id=model_id,
-        original_cost_usd=cost_usd,
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-    )
-    session.add(entry)
-    _evict(session)
-    session.commit()
-    session.close()
+    try:
+        entry = QueryCache(
+            query=query,
+            embedding=json.dumps(embedding),
+            response=response,
+            tier=tier,
+            model_id=model_id,
+            original_cost_usd=cost_usd,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+        )
+        session.add(entry)
+        _evict(session)
+        session.commit()
+    except Exception:
+        session.rollback()
+    finally:
+        session.close()

@@ -46,6 +46,12 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, onOpenCmd,
             <Link to="/pricing" className={`hover:text-primary transition-colors ${isActive('/pricing') ? 'text-primary font-medium' : ''}`}>
               Models & Pricing
             </Link>
+            <Link to="/playground" className={`hover:text-primary transition-colors ${isActive('/playground') ? 'text-primary font-medium' : ''}`}>
+              Playground
+            </Link>
+            <Link to="/guide" className={`hover:text-primary transition-colors ${isActive('/guide') ? 'text-primary font-medium' : ''}`}>
+              Guide
+            </Link>
             <a href="/#metrics" onClick={(e) => handleAnchorLink(e, 'metrics')} className="hover:text-primary transition-colors">
               Metrics
             </a>
@@ -137,6 +143,14 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, onOpenCmd,
               <Link to="/pricing" onClick={() => setMobileOpen(false)}
                 className="text-sm text-muted hover:text-primary transition-colors py-2.5">
                 Models & Pricing
+              </Link>
+              <Link to="/playground" onClick={() => setMobileOpen(false)}
+                className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                Playground
+              </Link>
+              <Link to="/guide" onClick={() => setMobileOpen(false)}
+                className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                Guide
               </Link>
               <a href="/#metrics" onClick={(e) => handleAnchorLink(e, 'metrics')}
                 className="text-sm text-muted hover:text-primary transition-colors py-2.5">

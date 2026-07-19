@@ -1,7 +1,11 @@
 import ollama
 
-def call_ollama(prompt: str, model: str = "llama3.2") -> dict:
-    response = ollama.chat(model=model, messages=[{"role": "user", "content": prompt}])
+def call_ollama(prompt: str, model: str = "llama3.2", timeout: int = 30) -> dict:
+    response = ollama.chat(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        options={"num_predict": 1000},
+    )
     return {
         "text": response["message"]["content"],
         "tier": "cheap",
