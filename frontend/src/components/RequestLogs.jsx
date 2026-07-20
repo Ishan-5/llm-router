@@ -152,7 +152,7 @@ export default function RequestLogs({ apiKey }) {
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono"
+            className="bg-panel border border-line rounded px-2 py-1 text-xs text-primary font-mono"
           >
             <option value={10}>10</option>
             <option value={30}>30</option>

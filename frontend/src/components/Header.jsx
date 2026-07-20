@@ -3,26 +3,70 @@ import { Link, useLocation } from 'react-router-dom'
 import { ADMIN_USER_ID } from '../config'
 import ThemeToggle from './ThemeToggle'
 
-export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, user }) {
-  const location = useLocation()
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const menuRef = useRef(null)
-
-  useEffect(() => { setMobileOpen(false); setUserMenuOpen(false) }, [location.pathname])
+function UserMenu({ user, isAdmin, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
 
   useEffect(() => {
     function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false)
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
     }
-    if (userMenuOpen) document.addEventListener('mousedown', handleClickOutside)
+    if (open) document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [userMenuOpen])
+  }, [open])
+
+  function close() { setOpen(false) }
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-8 h-8 rounded-full border border-line bg-surface flex items-center justify-center text-xs font-semibold text-primary hover:border-signal transition-colors"
+        aria-label="User menu"
+      >
+        {user.email?.[0]?.toUpperCase() || 'U'}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-56 bg-base border border-line rounded-lg shadow-xl overflow-hidden z-50">
+          <div className="px-4 py-3 border-b border-line">
+            <p className="text-xs text-primary font-mono truncate">{user.email}</p>
+            {isAdmin && (
+              <span className="inline-block mt-1 px-1.5 py-0.5 rounded border border-signal/30 bg-signal/10 text-signal text-[10px] font-semibold uppercase">admin</span>
+            )}
+          </div>
+          <div className="py-1">
+            <Link to="/dashboard" onClick={close}
+              className="block px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
+              Dashboard
+            </Link>
+            {isAdmin && (
+              <Link to="/admin" onClick={close}
+                className="block px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
+                Admin
+              </Link>
+            )}
+          </div>
+          <div className="border-t border-line py-1">
+            <button onClick={() => { onSignOut(); close() }}
+              className="w-full text-left px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive, user }) {
+  const location = useLocation()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   async function handleSignOut() {
     const { supabase } = await import('../supabase')
     await supabase.auth.signOut()
-    setUserMenuOpen(false)
   }
 
   function isActive(path) {
@@ -30,6 +74,27 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
   }
 
   const isAdmin = user && user.id === ADMIN_USER_ID
+
+  const navLinks = (
+    <>
+      <Link to="/playground"
+        className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/playground') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
+        Playground
+      </Link>
+      <Link to="/models"
+        className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/models') || isActive('/pricing') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
+        Models
+      </Link>
+      <Link to="/guide"
+        className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/guide') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
+        Guide
+      </Link>
+      <Link to="/about"
+        className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/about') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
+        About
+      </Link>
+    </>
+  )
 
   return (
     <>
@@ -43,24 +108,8 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
                 route<span className="text-signal">wise</span>
               </span>
             </Link>
-
             <nav className="hidden md:flex items-center gap-1 text-[13px] text-muted font-body" role="navigation" aria-label="Main navigation">
-              <Link to="/playground"
-                className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/playground') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
-                Playground
-              </Link>
-              <Link to="/models"
-                className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/models') || isActive('/pricing') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
-                Models
-              </Link>
-              <Link to="/guide"
-                className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/guide') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
-                Guide
-              </Link>
-              <Link to="/about"
-                className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/about') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
-                About
-              </Link>
+              {navLinks}
             </nav>
           </div>
 
@@ -80,45 +129,8 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
               <span>BYOM</span>
             </button>
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-
             {user ? (
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="w-8 h-8 rounded-full border border-line bg-surface flex items-center justify-center text-xs font-semibold text-primary hover:border-signal transition-colors"
-                  aria-label="User menu"
-                >
-                  {user.email?.[0]?.toUpperCase() || 'U'}
-                </button>
-                {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-base border border-line rounded-lg shadow-xl overflow-hidden z-50">
-                    <div className="px-4 py-3 border-b border-line">
-                      <p className="text-xs text-primary font-mono truncate">{user.email}</p>
-                      {isAdmin && (
-                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded border border-signal/30 bg-signal/10 text-signal text-[10px] font-semibold uppercase">admin</span>
-                      )}
-                    </div>
-                    <div className="py-1">
-                      <Link to="/dashboard" onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
-                        Dashboard
-                      </Link>
-                      {isAdmin && (
-                        <Link to="/admin" onClick={() => setUserMenuOpen(false)}
-                          className="block px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
-                          Admin
-                        </Link>
-                      )}
-                    </div>
-                    <div className="border-t border-line py-1">
-                      <button onClick={handleSignOut}
-                        className="w-full text-left px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
-                        Sign out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <UserMenu user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
             ) : (
               <Link to="/auth"
                 className={`px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors ${isActive('/auth') ? 'text-signal bg-signal/10' : 'text-signal border border-signal/30 hover:bg-signal/10'}`}>
@@ -131,43 +143,7 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
           <div className="flex items-center gap-2 md:hidden">
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
             {user ? (
-              <div className="relative" ref={menuRef}>
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="w-8 h-8 rounded-full border border-line bg-surface flex items-center justify-center text-xs font-semibold text-primary"
-                  aria-label="User menu"
-                >
-                  {user.email?.[0]?.toUpperCase() || 'U'}
-                </button>
-                {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-56 bg-base border border-line rounded-lg shadow-xl overflow-hidden z-50">
-                    <div className="px-4 py-3 border-b border-line">
-                      <p className="text-xs text-primary font-mono truncate">{user.email}</p>
-                      {isAdmin && (
-                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded border border-signal/30 bg-signal/10 text-signal text-[10px] font-semibold uppercase">admin</span>
-                      )}
-                    </div>
-                    <div className="py-1">
-                      <Link to="/dashboard" onClick={() => setUserMenuOpen(false)}
-                        className="block px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
-                        Dashboard
-                      </Link>
-                      {isAdmin && (
-                        <Link to="/admin" onClick={() => setUserMenuOpen(false)}
-                          className="block px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
-                          Admin
-                        </Link>
-                      )}
-                    </div>
-                    <div className="border-t border-line py-1">
-                      <button onClick={handleSignOut}
-                        className="w-full text-left px-4 py-2 text-sm text-muted hover:text-primary hover:bg-surface transition-colors">
-                        Sign out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <UserMenu user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
             ) : (
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
