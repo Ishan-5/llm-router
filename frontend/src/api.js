@@ -180,9 +180,12 @@ export async function fetchAnalytics(key) {
 // ------------------------------------------------------------------
 
 async function _adminHeaders() {
-  let { supabase } = await import('./supabase')
-  const { data: { session } } = await supabase.auth.getSession()
-  return { 'Authorization': `Bearer ${session?.access_token}` }
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) return { 'Authorization': `Bearer ${session.access_token}` }
+  } catch {}
+  return { 'Authorization': `Bearer ${API_KEY}` }
 }
 
 export async function fetchAdminStats() {
