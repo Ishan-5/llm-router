@@ -21,7 +21,7 @@ export default function Footer() {
           <div className="flex flex-col gap-2">
             <h4 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Product</h4>
             <Link to="/" className="text-sm text-muted hover:text-primary transition-colors">Live demo</Link>
-            <Link to="/pricing" className="text-sm text-muted hover:text-primary transition-colors">Pricing</Link>
+            <Link to="/models" className="text-sm text-muted hover:text-primary transition-colors">Models</Link>
             <Link to="/about" className="text-sm text-muted hover:text-primary transition-colors">About</Link>
           </div>
           <div className="flex flex-col gap-2">

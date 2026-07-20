@@ -4,7 +4,7 @@ import useFocusTrap from '../useFocusTrap'
 
 const NAV = [
   { label: 'Home', path: '/', key: 'h' },
-  { label: 'Pricing', path: '/pricing', key: 'p' },
+  { label: 'Models', path: '/models', key: 'p' },
   { label: 'About', path: '/about', key: 'a' },
   { label: 'Dashboard', path: '/dashboard', key: 'd' },
   { label: 'Sign in', path: '/auth', key: 's' },
