@@ -708,7 +708,7 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
             func.sum(RequestLog.cost_usd),
             func.count(RequestLog.id),
             func.avg(RequestLog.latency_ms),
-        ).filter(*base_filter).group_by("day").order_by("day").desc().limit(30).all()
+        ).filter(*base_filter).group_by("day").order_by(func.date(RequestLog.created_at).desc()).limit(30).all()
 
         daily = [
             {
