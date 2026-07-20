@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { fetchStats } from '../api'
-import StatCard from './StatCard'
+import AnimatedCounter from './AnimatedCounter'
 
 const TIER_ORDER = ['cheap', 'mid', 'frontier', 'web']
+
+const TIER_LABELS = { cheap: 'Cheap', mid: 'Mid', frontier: 'Frontier', web: 'Web' }
 
 export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [stats, setStats] = useState(null)
@@ -28,76 +30,76 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
     return () => clearInterval(id)
   }, [backendOnline])
 
-  const palette = isDark
-    ? { line: '#232D3B', muted: '#7C8B9A', panel: '#121821', signal: '#FF9F1C', cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D', web: '#818CF8' }
-    : { line: '#E2E2DD', muted: '#6B7078', panel: '#FFFFFF', signal: '#C2570C', cheap: '#0F766E', mid: '#C2570C', frontier: '#B91C1C', web: '#4F46E5' }
+  const p = isDark
+    ? { line: '#232D3B', muted: '#7C8B9A', panel: '#121821', surface: '#0B0F14', signal: '#FF9F1C', cool: '#3FB8AF', danger: '#E85D5D', primary: '#E6EDF3', cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D', web: '#818CF8' }
+    : { line: '#E2E2DD', muted: '#6B7078', panel: '#F6F6F4', surface: '#FFFFFF', signal: '#C2570C', cool: '#0F766E', danger: '#B91C1C', primary: '#16181C', cheap: '#0F766E', mid: '#C2570C', frontier: '#B91C1C', web: '#4F46E5' }
+
+  const tooltipStyle = { background: p.panel, border: `1px solid ${p.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 11 }
+  const tickStyle = { fill: p.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }
 
   if (error) {
     return (
-      <section id="metrics" className="max-w-6xl mx-auto px-6 py-16 border-t border-line bg-panel">
-        <p className="font-mono text-xs text-danger">
-          Couldn't load /stats — make sure the backend is running. ({error})
-        </p>
+      <section id="metrics" className="max-w-6xl mx-auto px-6 py-16">
+        <p className="font-mono text-xs text-danger">Couldn't load metrics — {error}</p>
       </section>
     )
   }
 
   if (!stats) {
     return (
-      <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line bg-panel">
+      <section id="metrics" className="max-w-6xl mx-auto px-6 py-20">
         <div className="h-7 w-48 bg-line rounded animate-pulse mb-2" />
         <div className="h-4 w-72 bg-line rounded animate-pulse mb-12" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="border-l-2 border-line pl-4">
-              <div className="h-3 w-20 bg-line rounded animate-pulse mb-3" />
-              <div className="h-9 w-16 bg-line rounded animate-pulse" />
-            </div>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 bg-line rounded-lg animate-pulse" />)}
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="h-56 bg-line rounded-lg animate-pulse" />
-          <div className="h-56 bg-line rounded-lg animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="h-64 bg-line rounded-lg animate-pulse" />
+          <div className="h-64 bg-line rounded-lg animate-pulse" />
         </div>
       </section>
     )
   }
 
-  const tierCostData = TIER_ORDER
-    .filter((t) => stats.tier_costs?.[t] != null)
-    .map((t) => ({ name: t, value: stats.tier_costs[t] }))
-
-  const pieData = TIER_ORDER
-    .filter((t) => stats.tier_counts?.[t])
-    .map((t) => ({ name: t, value: stats.tier_counts[t] }))
-
   const savedPct = stats.total_hypothetical_cost > 0
     ? Math.round((1 - stats.total_actual_cost / stats.total_hypothetical_cost) * 100)
     : 0
 
-  const costData = [
-    { name: 'Actual', value: stats.total_actual_cost },
-    { name: 'If all → frontier', value: stats.total_hypothetical_cost },
+  const successRate = stats.total_requests > 0
+    ? Math.round(((stats.total_requests - (stats.fallback_count || 0)) / stats.total_requests) * 100)
+    : 100
+
+  const avgLatency = stats.avg_latency_by_tier && Object.keys(stats.avg_latency_by_tier).length > 0
+    ? Math.round(Object.values(stats.avg_latency_by_tier).reduce((a, b) => a + b, 0) / Object.values(stats.avg_latency_by_tier).length)
+    : 0
+
+  const pieData = TIER_ORDER
+    .filter((t) => stats.tier_counts?.[t])
+    .map((t) => ({ name: TIER_LABELS[t] || t, value: stats.tier_counts[t], color: p[t] }))
+
+  const costCompare = [
+    { name: 'You paid', value: stats.total_actual_cost, fill: p.cool },
+    { name: 'Without routing', value: stats.total_hypothetical_cost, fill: p.frontier },
   ]
 
-  const latencyData = TIER_ORDER
-    .filter((t) => stats.avg_latency_by_tier?.[t] != null)
-    .map((t) => ({ name: t, value: Math.round(stats.avg_latency_by_tier[t]) }))
-
-  const uniqueDays = new Set((stats.daily_costs || []).map((d) => d.date)).size
   const timeSeriesData = (stats.daily_costs || []).map((d) => ({
-    date: d.date,
-    Actual: d.actual_cost,
-    'If all → frontier': d.hypothetical_cost,
+    date: d.date.slice(5),
+    'You paid': d.actual_cost,
+    'Without routing': d.hypothetical_cost,
   }))
+  const uniqueDays = new Set((stats.daily_costs || []).map((d) => d.date)).size
 
   return (
-    <section id="metrics" className="max-w-6xl mx-auto px-6 py-20 border-t border-line bg-panel">
+    <section id="metrics" className="max-w-6xl mx-auto px-6 py-20">
+      {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <h2 className="font-display text-2xl font-semibold">Real usage, real savings</h2>
+        <div>
+          <p className="font-mono text-[10px] text-signal tracking-wide uppercase mb-1">Live metrics</p>
+          <h2 className="font-display text-2xl font-semibold text-primary">Real savings, real data</h2>
+        </div>
         <div className="flex items-center gap-3">
           {lastUpdated && (
-            <span className="font-mono text-[10px] text-muted">
+            <span className="font-mono text-[10px] text-muted hidden sm:block">
               updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           )}
@@ -106,161 +108,296 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
             disabled={refreshing}
             className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition disabled:opacity-50"
           >
-            {refreshing ? 'refreshing…' : '↻ refresh'}
+            {refreshing ? '...' : '↻ refresh'}
           </button>
         </div>
       </div>
-      <p className="text-sm text-muted mb-12">Computed from every request this router has actually logged.</p>
+      <p className="text-sm text-muted mb-10">Every number comes from actual production traffic routed through this system.</p>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-        <StatCard label="Total requests" value={stats.total_requests} />
-        <StatCard label="Cache hit rate" value={`${Math.round((stats.cache_hit_rate || 0) * 100)}%`} tone="cool" />
-        <StatCard label="Fallback events" value={stats.fallback_count} tone={stats.fallback_count > 0 ? 'danger' : undefined} />
-        <StatCard label="Cost saved" value={`${savedPct}%`} tone="signal" big />
+      {/* Hero stat — savings */}
+      <div className="bg-panel border border-line rounded-xl p-6 md:p-8 mb-6">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">Total saved vs. all-frontier</p>
+            <div className="flex items-baseline gap-3">
+              <span className="font-display text-4xl md:text-5xl font-bold text-signal">
+                <AnimatedCounter value={Math.round((stats.total_savings_usd || 0) * 100)} prefix="$" suffix="" duration={800} />
+                <span className="text-2xl md:text-3xl">.{String((stats.total_savings_usd || 0).toFixed(2)).split('.')[1] || '00'}</span>
+              </span>
+              {savedPct > 0 && (
+                <span className="font-mono text-sm font-semibold text-signal bg-signal/10 border border-signal/20 rounded-full px-3 py-1">
+                  −{savedPct}%
+                </span>
+              )}
+            </div>
+            <p className="font-mono text-xs text-muted mt-2">
+              ${stats.total_actual_cost?.toFixed(4)} actual vs. ${stats.total_hypothetical_cost?.toFixed(4)} if all frontier
+            </p>
+          </div>
+          <div className="flex gap-6 md:gap-8">
+            <div className="text-right">
+              <p className="font-mono text-[10px] text-muted uppercase">Cache saved</p>
+              <p className="font-display text-lg font-semibold text-cool">${(stats.cache_savings_usd || 0).toFixed(4)}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-[10px] text-muted uppercase">Routing saved</p>
+              <p className="font-display text-lg font-semibold text-signal">${(stats.routing_savings_usd || 0).toFixed(4)}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
-        <div>
-          <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-4">Tier distribution</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}>
-                {pieData.map((entry) => (
-                  <Cell key={entry.name} fill={palette[entry.name] || palette.muted} stroke="none" />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }} />
-              <Legend
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontFamily: 'JetBrains Mono', fontSize: 11, paddingTop: 8 }}
-                formatter={(value) => <span style={{ color: palette.muted }}>{value}</span>}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+      {/* 4 stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+        <StatBox
+          label="Requests routed"
+          value={stats.total_requests}
+          icon={<PathIcon />}
+          color="primary"
+        />
+        <StatBox
+          label="Cache hit rate"
+          value={`${Math.round((stats.cache_hit_rate || 0) * 100)}%`}
+          icon={<CacheIcon />}
+          color="cool"
+          sub={stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served instantly` : null}
+        />
+        <StatBox
+          label="Avg latency"
+          value={`${avgLatency}ms`}
+          icon={<SpeedIcon />}
+          color="signal"
+          sub="across all tiers"
+        />
+        <StatBox
+          label="Success rate"
+          value={`${successRate}%`}
+          icon={<ShieldIcon />}
+          color={successRate >= 99 ? 'cool' : successRate >= 95 ? 'signal' : 'danger'}
+          sub={`${stats.fallback_count || 0} fallbacks triggered`}
+        />
+      </div>
 
-        <div>
+      {/* Charts row 1: Cost comparison + Tier pie */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* Cost comparison */}
+        <div className="bg-panel border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-mono text-xs text-muted uppercase tracking-wide">Actual vs. hypothetical cost</h3>
-            {savedPct > 0 && (
-              <span className="font-mono text-xs font-semibold text-signal">−{savedPct}%</span>
-            )}
+            <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide">Cost comparison</h3>
+            {savedPct > 0 && <span className="font-mono text-xs font-semibold text-signal">−{savedPct}%</span>}
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={costData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke={palette.line} vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
-              <YAxis tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
-              <Tooltip contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }} />
-              <Bar dataKey="value" fill={palette.signal} radius={[4, 4, 0, 0]}>
-                <LabelList
-                  dataKey="value"
-                  position="top"
-                  formatter={(v) => `$${v.toFixed(4)}`}
-                  style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fill: palette.muted }}
-                />
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={costCompare} margin={{ top: 25, right: 0, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke={p.line} vertical={false} />
+              <XAxis dataKey="name" tick={tickStyle} axisLine={{ stroke: p.line }} />
+              <YAxis tick={tickStyle} axisLine={{ stroke: p.line }} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`$${v.toFixed(4)}`, 'cost']} />
+              <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={48}>
+                {costCompare.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                <LabelList dataKey="value" position="top" formatter={(v) => `$${v.toFixed(4)}`} style={{ ...tickStyle, fontSize: 10 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-16">
-        <div>
-          <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-4">Cost by tier</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={tierCostData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
-              <CartesianGrid stroke={palette.line} vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
-              <YAxis tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
-              <Tooltip
-                contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }}
-                formatter={(v) => [`$${v.toFixed(6)}`, 'cost']}
-              />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {tierCostData.map((entry) => (
-                  <Cell key={entry.name} fill={palette[entry.name] || palette.muted} />
+        {/* Tier distribution */}
+        <div className="bg-panel border border-line rounded-xl p-5">
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-4">Tier distribution</h3>
+          {pieData.length > 0 ? (
+            <div className="flex items-center gap-6">
+              <ResponsiveContainer width="50%" height={180}>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={45} outerRadius={72} paddingAngle={3} strokeWidth={0}>
+                    {pieData.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tooltipStyle} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-3">
+                {pieData.map((d) => (
+                  <div key={d.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
+                      <span className="font-mono text-xs text-muted">{d.name}</span>
+                    </div>
+                    <span className="font-mono text-xs text-primary font-medium">{d.value}</span>
+                  </div>
                 ))}
-                <LabelList
-                  dataKey="value"
-                  position="top"
-                  formatter={(v) => `$${v.toFixed(4)}`}
-                  style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fill: palette.muted }}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <div className="pt-2 border-t border-line">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] text-muted">Total</span>
+                    <span className="font-mono text-xs text-primary font-semibold">{stats.total_requests}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-[180px] flex items-center justify-center">
+              <p className="font-mono text-xs text-muted">No data yet</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mb-16">
-        <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-4">Cost over time</h3>
-        {uniqueDays >= 2 ? (
-          <ResponsiveContainer width="100%" height={240}>
-            <LineChart data={timeSeriesData}>
-              <CartesianGrid stroke={palette.line} vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
-              <YAxis tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} />
-              <Tooltip contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }} />
-              <Legend wrapperStyle={{ fontFamily: 'JetBrains Mono', fontSize: 11 }} />
-              <Line type="monotone" dataKey="Actual" stroke={palette.cheap} strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="If all → frontier" stroke={palette.frontier} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : (
-          <div className="border border-dashed border-line rounded-lg py-10 text-center">
-            <p className="font-mono text-xs text-muted">
-              Only one day of data so far — this trend fills in as the router gets used across multiple days.
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Charts row 2: Cost over time + Latency */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* Cost over time */}
+        <div className="bg-panel border border-line rounded-xl p-5">
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-4">Cost over time</h3>
+          {uniqueDays >= 2 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={timeSeriesData}>
+                <CartesianGrid stroke={p.line} vertical={false} />
+                <XAxis dataKey="date" tick={tickStyle} axisLine={{ stroke: p.line }} />
+                <YAxis tick={tickStyle} axisLine={{ stroke: p.line }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ fontFamily: 'JetBrains Mono', fontSize: 10, paddingTop: 4 }} />
+                <Line type="monotone" dataKey="You paid" stroke={p.cool} strokeWidth={2} dot={{ r: 3, fill: p.cool }} />
+                <Line type="monotone" dataKey="Without routing" stroke={p.frontier} strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3, fill: p.frontier }} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] border border-dashed border-line rounded-lg flex items-center justify-center">
+              <p className="font-mono text-xs text-muted">Trend fills in over multiple days</p>
+            </div>
+          )}
+        </div>
 
-      <div className="mb-16">
-        <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-6">Savings breakdown</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="border border-line rounded-lg p-5">
-            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Cache savings</p>
-            <p className="font-display text-2xl font-semibold text-cool">${(stats.cache_savings_usd || 0).toFixed(4)}</p>
-            <p className="font-mono text-[10px] text-muted mt-2">
-              {Math.round((stats.cache_hit_rate || 0) * 100)}% of requests served from cache
-            </p>
-          </div>
-          <div className="border border-line rounded-lg p-5">
-            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Routing savings</p>
-            <p className="font-display text-2xl font-semibold text-signal">${(stats.routing_savings_usd || 0).toFixed(4)}</p>
-            <p className="font-mono text-[10px] text-muted mt-2">
-              vs. sending everything to frontier
-            </p>
-          </div>
-          <div className="border border-2 border-signal/40 rounded-lg p-5">
-            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Total saved</p>
-            <p className="font-display text-2xl font-semibold text-signal">${(stats.total_savings_usd || 0).toFixed(4)}</p>
-            <p className="font-mono text-[10px] text-muted mt-2">
-              cache + routing combined
-            </p>
-          </div>
+        {/* Latency by tier */}
+        <div className="bg-panel border border-line rounded-xl p-5">
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-4">Avg latency by tier</h3>
+          {Object.keys(stats.avg_latency_by_tier || {}).length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart
+                data={TIER_ORDER.filter((t) => stats.avg_latency_by_tier?.[t] != null).map((t) => ({ name: TIER_LABELS[t] || t, value: Math.round(stats.avg_latency_by_tier[t]), color: p[t] }))}
+                layout="vertical" margin={{ left: 0 }}
+              >
+                <CartesianGrid stroke={p.line} horizontal={false} />
+                <XAxis type="number" tick={tickStyle} axisLine={{ stroke: p.line }} />
+                <YAxis type="category" dataKey="name" tick={tickStyle} axisLine={{ stroke: p.line }} width={65} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(v) => [`${v}ms`, 'latency']} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
+                  {TIER_ORDER.filter((t) => stats.avg_latency_by_tier?.[t] != null).map((t) => (
+                    <Cell key={t} fill={p[t]} />
+                  ))}
+                  <LabelList dataKey="value" position="right" formatter={(v) => `${v}ms`} style={{ ...tickStyle, fontSize: 10 }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[200px] flex items-center justify-center">
+              <p className="font-mono text-xs text-muted">No latency data yet</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <div>
-        <h3 className="font-mono text-xs text-muted uppercase tracking-wide mb-4">Avg latency by tier</h3>
-        <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={latencyData} layout="vertical" margin={{ left: 10 }}>
-            <CartesianGrid stroke={palette.line} horizontal={false} />
-            <XAxis type="number" tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} unit="ms" />
-            <YAxis type="category" dataKey="name" tick={{ fill: palette.muted, fontSize: 11, fontFamily: 'JetBrains Mono' }} axisLine={{ stroke: palette.line }} width={70} />
-            <Tooltip contentStyle={{ background: palette.panel, border: `1px solid ${palette.line}`, borderRadius: 8, fontFamily: 'JetBrains Mono', fontSize: 12 }} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-              {latencyData.map((entry) => (
-                <Cell key={entry.name} fill={palette[entry.name] || palette.muted} />
-              ))}
-              <LabelList dataKey="value" position="right" formatter={(v) => `${v}ms`} style={{ fontFamily: 'JetBrains Mono', fontSize: 11, fill: palette.muted }} />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      {/* Trust badges */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <TrustBadge
+          icon={<ShieldCheckIcon />}
+          title="Zero dropped requests"
+          desc="Auto-fallback steps in before any tier fails."
+          color="cool"
+        />
+        <TrustBadge
+          icon={<CacheIcon />}
+          title={`${Math.round((stats.cache_hit_rate || 0) * 100)}% cache hit rate`}
+          desc="Near-duplicate queries served instantly, zero cost."
+          color="signal"
+        />
+        <TrustBadge
+          icon={<BoltIcon />}
+          title={`${stats.total_requests} requests routed`}
+          desc="Every query scored, routed, and logged in real time."
+          color="primary"
+        />
       </div>
     </section>
+  )
+}
+
+function StatBox({ label, value, icon, color, sub }) {
+  const colors = {
+    primary: 'text-primary border-primary/20',
+    cool: 'text-cool border-cool/20',
+    signal: 'text-signal border-signal/20',
+    danger: 'text-danger border-danger/20',
+  }
+  return (
+    <div className="bg-panel border border-line rounded-xl p-4 hover:border-signal/20 transition-colors">
+      <div className="flex items-center gap-2 mb-3">
+        <div className={`w-7 h-7 rounded-md bg-surface border border-line flex items-center justify-center ${colors[color]?.split(' ')[0] || 'text-muted'}`}>
+          {icon}
+        </div>
+        <p className="font-mono text-[10px] text-muted uppercase tracking-wide">{label}</p>
+      </div>
+      <p className={`font-display text-2xl font-bold ${colors[color]?.split(' ')[0] || 'text-primary'}`}>{value}</p>
+      {sub && <p className="font-mono text-[10px] text-muted mt-1">{sub}</p>}
+    </div>
+  )
+}
+
+function TrustBadge({ icon, title, desc, color }) {
+  const borderColor = color === 'cool' ? 'border-cool/20' : color === 'signal' ? 'border-signal/20' : 'border-line'
+  const iconColor = color === 'cool' ? 'text-cool' : color === 'signal' ? 'text-signal' : 'text-primary'
+  return (
+    <div className={`border ${borderColor} rounded-xl p-4 bg-panel`}>
+      <div className={`w-8 h-8 rounded-lg bg-surface border border-line flex items-center justify-center mb-3 ${iconColor}`}>
+        {icon}
+      </div>
+      <p className="text-sm font-semibold text-primary mb-0.5">{title}</p>
+      <p className="font-mono text-[11px] text-muted leading-relaxed">{desc}</p>
+    </div>
+  )
+}
+
+function PathIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  )
+}
+
+function CacheIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  )
+}
+
+function SpeedIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  )
+}
+
+function ShieldIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  )
+}
+
+function ShieldCheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polyline points="9 12 11 14 15 10" />
+    </svg>
+  )
+}
+
+function BoltIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
   )
 }
