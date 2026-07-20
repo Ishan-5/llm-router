@@ -29,9 +29,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
   const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {
     const defaults = {
-      cheap: { label: 'Cheap', sub: 'llama3.2:3b · local', y: 60 },
-      mid: { label: 'Mid', sub: 'qwen3-32b · Groq', y: 160 },
-      frontier: { label: 'Frontier', sub: 'llama-3.3-70b · Groq', y: 260 },
+      cheap: { label: 'Cheap', sub: 'llama-3.1-8b-instant · groq', y: 60 },
+      mid: { label: 'Mid', sub: 'llama-3.3-70b-versatile · groq', y: 160 },
+      frontier: { label: 'Frontier', sub: 'openai/gpt-oss-120b · groq', y: 260 },
     }[key]
     const cfg = activeConfig[key]
     const sub = cfg ? `${cfg.model_id} · ${cfg.provider}` : defaults.sub
