@@ -466,7 +466,7 @@ export default function ApiPlayground() {
                     ${item.cost.toFixed(4)} · {item.latency_ms.toFixed(0)}ms
                   </span>
                 </div>
-                <p className="font-mono text-[11px] text-primary truncate group-hover:text-white transition-colors">
+                <p className="font-mono text-[11px] text-primary truncate group-hover:text-signal transition-colors">
                   {item.query}
                 </p>
               </button>

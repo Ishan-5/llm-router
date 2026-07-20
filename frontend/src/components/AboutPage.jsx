@@ -192,7 +192,7 @@ export default function AboutPage() {
               onChange={(e) => setFeedback((f) => ({ ...f, message: e.target.value }))}
               className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors resize-none"
             />
-            {error && <p className="font-mono text-xs text-red-400">{error}</p>}
+            {error && <p className="font-mono text-xs text-danger">{error}</p>}
             <button
               type="submit"
               disabled={sending}
