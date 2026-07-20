@@ -17,9 +17,10 @@ function maskKey(key) {
 }
 
 function shortId(id) {
-  if (!id) return '—'
-  if (id.length <= 12) return id
-  return id.slice(0, 8) + '...'
+  if (id == null) return '—'
+  const s = String(id)
+  if (s.length <= 12) return s
+  return s.slice(0, 8) + '...'
 }
 
 export default function AdminPage({ user }) {
