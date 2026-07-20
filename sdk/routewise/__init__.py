@@ -219,7 +219,10 @@ class RouteWiseClient:
         if not stream:
             return response.json()
 
-        # streaming: yield chunk dicts
+        return self._chat_stream(response)
+
+    def _chat_stream(self, response: requests.Response):
+        """Internal generator for streaming chat responses."""
         for line in response.iter_lines():
             if not line:
                 continue
