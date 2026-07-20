@@ -18,10 +18,12 @@ const MetricsDashboard = lazy(() => import('./components/MetricsDashboard'))
 const ApiPlayground = lazy(() => import('./components/ApiPlayground'))
 const GuidePage = lazy(() => import('./components/GuidePage'))
 const AdminPage = lazy(() => import('./components/AdminPage'))
+const Features = lazy(() => import('./components/Features'))
 
 const TITLES = {
   '/': 'Routewise — Cost-aware LLM routing',
-  '/pricing': 'Routewise — Models & Pricing',
+  '/models': 'Routewise — Models',
+  '/pricing': 'Routewise — Models',
   '/playground': 'Routewise — API Playground',
   '/guide': 'Routewise — Developer Guide',
   '/admin': 'Routewise — Admin',
@@ -94,13 +96,26 @@ function PageSkeleton({ type }) {
   )
 }
 
-const PAGE_SKELETONS = { '/pricing': 'pricing', '/about': 'about', '/auth': 'auth', '/dashboard': 'dashboard' }
+const PAGE_SKELETONS = { '/models': 'pricing', '/pricing': 'pricing', '/about': 'about', '/auth': 'auth', '/dashboard': 'dashboard' }
 
 function HomePage({ configVersion, backendOnline }) {
   return (
     <>
       <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
       <Reveal>
+        <Suspense fallback={
+          <div className="max-w-6xl mx-auto px-6 py-16">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-40 bg-line/50 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </div>
+        }>
+          <Features />
+        </Suspense>
+      </Reveal>
+      <Reveal delay={50}>
         <HowItWorks />
       </Reveal>
       <Reveal delay={100}>
@@ -214,7 +229,6 @@ export default function App() {
         isDark={isDark}
         toggleTheme={toggle}
         onOpenSettings={() => setShowSettings(true)}
-        onOpenCmd={() => setCmdOpen(true)}
         byomActive={byomActive}
         user={user}
       />
@@ -222,6 +236,7 @@ export default function App() {
         <Suspense fallback={<PageSkeleton type={PAGE_SKELETONS[location.pathname]} />}>
           <Routes location={location}>
             <Route path="/" element={<HomePage configVersion={configVersion} backendOnline={backendOnline} />} />
+            <Route path="/models" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/pricing" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
