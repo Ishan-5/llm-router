@@ -41,7 +41,7 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
         <span className={`font-mono px-1.5 py-0.5 rounded-md border shrink-0 ${tierClass}`}>
           {log.tier}
         </span>
-        <span className="text-white truncate flex-1 font-mono">
+        <span className="text-primary truncate flex-1 font-mono">
           {log.query}
         </span>
         <span className="text-muted shrink-0 font-mono">
@@ -90,7 +90,7 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
           ) : detail ? (
             <div className="space-y-2">
               <DetailSection title="Query">
-                <p className="text-white leading-relaxed">{detail.query}</p>
+                <p className="text-primary leading-relaxed">{detail.query}</p>
               </DetailSection>
               <DetailSection title="Response">
                 {detail.response ? (
@@ -117,7 +117,7 @@ function MetaCell({ label, value }) {
   return (
     <div className="bg-surface rounded-md px-2 py-1.5 border border-line">
       <div className="text-muted text-[10px] uppercase tracking-wide mb-0.5">{label}</div>
-      <div className="text-white font-mono truncate">{value}</div>
+      <div className="text-primary font-mono truncate">{value}</div>
     </div>
   )
 }
@@ -152,7 +152,7 @@ export default function RequestLogs({ apiKey }) {
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="bg-surface border border-line rounded px-2 py-1 text-xs text-white font-mono"
+            className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono"
           >
             <option value={10}>10</option>
             <option value={30}>30</option>

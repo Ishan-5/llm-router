@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react'
 import { fetchAnalytics } from '../api'
+import { useTheme } from '../useTheme'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts'
 
-const TIER_COLORS = { cheap: '#38bdf8', mid: '#facc15', frontier: '#f87171' }
-const PIE_COLORS = ['#38bdf8', '#facc15', '#f87171', '#a78bfa', '#34d399', '#fb923c', '#94a3b8']
+const DARK_PALETTE = { line: '#1e293b', tick: '#64748b', grid: '#1e293b', bar: '#38bdf8', lineStroke: '#facc15', tooltipBg: '#0f172a', tooltipBorder: '#1e293b' }
+const LIGHT_PALETTE = { line: '#E2E2DD', tick: '#6B7078', grid: '#E2E2DD', bar: '#0F766E', lineStroke: '#C2570C', tooltipBg: '#FFFFFF', tooltipBorder: '#E2E2DD' }
+
+const TIER_COLORS_DARK = { cheap: '#38bdf8', mid: '#facc15', frontier: '#f87171' }
+const TIER_COLORS_LIGHT = { cheap: '#0F766E', mid: '#C2570C', frontier: '#B91C1C' }
+const PIE_COLORS_DARK = ['#38bdf8', '#facc15', '#f87171', '#a78bfa', '#34d399', '#fb923c', '#94a3b8']
+const PIE_COLORS_LIGHT = ['#0F766E', '#C2570C', '#B91C1C', '#6D28D9', '#059669', '#EA580C', '#64748b']
 
 function Stat({ label, value, sub }) {
   return (
     <div className="bg-surface border border-line rounded-lg px-4 py-3">
       <div className="text-muted text-[10px] uppercase tracking-wide mb-1">{label}</div>
-      <div className="text-white font-mono text-lg font-semibold">{value}</div>
+      <div className="text-primary font-mono text-lg font-semibold">{value}</div>
       {sub && <div className="text-muted text-[10px] mt-0.5">{sub}</div>}
     </div>
   )
@@ -45,6 +51,11 @@ function TooltipStyle({ active, payload, label }) {
 export default function CostAnalytics({ apiKey }) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(null)
+  const { isDark } = useTheme()
+
+  const palette = isDark ? DARK_PALETTE : LIGHT_PALETTE
+  const tierColors = isDark ? TIER_COLORS_DARK : TIER_COLORS_LIGHT
+  const pieColors = isDark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
   useEffect(() => {
     fetchAnalytics(apiKey).then(setData).catch((e) => setError(e.message))
@@ -62,7 +73,6 @@ export default function CostAnalytics({ apiKey }) {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat label="Total Spent" value={`$${summary.total_cost.toFixed(4)}`} />
         <Stat label="Savings" value={`$${summary.savings.toFixed(4)}`} sub={`${summary.savings_pct}% vs frontier`} />
@@ -70,26 +80,23 @@ export default function CostAnalytics({ apiKey }) {
         <Stat label="Fallback Rate" value={`${summary.fallback_rate}%`} />
       </div>
 
-      {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Cost Over Time */}
         {daily.length > 0 && (
           <Section title="Cost Over Time">
             <div className="bg-surface border border-line rounded-lg p-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={daily}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => v.slice(5)} />
-                  <YAxis tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `$${v}`} width={55} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} />
+                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: palette.tick }} tickFormatter={(v) => v.slice(5)} />
+                  <YAxis tick={{ fontSize: 10, fill: palette.tick }} tickFormatter={(v) => `$${v}`} width={55} />
                   <Tooltip content={<TooltipStyle />} />
-                  <Line type="monotone" dataKey="cost" stroke="#facc15" strokeWidth={2} dot={false} name="cost_usd" />
+                  <Line type="monotone" dataKey="cost" stroke={palette.lineStroke} strokeWidth={2} dot={false} name="cost_usd" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </Section>
         )}
 
-        {/* Cost by Tier (Pie) */}
         {tierPieData.length > 0 && (
           <Section title="Cost by Tier">
             <div className="bg-surface border border-line rounded-lg p-4 h-56 flex items-center">
@@ -97,18 +104,18 @@ export default function CostAnalytics({ apiKey }) {
                 <PieChart>
                   <Pie data={tierPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={35}>
                     {tierPieData.map((entry) => (
-                      <Cell key={entry.name} fill={TIER_COLORS[entry.name] || '#64748b'} />
+                      <Cell key={entry.name} fill={tierColors[entry.name] || palette.tick} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v) => `$${v.toFixed(4)}`} contentStyle={{ bg: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11, fontFamily: 'monospace' }} />
+                  <Tooltip formatter={(v) => `$${v.toFixed(4)}`} contentStyle={{ background: palette.tooltipBg, border: `1px solid ${palette.tooltipBorder}`, borderRadius: 8, fontSize: 11, fontFamily: 'monospace' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-1.5 pl-2">
                 {tierPieData.map((d) => (
                   <div key={d.name} className="flex items-center gap-2 text-xs">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: TIER_COLORS[d.name] || '#64748b' }} />
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: tierColors[d.name] || palette.tick }} />
                     <span className="text-muted flex-1">{d.name}</span>
-                    <span className="font-mono text-white">${d.value.toFixed(4)}</span>
+                    <span className="font-mono text-primary">${d.value.toFixed(4)}</span>
                   </div>
                 ))}
               </div>
@@ -116,24 +123,22 @@ export default function CostAnalytics({ apiKey }) {
           </Section>
         )}
 
-        {/* Cost by Model (Bar) */}
         {modelBarData.length > 0 && (
           <Section title="Cost by Model">
             <div className="bg-surface border border-line rounded-lg p-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={modelBarData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `$${v}`} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} width={100} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: palette.tick }} tickFormatter={(v) => `$${v}`} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: palette.tick }} width={100} />
                   <Tooltip content={<TooltipStyle />} />
-                  <Bar dataKey="cost" fill="#38bdf8" radius={[0, 4, 4, 0]} name="cost_usd" />
+                  <Bar dataKey="cost" fill={palette.bar} radius={[0, 4, 4, 0]} name="cost_usd" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </Section>
         )}
 
-        {/* Latency by Tier */}
         {Object.keys(latency_by_tier).length > 0 && (
           <Section title="Avg Latency by Tier">
             <div className="bg-surface border border-line rounded-lg p-4">
@@ -150,11 +155,11 @@ export default function CostAnalytics({ apiKey }) {
                         className="h-2 rounded-full transition-all"
                         style={{
                           width: `${Math.min(100, (ms / 5000) * 100)}%`,
-                          background: tier === 'cheap' ? '#38bdf8' : tier === 'mid' ? '#facc15' : '#f87171',
+                          background: tierColors[tier] || palette.bar,
                         }}
                       />
                     </div>
-                    <span className="font-mono text-xs text-white w-16 text-right">{ms.toFixed(0)}ms</span>
+                    <span className="font-mono text-xs text-primary w-16 text-right">{ms.toFixed(0)}ms</span>
                   </div>
                 ))}
               </div>
@@ -163,7 +168,6 @@ export default function CostAnalytics({ apiKey }) {
         )}
       </div>
 
-      {/* Top Expensive Queries */}
       {top_expensive.length > 0 && (
         <Section title="Most Expensive Queries">
           <div className="bg-surface border border-line rounded-lg overflow-hidden">
@@ -180,7 +184,7 @@ export default function CostAnalytics({ apiKey }) {
               <tbody>
                 {top_expensive.map((r) => (
                   <tr key={r.id} className="border-b border-line/50 hover:bg-panel transition-colors">
-                    <td className="px-3 py-2 text-white truncate max-w-[200px]">{r.query}</td>
+                    <td className="px-3 py-2 text-primary truncate max-w-[200px]">{r.query}</td>
                     <td className="px-3 py-2">
                       <span className={`font-mono px-1.5 py-0.5 rounded border text-[10px] ${
                         r.tier === 'cheap' ? 'text-cool bg-cool/10 border-cool/30'
@@ -189,8 +193,8 @@ export default function CostAnalytics({ apiKey }) {
                       }`}>{r.tier}</span>
                     </td>
                     <td className="px-3 py-2 text-muted font-mono">{r.model?.split('/').pop()}</td>
-                    <td className="px-3 py-2 text-white font-mono text-right">{r.tokens?.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-white font-mono text-right">${r.cost?.toFixed(4)}</td>
+                    <td className="px-3 py-2 text-primary font-mono text-right">{r.tokens?.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-primary font-mono text-right">${r.cost?.toFixed(4)}</td>
                   </tr>
                 ))}
               </tbody>
