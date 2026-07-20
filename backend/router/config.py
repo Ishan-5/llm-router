@@ -19,6 +19,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID", "")
+DISABLE_OLLAMA = os.getenv("DISABLE_OLLAMA", "false").lower() == "true"
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS",
     "http://localhost:5173,http://localhost:4173"
