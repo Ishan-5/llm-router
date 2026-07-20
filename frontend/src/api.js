@@ -188,30 +188,29 @@ async function _adminHeaders() {
   return { 'Authorization': `Bearer ${API_KEY}` }
 }
 
-export async function fetchAdminStats() {
+async function _adminFetch(url, opts = {}) {
   const headers = await _adminHeaders()
-  const res = await fetch(`${API_BASE}/admin/stats`, { headers })
-  if (!res.ok) throw new Error('Could not load admin stats')
+  const res = await fetch(url, { headers, ...opts })
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try { const body = await res.json(); detail = body.detail || detail } catch {}
+    throw new Error(detail)
+  }
   return res.json()
+}
+
+export async function fetchAdminStats() {
+  return _adminFetch(`${API_BASE}/admin/stats`)
 }
 
 export async function fetchAdminKeys() {
-  const headers = await _adminHeaders()
-  const res = await fetch(`${API_BASE}/admin/keys`, { headers })
-  if (!res.ok) throw new Error('Could not load admin keys')
-  return res.json()
+  return _adminFetch(`${API_BASE}/admin/keys`)
 }
 
 export async function fetchAdminLogs(limit = 50) {
-  const headers = await _adminHeaders()
-  const res = await fetch(`${API_BASE}/admin/logs?limit=${limit}`, { headers })
-  if (!res.ok) throw new Error('Could not load admin logs')
-  return res.json()
+  return _adminFetch(`${API_BASE}/admin/logs?limit=${limit}`)
 }
 
 export async function fetchAdminUsers() {
-  const headers = await _adminHeaders()
-  const res = await fetch(`${API_BASE}/admin/users`, { headers })
-  if (!res.ok) throw new Error('Could not load admin users')
-  return res.json()
+  return _adminFetch(`${API_BASE}/admin/users`)
 }
