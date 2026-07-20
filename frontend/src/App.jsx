@@ -250,7 +250,7 @@ export default function App() {
               </div>
             } />
             <Route path="/guide" element={<GuidePage />} />
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin" element={<AdminPage user={user} />} />
           </Routes>
         </Suspense>
       </div>
