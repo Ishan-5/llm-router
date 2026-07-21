@@ -126,7 +126,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
               </span>
               {savedPct > 0 && (
                 <span className="font-mono text-sm font-semibold text-signal bg-signal/10 border border-signal/20 rounded-full px-3 py-1">
-                  −{savedPct}%
+                  {savedPct}% saved
                 </span>
               )}
             </div>
@@ -184,7 +184,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         <div className="bg-panel border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide">Cost comparison</h3>
-            {savedPct > 0 && <span className="font-mono text-xs font-semibold text-signal">−{savedPct}%</span>}
+            {savedPct > 0 && <span className="font-mono text-xs font-semibold text-signal">{savedPct}% saved</span>}
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={costCompare} margin={{ top: 25, right: 0, left: 0, bottom: 0 }}>
