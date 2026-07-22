@@ -1,0 +1,129 @@
+"Design a leaderless replication protocol with sloppy quorums that tolerates network partitions while bounding staleness for read-your-writes consistency.",7
+"Implement a token-bucket rate limiter that is consistent across 50 stateless microservice replicas without a single point of failure.",7
+"Explain how Raft's leader election handles the split-vote scenario and why randomized timeouts alone are insufficient at high replica counts.",7
+"Design a multi-region active-active database architecture that resolves write conflicts using CRDTs for a shopping cart use case.",7
+"Implement a distributed lock service using Redis with correct fencing tokens to prevent stale-lock-holder writes.",7
+"Design a backpressure-aware message queue architecture connecting 10 producers to a slow consumer without unbounded memory growth.",7
+"Explain the trade-offs between chain replication and quorum-based replication for a write-heavy key-value store.",7
+"Design a service mesh sidecar retry policy that avoids retry storms during a downstream partial outage.",7
+"Implement consistent hashing with virtual nodes and explain how you'd rebalance data when a node joins a 200-node cluster.",7
+"Design a distributed cron/scheduler service that guarantees exactly-once job execution across a fleet of workers.",8
+"Design a Byzantine fault-tolerant consensus protocol with formal safety and liveness proofs for a permissioned blockchain.",9
+"Prove that no asynchronous consensus protocol can guarantee both safety and liveness in the presence of even one faulty process (FLP impossibility) and discuss its practical implications for Paxos.",9
+"Design a globally distributed transactional database (Spanner-like) with TrueTime-style bounded clock uncertainty and prove external consistency.",10
+"Design a novel gossip protocol with provable epidemic convergence bounds under adversarial message loss rates.",9
+"Formally verify the safety of a two-phase commit protocol extension that adds a coordinator failover mechanism using TLA+.",9
+"Design a self-stabilizing distributed algorithm for leader election that recovers from arbitrary transient faults without external reset.",9
+"Prove tight bounds on the message complexity of Byzantine agreement with n=3f+1 replicas under partial synchrony.",10
+"Design a CRDT for a collaborative text editor that guarantees convergence under arbitrary operation reordering, with a formal proof of strong eventual consistency.",8
+"Implement a lock-free concurrent skip list supporting insertion and deletion, and argue why it avoids the ABA problem without hazard pointers.",7
+"Implement a persistent (immutable) red-black tree supporting O(log n) insert with structural sharing, and analyze amortized rebalancing cost.",7
+"Design and implement a Fibonacci heap supporting decrease-key in O(1) amortized time and explain its role in Dijkstra's algorithm's O(E + V log V) bound.",7
+"Implement a suffix automaton for a string and use it to count distinct substrings in O(n).",8
+"Implement a van Emde Boas tree supporting predecessor/successor queries in O(log log U) time for a universe of size U.",8
+"Design an algorithm to find the k-th smallest element in the union of two sorted arrays in O(log(m+n)) time, with full correctness proof.",7
+"Implement a link-cut tree supporting path queries on a dynamic forest in O(log n) amortized time.",9
+"Prove the correctness and analyze the amortized complexity of the union-find data structure with path compression and union by rank.",7
+"Design an approximate nearest neighbor search structure (e.g. HNSW) and derive its expected query complexity in high-dimensional space.",8
+"Implement a persistent segment tree supporting range updates and historical version queries in O(log n) per operation.",8
+"Design an algorithm for the minimum-cost flow problem using successive shortest augmenting paths with Johnson's reweighting, and prove its polynomial runtime.",8
+"Prove that determining whether a given planar graph has a Hamiltonian cycle remains NP-complete, and discuss known polynomial special cases.",9
+"Design a competitive online algorithm for the ski-rental problem and prove its optimal competitive ratio.",7
+"Design a streaming algorithm to estimate the number of distinct elements in a data stream using O(log log n) space (HyperLogLog-style) with error analysis.",8
+"Derive and prove the time complexity of the Blossom algorithm for maximum matching in general (non-bipartite) graphs.",9
+"Design a parallel algorithm for suffix array construction (DC3/skew algorithm) and prove its O(n) work bound.",9
+"Prove the existence of an NP-intermediate problem under the assumption P is not NP (Ladner's theorem) and sketch the diagonalization construction.",10
+"Design a polynomial-time approximation scheme (PTAS) for the Euclidean traveling salesman problem and outline Arora's proof of correctness.",10
+"Design a sharded, multi-tenant SaaS architecture with per-tenant data isolation, noisy-neighbor mitigation, and online resharding.",7
+"Design a real-time bidding (RTB) ad exchange system that must respond within 100ms p99 across geographically distributed exchanges.",8
+"Design the architecture for a global content delivery network with dynamic origin shielding and cache invalidation propagation under 1 second.",8
+"Design a system for exactly-once event processing in a payment pipeline spanning Kafka, a database, and a third-party payment gateway.",8
+"Design a search autocomplete system serving 100k queries/sec with personalized ranking and sub-10ms latency.",7
+"Design an architecture for a multiplayer game server handling authoritative state synchronization for 10,000 concurrent players with lag compensation.",8
+"Design a feature store architecture supporting both low-latency online serving and batch offline training with point-in-time correctness.",8
+"Design a system to detect and mitigate cascading failures in a microservice dependency graph with circuit breakers and adaptive concurrency limits.",8
+"Design the full architecture of a stock exchange matching engine capable of handling 1M orders/sec with deterministic ordering and disaster recovery.",9
+"Design a planet-scale DNS system with anycast routing, DDoS mitigation, and sub-second failover, and formally justify its availability guarantees.",9
+"Derive the backpropagation update rule for a transformer's multi-head self-attention layer including the Jacobian of the softmax, and identify where gradient instability arises.",8
+"Explain why increasing model width and depth alone eventually leads to double descent, and derive the bias-variance decomposition that predicts this.",9
+"Design a mixture-of-experts routing mechanism with load-balancing auxiliary loss and prove why naive top-1 routing collapses to a subset of experts.",8
+"Derive the ELBO for a variational autoencoder and explain the reparameterization trick's role in enabling low-variance gradient estimates.",7
+"Explain the mathematical mechanism behind grokking in neural networks and connect it to the loss landscape's implicit regularization.",9
+"Derive the convergence rate of the Adam optimizer under non-convex smooth loss assumptions and identify why its second-moment estimate can cause non-convergence (as in the Reddi et al. counterexample).",9
+"Design a constitutional-AI-style RLHF pipeline including reward model training, PPO fine-tuning, and KL-penalty tuning, and analyze reward hacking failure modes.",8
+"Prove a generalization bound for a neural network using the PAC-Bayes framework and interpret the role of the prior/posterior KL term.",9
+"Derive the diffusion model's reverse SDE from the forward noising process and show the equivalence between score matching and denoising objectives.",9
+"Design a scaling-law extrapolation experiment to predict the loss of a 1-trillion-parameter model from smaller runs, addressing confounds like data repetition and tokenizer changes.",8
+"Prove the universal approximation theorem for a single hidden-layer neural network with sigmoid activations, and discuss why this doesn't explain why depth helps in practice.",8
+"Derive the exact expression for the Neural Tangent Kernel of an infinite-width fully-connected network and explain what it implies about training dynamics.",10
+"Design a theoretical framework proving sample complexity lower bounds for in-context learning in transformers under a Bayesian meta-learning interpretation.",10
+"Prove convergence guarantees for federated averaging (FedAvg) under non-IID client data distributions with partial participation.",9
+"Design and prove correctness of a mechanistic-interpretability circuit-finding algorithm for identifying induction heads in a transformer.",9
+"Prove the Cayley-Hamilton theorem and use it to derive an O(n^3 log k) algorithm for computing A^k for an n x n matrix.",7
+"Prove that the set of algebraic numbers is countable, and explain why this implies almost all real numbers are transcendental.",7
+"Prove the spectral theorem for real symmetric matrices and explain its role in PCA's optimality for variance maximization.",7
+"Prove that a bipartite graph has a perfect matching if and only if it satisfies Hall's marriage condition.",7
+"Derive the Cramer-Rao lower bound for an unbiased estimator and apply it to the variance of the MLE for a Poisson rate parameter.",8
+"Prove the Central Limit Theorem via characteristic functions for i.i.d. random variables with finite variance.",8
+"Prove Godel's first incompleteness theorem via the construction of a self-referential arithmetic sentence, explaining the role of the diagonal lemma.",10
+"Prove the Riemann rearrangement theorem and construct an explicit rearrangement of the alternating harmonic series that converges to an arbitrary target value.",8
+"Explain why P vs NP is closely tied to a specific circuit lower bound conjecture, and why current techniques (natural proofs) are believed insufficient to resolve it.",10
+"Prove the Banach fixed-point theorem and use it to establish existence and uniqueness of solutions to a first-order ODE (Picard-Lindelof).",8
+"Prove the strong duality theorem for linear programming and derive the KKT conditions as its nonlinear generalization.",8
+"State and prove the Chinese Remainder Theorem in its ring-theoretic generality, and explain its role in RSA key generation efficiency.",7
+"Prove that every finite integral domain is a field, and use it to justify why arithmetic modulo a prime forms a field.",7
+"Prove the Cook-Levin theorem: that Boolean satisfiability (SAT) is NP-complete, by reducing an arbitrary NP language to SAT via a Turing machine tableau construction.",9
+"Prove Yao's principle for lower-bounding randomized algorithm complexity and apply it to show a lower bound for comparison-based sorting under adversarial distributions.",9
+"Prove the Ax-Grothendieck theorem (an injective polynomial map from C^n to C^n is surjective) using the compactness theorem from model theory.",10
+"Explain why a proof of the Yang-Mills mass gap conjecture remains an open Millennium Prize Problem, and outline the mathematical obstacles to a rigorous construction.",10
+"Design a padding oracle attack against a CBC-mode encryption scheme and derive the number of queries needed to decrypt a block.",7
+"Explain the mathematical structure of the ECDSA nonce-reuse vulnerability and derive the private key recovery equation given two signatures with the same nonce.",8
+"Design a formally verified TLS 1.3 handshake state machine and identify which downgrade attacks it must be proven to reject.",8
+"Explain how lattice-based cryptography (e.g. Kyber) achieves post-quantum security and derive the hardness assumption it relies on (LWE).",9
+"Design a zero-knowledge proof protocol (e.g. zk-SNARK) for proving knowledge of a Sudoku solution without revealing it, including the arithmetic circuit construction.",9
+"Prove that textbook RSA encryption is malleable and design a chosen-ciphertext attack exploiting this against a naive signature scheme.",7
+"Design a secure multi-party computation protocol for computing the median of private inputs from n parties without revealing individual values.",9
+"Explain the mathematics of Shor's algorithm for integer factorization and derive why it breaks RSA in polynomial time on a quantum computer.",10
+"Design a side-channel-resistant implementation of AES that defends against cache-timing attacks, and prove why naive table-lookup implementations leak key bits.",8
+"Formally define and construct a homomorphic encryption scheme supporting one multiplication and unlimited additions (somewhat homomorphic), and explain noise growth management.",9
+"Design a Byzantine-resilient federated learning aggregation rule (e.g. Krum) and prove its resistance to a bounded number of malicious clients.",9
+"Design a type inference algorithm (Hindley-Milner) for a small functional language and prove its principal type property.",8
+"Implement an optimizing compiler pass performing SSA-based dead code elimination and constant propagation, and prove it preserves program semantics.",7
+"Design a garbage collector using generational mark-and-sweep with a write barrier, and analyze its worst-case pause time.",8
+"Design a dependent type system supporting Pi and Sigma types and explain how it prevents a specific class of runtime errors that simple types cannot.",9
+"Prove type soundness (progress and preservation) for a simply typed lambda calculus with references.",8
+"Design a JIT compiler's inline caching mechanism for dynamic method dispatch and analyze its amortized speedup versus polymorphic call sites.",8
+"Design a linear type system for a systems programming language that statically prevents use-after-free without a garbage collector.",9
+"Explain how continuation-passing style transformation enables implementing first-class exceptions and coroutines, with a formal CPS translation.",8
+"Design an algorithm for register allocation via graph coloring, and prove why the problem is NP-hard in general but tractable with chordal interference graphs.",8
+"Design a session-typed communication protocol ensuring deadlock-freedom for a set of concurrently communicating processes, with a formal proof sketch.",9
+"Design the internal architecture of an LSM-tree storage engine including compaction strategy trade-offs (leveled vs tiered) and write amplification analysis.",7
+"Explain how MVCC with snapshot isolation can still permit write skew anomalies, and design a serializable snapshot isolation (SSI) mechanism to prevent it.",8
+"Design a B+ tree with copy-on-write pages for crash-consistent storage, and explain how it enables lock-free readers during writer updates.",8
+"Design a query optimizer's cost-based join ordering algorithm using dynamic programming, and explain why it becomes intractable beyond roughly 15 tables.",8
+"Explain how a write-ahead log combined with checkpointing guarantees ARIES-style crash recovery, detailing the analysis, redo, and undo passes.",8
+"Design a distributed SQL query engine that pushes down predicates and aggregations to a sharded storage layer while preserving transactional consistency.",8
+"Design a vectorized execution engine for OLAP queries and analyze how SIMD and cache-line alignment affect throughput versus row-at-a-time execution.",7
+"Design a formally correct two-phase locking protocol variant that guarantees strict serializability while minimizing lock contention via predicate locking.",9
+"Design an index structure (e.g. R-tree or GiST) supporting efficient range queries over multi-dimensional spatial data, with a worst-case query complexity analysis.",8
+"Design a database recovery protocol for a system using both a primary-key B-tree and secondary LSM-based indexes that must remain mutually consistent after a crash.",9
+"Design a work-stealing scheduler for a user-level thread runtime and prove its expected makespan bound relative to the optimal parallel schedule.",8
+"Explain how RCU (read-copy-update) achieves wait-free reads in the Linux kernel, and analyze the trade-off with grace-period-based memory reclamation latency.",8
+"Design a memory allocator with per-CPU caching (like tcmalloc) and analyze fragmentation versus contention trade-offs under high concurrency.",7
+"Prove that Peterson's algorithm for mutual exclusion between two processes satisfies mutual exclusion and starvation-freedom under sequential consistency.",7
+"Design a wait-free concurrent queue implementation and prove why it satisfies linearizability using a formal linearization point argument.",9
+"Explain how the Linux CFS scheduler's red-black-tree-based virtual runtime model approximates fair share scheduling, and derive its scheduling latency bound.",8
+"Design a formal relaxed memory consistency model and prove that a specific compiler reordering optimization remains safe under it.",9
+"Design a NUMA-aware thread and memory placement strategy for a latency-sensitive in-memory database and quantify expected cross-socket access penalties.",7
+"Prove the impossibility of implementing a wait-free consensus object using only atomic read/write registers for more than two processes (consensus number argument).",9
+"Design a formally verified microkernel IPC mechanism (seL4-style) and explain what properties the functional correctness proof guarantees about isolation.",10
+"Derive the Black-Scholes PDE from the assumption of a self-financing replicating portfolio and no-arbitrage, and explain the role of the Feynman-Kac theorem in its solution.",8
+"Design a mean-variance portfolio optimization system that incorporates transaction costs and turnover constraints, and derive the resulting quadratic program.",7
+"Derive the pricing formula for an American put option under the binomial model and explain why no closed-form solution exists analogous to Black-Scholes.",8
+"Design a market-making algorithm that manages inventory risk using an Avellaneda-Stoikov style optimal quoting model, and derive the reservation price formula.",9
+"Explain how the Heston stochastic volatility model captures the volatility smile, and derive its characteristic function used for Fourier-based option pricing.",9
+"Design a statistical arbitrage strategy using cointegration testing (Johansen test) between a basket of assets, and derive the mean-reversion half-life from an Ornstein-Uhlenbeck fit.",8
+"Derive the Kelly criterion for optimal bet sizing under a known edge and variance, and explain why fractional Kelly is used in practice to manage model uncertainty.",7
+"Design a value-at-risk and expected shortfall estimation system using historical simulation versus a GARCH-filtered approach, and explain their coverage failure differences under fat tails.",8
+"Prove that under the risk-neutral measure, discounted asset prices are martingales, and use this to derive the fundamental theorem of asset pricing's no-arbitrage condition.",9
+"Design a limit order book simulation incorporating queue priority and adverse selection, and derive an estimator for the effective bid-ask spread's information component (Glosten-Milgrom style).",9

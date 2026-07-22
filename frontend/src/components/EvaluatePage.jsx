@@ -109,13 +109,13 @@ export default function EvaluatePage() {
           </div>
         </div>
         <div className="flex justify-between mt-2 font-mono text-[9px] text-muted">
-          <span>Economy: frontier ≥ 7.0</span>
-          <span>Balanced: frontier ≥ 6.0</span>
-          <span>Quality: frontier ≥ 5.0</span>
+          <span>Economy: frontier ≥ 4.9</span>
+          <span>Balanced: frontier ≥ 4.6</span>
+          <span>Quality: frontier ≥ 4.3</span>
         </div>
         <p className="font-mono text-[9px] text-muted/60 mt-2">
-          The slider shifts the frontier threshold. Queries scoring 3–5 always route to Mid regardless of slider position.
-          Only very easy (≤ 3) or hard (≥ 5) queries change tier.
+          The slider shifts the frontier threshold. Scores ≤ 3.4 always route to Cheap.
+          Scores 3.4–4.3 always route to Mid. Scores ≥ 4.3 change tier with the slider.
         </p>
       </div>
 
@@ -202,10 +202,10 @@ export default function EvaluatePage() {
                       <p className="font-mono text-xs text-primary truncate">{r.query}</p>
                       <span className={`font-mono text-[9px] ${changes ? 'text-signal' : 'text-muted'}`}>
                         score: {r.difficulty_score.toFixed(2)}
-                        {r.difficulty_score <= 3 && ' (always cheap)'}
-                        {r.difficulty_score > 3 && r.difficulty_score < 5 && ' (always mid — slider doesn\'t affect this)'}
-                        {r.difficulty_score >= 5 && r.difficulty_score < 7 && ' (changes with slider)'}
-                        {r.difficulty_score >= 7 && ' (always frontier)'}
+                        {r.difficulty_score <= 3.4 && ' (always cheap)'}
+                        {r.difficulty_score > 3.4 && r.difficulty_score < 4.3 && ' (always mid)'}
+                        {r.difficulty_score >= 4.3 && r.difficulty_score < 4.9 && ' (changes with slider)'}
+                        {r.difficulty_score >= 4.9 && ' (always frontier)'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

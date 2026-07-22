@@ -21,7 +21,7 @@ from sklearn.metrics import (
 from scipy.stats import spearmanr
 
 _BASE = os.path.dirname(__file__)
-DATA_PATH = os.path.join(_BASE, "..", "dataset_pipeline", "datasets", "labeled_dataset", "labeled_queries_full.csv")
+DATA_PATH = os.path.join(_BASE, "..", "dataset_pipeline", "datasets", "labeled_dataset", "labeled_queries_full_v2.csv")
 MODEL_OUT = os.path.join(_BASE, "..", "models", "difficulty_regressor.joblib")
 EMBEDDER_NAME = "all-MiniLM-L6-v2"  # small, fast, 384-dim, no GPU needed
 

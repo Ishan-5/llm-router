@@ -1,0 +1,200 @@
+"Design a partial-order-broadcast protocol for a collaborative editing backend that only needs causal delivery ordering, and explain why it can avoid the overhead of full total-order broadcast.",7
+"Design a tiered storage migration policy that moves cold shards from SSD to object storage without violating a service's read-latency SLA for rarely accessed keys.",7
+"Design a distributed leader-election protocol that must remain correct when the cluster spans two network fabrics with asymmetric partition probabilities.",7
+"Design a request-hedging strategy for a fan-out read path that reduces tail latency without multiplying backend load beyond a bounded factor.",7
+"Design a schema-registry-backed message format evolution strategy for a streaming pipeline that guarantees old consumers never receive an unparseable payload.",7
+"Design a distributed rate limiter that must enforce a global quota shared across regions with sub-100ms propagation of quota consumption.",8
+"Design a replicated write-ahead log service supporting multiple independent tenants with per-tenant durability tuning without cross-tenant interference in fsync latency.",8
+"Design a cluster-wide admission-control system that sheds load fairly across tenants during an overload event using a token-bucket hierarchy.",8
+"Design a cross-shard secondary-index maintenance protocol that stays consistent with the primary data despite independent shard failures.",8
+"Design a multi-region conflict-free replicated queue that preserves per-key FIFO ordering while allowing concurrent regional writers.",8
+"Design a hierarchical failure-detection protocol for a 100,000-node cluster that bounds false-positive suspicion rate without a fully connected heartbeat mesh.",8
+"Prove that a specific epidemic-style anti-entropy protocol converges within O(log n) rounds with high probability, given a bounded node degree.",9
+"Design a formally specified reconfigurable-quorum protocol and prove it prevents overlapping quorums from diverging during a live membership change.",9
+"Design a globally consistent snapshot-isolation protocol across independently-sharded storage engines and prove it satisfies snapshot-read atomicity without global locks.",9
+"Design a provably optimal replica-placement algorithm minimizing worst-case cross-region latency subject to a fault-tolerance constraint, and prove its approximation ratio.",10
+"Design a formally verified state-transfer protocol for reconfiguring a Byzantine quorum system and prove it preserves safety across arbitrarily many overlapping reconfigurations.",10
+"Design a data structure supporting persistent (multi-version) range-sum queries under both point updates and full-array historical rollbacks in sublinear time per operation.",7
+"Design an algorithm for maintaining an approximate top-k frequent-items sketch under a stream with deletions, and derive its error bound as a function of sketch width.",7
+"Design an exact algorithm for computing the Steiner tree in a graph with a small number of terminal nodes, and analyze its exponential dependence on terminal count.",7
+"Design a fractional-cascading-based data structure for answering iterated dominance queries across multiple sorted lists in O(log n) per query after preprocessing.",7
+"Design an online algorithm for interval scheduling with cancellation penalties and derive its competitive ratio against an optimal offline scheduler.",7
+"Design a randomized incremental algorithm for computing a Delaunay triangulation and derive its expected O(n log n) runtime via backward analysis.",7
+"Design a heavy-path decomposition of a tree to support path-update and path-query operations in O(log^2 n), and explain the role of segment trees over each chain.",8
+"Design an approximation algorithm for the metric k-center problem with a provable 2-approximation guarantee, and prove the guarantee is tight.",8
+"Design a data structure for dynamic planar point location supporting insertions and deletions of line segments in polylogarithmic time per operation.",8
+"Design an algorithm for computing a minimum-weight perfect matching in a general graph in polynomial time, outlining the primal-dual structure of Edmonds' blossom algorithm at a high level.",8
+"Design a parameterized algorithm for the vertex cover problem with a running time of O(2^k * n) and prove the kernelization bound that makes this tractable for small k.",8
+"Design a fully persistent hash-array-mapped trie supporting O(log n) structural sharing per update, and analyze the amortized cost of path copying.",8
+"Design a randomized algorithm for finding a global minimum cut in a hypergraph and derive its success probability per trial.",9
+"Prove a tight lower bound on the cell-probe complexity of the predecessor-search problem, connecting it to the fusion-tree upper bound.",9
+"Design a parallel algorithm for computing biconnected components with O(log n) depth and prove its work-efficiency.",9
+"Prove matching upper and lower bounds on the space complexity of an exact distinct-elements-counting streaming algorithm, contrasting with the approximate HyperLogLog bound.",10
+"Design a succinct representation of a planar graph supporting O(1) adjacency queries in information-theoretically optimal space, and prove the space bound is tight.",10
+"Design an architecture for a real-time collaborative CAD tool that must merge concurrent geometric edits from multiple engineers without producing an invalid mesh.",7
+"Design an architecture for a global rate-limited SMS delivery platform that must respect per-carrier throughput agreements across dozens of countries.",7
+"Design an architecture for a personalization engine that must serve cold-start users with a fallback model while a per-user model warms up online.",7
+"Design an architecture for a distributed build system that caches compilation artifacts across a large engineering org while guaranteeing cache correctness under non-deterministic compiler flags.",7
+"Design an architecture for a multi-region secrets-rotation pipeline that must never leave a service temporarily unable to decrypt with any valid key version.",7
+"Design an architecture for a real-time bidding platform's budget-pacing system that prevents overspend across thousands of concurrent auctions per advertiser.",8
+"Design an architecture for a genomic-data processing pipeline that must reproducibly reprocess petabyte-scale datasets when an upstream reference database is updated.",8
+"Design an architecture for a distributed feature-engineering platform that guarantees point-in-time correctness for backtesting without leaking future information into historical feature values.",8
+"Design an architecture for a large-scale document-similarity search system that must support both approximate nearest-neighbor retrieval and exact deduplication at ingestion time.",8
+"Design an architecture for a multi-tenant workflow-orchestration platform (Airflow-style) that isolates a runaway tenant's DAG from starving other tenants' scheduled jobs.",8
+"Design the end-to-end architecture for a national-scale digital-identity verification system with strict availability and auditability guarantees under adversarial load.",9
+"Design the architecture for a real-time market-surveillance system that must detect cross-venue manipulation patterns within a regulatory-mandated latency window.",9
+"Design a globally fault-tolerant architecture for a satellite ground-station command-and-control system where a dropped command can have physical consequences.",9
+"Design a quantum circuit implementing Grover's algorithm for unstructured search and derive the optimal number of oracle iterations to maximize success probability.",7
+"Explain how the quantum phase estimation algorithm extracts an eigenvalue's phase to precision 2^-n using n ancilla qubits, and derive the circuit's success probability.",7
+"Design a variational quantum eigensolver (VQE) ansatz for finding a molecule's ground-state energy, and explain the barren-plateau problem's effect on gradient-based optimization.",7
+"Explain how the quantum Fourier transform circuit achieves O(n^2) gate complexity versus the classical FFT's O(n log n), and why this asymmetry still yields exponential speedup for period-finding.",7
+"Design a quantum error-correcting code (e.g. the 5-qubit code) and prove it satisfies the quantum error-correction conditions (Knill-Laflamme) for arbitrary single-qubit errors.",7
+"Explain how the HHL algorithm solves a linear system exponentially faster than classical methods under specific sparsity and conditioning assumptions, and identify what makes reading out the full solution vector intractable.",8
+"Design a surface-code-based fault-tolerant quantum computing architecture and derive how the code distance must scale with physical error rate to achieve a target logical error rate.",8
+"Explain how quantum amplitude estimation achieves a quadratic speedup over classical Monte Carlo sampling, and derive its query complexity as a function of target precision.",8
+"Design a quantum approximate optimization algorithm (QAOA) circuit for MaxCut and analyze how circuit depth trades off against approximation ratio.",8
+"Explain how the Deutsch-Jozsa algorithm's oracle structure guarantees deterministic distinguishing of constant versus balanced functions, and why this doesn't translate into practically useful speedup.",8
+"Design a quantum walk-based search algorithm on a graph and derive its hitting-time speedup over the corresponding classical random walk.",8
+"Design a measurement-based quantum computing scheme using a cluster state and explain how adaptive single-qubit measurements implement universal computation.",8
+"Prove the no-cloning theorem from the linearity of quantum mechanics and explain its role in guaranteeing the security of quantum key distribution.",9
+"Design Shor's algorithm's modular-exponentiation circuit and derive its qubit and gate-count requirements as a function of the number being factored.",9
+"Prove a tight lower bound on the query complexity of Grover's search algorithm, showing quadratic speedup is optimal for unstructured search.",9
+"Design a topological quantum computing scheme based on non-abelian anyons and explain how braiding operations achieve fault-tolerant gates without active error correction.",10
+"Prove the threshold theorem for fault-tolerant quantum computation, showing that arbitrarily long quantum computations are possible below a critical physical error rate.",10
+"Design an XLA-style operator-fusion pass that merges elementwise and reduction operations into a single kernel, and derive the memory-bandwidth savings versus unfused execution.",7
+"Explain how a Triton kernel's block-level tiling abstraction maps to underlying GPU thread-block and shared-memory resources, and design a tiling scheme for a fused softmax kernel.",7
+"Design a layout-assignment pass for a tensor compiler that chooses between row-major and tiled memory layouts based on downstream operator access patterns.",7
+"Explain how an ML compiler's auto-scheduling search (e.g. Halide/TVM-style) explores a loop-transformation space, and design a cost model to prune it effectively.",7
+"Design a compiler pass that rewrites a dynamic-shape computation graph into a small set of shape-specialized kernels while bounding recompilation overhead.",7
+"Explain how XLA's while-loop lowering handles a data-dependent iteration count on a fixed-topology accelerator, and design the buffer-donation strategy needed to avoid excess memory allocation.",8
+"Design a memory-planning pass for an ML compiler that reuses buffers across a computation graph's lifetime to minimize peak accelerator memory, and formalize the interference-graph coloring problem it solves.",8
+"Explain how a Triton compiler lowers a high-level block-pointer abstraction down to a target-specific instruction schedule, and identify where auto-tuning is required versus static scheduling.",8
+"Design an ML compiler's automatic differentiation pass operating directly on a graph IR, and explain how it must handle control-flow constructs (loops, conditionals) to remain correct.",8
+"Design a compiler-level quantization pass that inserts fake-quantization nodes for quantization-aware training, and analyze how it must preserve gradient flow through non-differentiable rounding.",8
+"Explain how a polyhedral compilation framework represents nested-loop iteration spaces for an ML kernel, and design an affine scheduling transformation that improves data locality.",8
+"Design a cross-accelerator lowering pipeline that compiles a single high-level ML graph to both a GPU (Triton/CUDA) and a custom ASIC backend, and identify which optimization passes must be backend-specific versus shared.",8
+"Design a formally specified buffer-aliasing analysis for an ML compiler's in-place-update optimization and prove it never introduces a data race between overlapping operations.",9
+"Design an auto-tuning search space and cost model for a Triton kernel's tile-size and pipelining-stage parameters, and prove the search converges to a near-optimal configuration under a bounded compile-time budget.",9
+"Design a compiler pass that automatically inserts activation-recomputation checkpoints in a computation graph to satisfy a hard memory budget while minimizing added recompute FLOPs, and formalize it as an optimization problem.",9
+"Design a formally verified graph-rewriting system for an ML compiler that proves every optimization pass preserves the numerical semantics of the original computation up to a bounded floating-point error.",10
+"Design a compiler infrastructure that automatically partitions and schedules a large computation graph across a heterogeneous accelerator mesh (different chip generations), proving the resulting schedule respects all data dependencies and memory constraints.",10
+"Design a happens-before-based data-race detector for a concurrent program and prove it never reports a false positive under the vector-clock algorithm it uses.",7
+"Formalize the proof that a lock-free stack implementation is linearizable by identifying its linearization points for push and pop operations.",7
+"Design a rely-guarantee proof methodology for verifying a concurrent program's invariant, and explain how the rely and guarantee conditions decouple reasoning about interfering threads.",7
+"Formalize a proof that a specific readers-writer lock implementation is deadlock-free using a resource-ordering argument.",7
+"Design a session-type-based verification approach for a message-passing concurrent program and prove it guarantees the absence of a specific communication mismatch.",7
+"Formalize the proof of linearizability for a lock-free queue using a simulation argument to an atomic reference implementation.",8
+"Design a separation-logic-based proof of memory safety for a concurrent program using fine-grained locking, and explain the role of the lock invariant in the proof.",8
+"Formalize a proof that a specific concurrent garbage collector never reclaims a reachable object, using an invariant over the mark-and-sweep phases interleaved with mutator threads.",8
+"Design a model-checking approach for verifying mutual exclusion in a concurrent program with an unbounded number of processes, using a parameterized-verification cutoff argument.",8
+"Design a formal proof using concurrent separation logic that a specific fine-grained concurrent hash table implementation has no data races on bucket resizing.",8
+"Formalize the proof of deadlock-freedom for a concurrent program using a wait-for-graph acyclicity invariant maintained across all reachable states.",8
+"Design a compositional verification framework for a concurrent program built from verified components, and explain what interface contracts must hold for the composition to preserve safety.",8
+"Design a machine-checked linearizability proof for a wait-free multi-producer multi-consumer queue in a proof assistant, specifying the abstraction relation used.",9
+"Formalize and prove progress (lock-freedom) for a specific non-blocking algorithm using an amortized potential-function argument encoded in a proof assistant.",9
+"Design a formally verified proof that a specific weak-memory-model relaxation (e.g. under RC11) still permits a given concurrent algorithm to satisfy its intended correctness property.",9
+"Design a fully machine-checked proof of linearizability and lock-freedom for a concurrent skip list, formalized in a dependently typed proof assistant, including the auxiliary-state simulation argument.",10
+"Formalize and prove correctness of a distributed consensus protocol's implementation (not just its abstract algorithm) down to the level of its message-passing code, using a refinement-based verification framework.",10
+"Explain how the Laplace mechanism achieves epsilon-differential privacy for a numeric query, and derive the noise scale required as a function of the query's sensitivity.",7
+"Design a differentially private histogram-release mechanism and derive its accuracy guarantee as a function of epsilon and the number of bins.",7
+"Explain how the exponential mechanism achieves differential privacy for non-numeric query outputs, and derive its utility guarantee in terms of the quality-score sensitivity.",7
+"Design a differentially private stochastic gradient descent algorithm (DP-SGD) and explain the role of per-example gradient clipping in bounding sensitivity.",7
+"Explain how the sparse vector technique answers many threshold queries under a bounded total privacy budget, and derive why naive composition would exhaust the budget faster.",7
+"Design a locally differentially private data-collection protocol (e.g. randomized response) and derive its privacy-utility trade-off as a function of the randomization probability.",8
+"Prove the basic composition theorem for differential privacy and derive the tighter bound achieved by the advanced composition theorem using concentration inequalities.",8
+"Design a differentially private federated learning protocol combining DP-SGD with secure aggregation, and analyze how the privacy accounting must account for both client-level and record-level privacy.",8
+"Explain how Renyi differential privacy provides tighter composition bounds than standard (epsilon, delta)-DP, and derive the conversion formula between the two definitions.",8
+"Design a differentially private synthetic-data-generation algorithm and derive the trade-off between the fidelity of downstream statistics and the privacy budget consumed.",8
+"Design a private PAC learning algorithm and derive how the sample complexity must scale with the privacy parameter to preserve the same learnability guarantee as the non-private setting.",8
+"Explain how the Gaussian mechanism's privacy guarantee under zero-concentrated differential privacy composes more tightly than under standard DP, and derive the noise-scale formula.",8
+"Prove a tight lower bound on the sample complexity required to answer a set of linear queries under differential privacy, using a reconstruction-attack argument.",9
+"Design a differentially private algorithm for releasing a graph's degree distribution and prove its accuracy guarantee under edge-level privacy.",9
+"Prove the optimality of the Gaussian mechanism among all noise-adding mechanisms achieving a given zero-concentrated differential privacy guarantee, under an L2-sensitivity constraint.",9
+"Design a differentially private algorithm achieving the optimal sample complexity for private mean estimation under a heavy-tailed distribution, and prove a matching lower bound.",10
+"Prove a tight trade-off between accuracy and privacy for answering a large class of statistical queries simultaneously, using a fingerprinting-code-based lower-bound argument.",10
+"Prove that a one-time pad achieves perfect (information-theoretic) secrecy using Shannon's definition, and explain why key reuse breaks this guarantee.",7
+"Derive the wiretap channel's secrecy capacity and explain how it bounds the maximum rate of information-theoretically secure communication given a degraded eavesdropper channel.",7
+"Prove that a secret-sharing scheme with a threshold of t out of n parties is information-theoretically secure against any coalition of fewer than t parties.",7
+"Explain how privacy amplification via a randomness extractor converts a weakly random source and a short shared secret into a longer information-theoretically secure key.",7
+"Derive the min-entropy requirement for a source to be safely used in a leftover-hash-lemma-based key-derivation function with information-theoretic security.",7
+"Prove the security of a quantum-key-distribution protocol (BB84) against an unbounded eavesdropper, using the uncertainty principle to bound information gain versus disturbance.",8
+"Design an information-theoretically secure multi-party computation protocol for computing a sum over private inputs, using additive secret sharing, and prove its security against a semi-honest adversary.",8
+"Derive the information-theoretic bound on the number of queries an adversary needs to fully reconstruct a database from noisy aggregate statistics, connecting it to the differential-privacy reconstruction-attack literature.",8
+"Prove that a specific authentication code (MAC) construction achieves information-theoretic unforgeability against a computationally unbounded adversary, given a bound on key reuse.",8
+"Explain how network coding can achieve information-theoretically secure communication against a wiretapper who observes a bounded subset of links, and derive the achievable secrecy rate.",8
+"Derive the information-theoretic capacity region for a broadcast channel with confidential messages, and explain what it implies about the fundamental limit of physical-layer security.",8
+"Design an information-theoretically secure oblivious transfer protocol using a noisy channel as a resource, and prove its security against a computationally unbounded receiver.",8
+"Prove a tight information-theoretic lower bound on the communication complexity required for two parties to compute a specific function while leaking no information beyond the output.",9
+"Derive the secrecy capacity of a Gaussian wiretap channel and prove the achievability using a random-binning coding argument.",9
+"Prove the impossibility of unconditionally secure bit commitment using only classical channels, and contrast this with the security achievable using quantum channels under specific assumptions.",9
+"Prove a tight bound on the information-theoretic secret-key capacity of a source-model key-agreement protocol given correlated randomness observed by two parties and an eavesdropper.",10
+"Derive the exact information-theoretic trade-off between secrecy rate and storage rate in a biometric secret-binding system, and prove the achievability of the resulting rate region.",10
+"Design a secure firmware attestation chain that binds a device's measured boot sequence to a hardware-rooted key, and identify the trust assumptions about the root of trust.",7
+"Explain how a threshold ECDSA signing protocol distributes the signing key across parties without ever reconstructing it, and identify what makes the nonce generation step security-critical.",7
+"Design a certificate-pinning strategy for a mobile app that avoids breaking connectivity during a legitimate CA key rotation.",7
+"Design a secure multi-tenant key-management service that isolates tenant keys such that a compromised tenant's IAM policy cannot expose another tenant's key material.",7
+"Explain how a padding-oracle-resistant authenticated encryption mode (e.g. AES-GCM) prevents the classical CBC padding-oracle attack, and identify what new failure mode nonce reuse introduces instead.",7
+"Design a hardware security module failover protocol that maintains signing availability during a primary HSM outage without ever exposing key material outside the HSM boundary.",8
+"Explain how a threshold BLS signature aggregation scheme enables a validator committee to jointly sign without a designated leader, and prove its unforgeability against a bounded-corruption adversary.",8
+"Design a secure protocol for rotating an encryption-at-rest key across a live production database without a maintenance window, ensuring no data is ever unencrypted-at-rest during the transition.",9
+"Design a formally specified proof that a specific PKI certificate-validation implementation correctly rejects all malformed certificate chains, including a name-constraint bypass class of attacks.",9
+"Design an attestation-based confidential-computing pipeline spanning multiple untrusted cloud providers, and prove the end-to-end data-confidentiality guarantee holds even if any single provider is compromised.",9
+"Design a query-optimizer statistics-collection subsystem that estimates join selectivity under correlated columns without exponential sampling cost, and analyze the estimation-error trade-off.",7
+"Explain how a database's multi-version storage engine determines the garbage-collection horizon for old row versions in the presence of long-running analytical queries.",7
+"Design a distributed SQL engine's distributed deadlock-free two-phase locking protocol across independently-owned shard leaders.",7
+"Design a columnar database's late-materialization strategy for filter-then-project query plans, and analyze when it outperforms early materialization.",7
+"Explain how a database's adaptive radix tree index balances memory efficiency against lookup speed compared to a traditional B+ tree for in-memory workloads.",7
+"Design a database checkpoint mechanism using fuzzy checkpointing that avoids pausing transaction processing, and explain how recovery reconciles the resulting inconsistent checkpoint image.",8
+"Design a query-compilation strategy (JIT-compiled query plans) for an analytical database and analyze the compilation-overhead versus execution-speed trade-off for short-lived queries.",8
+"Design a distributed database's global secondary-index consistency protocol that tolerates the base-table shard and the index shard failing independently.",8
+"Explain how a database's cost-based optimizer estimates cardinality for a multi-way join using histogram-based statistics, and design a correction for the independence-assumption's systematic underestimation.",8
+"Design a hybrid transactional-analytical processing (HTAP) system's dual-storage-format synchronization mechanism that keeps a row-store and column-store consistent under high write throughput.",9
+"Design a distributed database's global clock-free causal-consistency protocol and prove it provides stronger guarantees than eventual consistency without requiring synchronized clocks.",10
+"Design a real-time operating system's memory-protection unit configuration that isolates safety-critical tasks from best-effort tasks without a full MMU-based virtual memory system.",7
+"Explain how a lock-free multi-producer single-consumer ring buffer avoids the ABA problem without using double-width compare-and-swap.",7
+"Design a user-space threading library's cooperative scheduler that must remain fair under a workload mixing CPU-bound and I/O-bound green threads.",7
+"Design a formally specified proof of mutual exclusion for a ticket-lock implementation under a relaxed memory model, identifying the required memory barriers.",8
+"Explain how a real-time scheduler's rate-monotonic analysis bounds worst-case response time for a set of periodic tasks, and derive the utilization bound for exact schedulability.",8
+"Design a NUMA-aware lock implementation that reduces remote-cache-line traffic under high contention compared to a standard ticket lock.",8
+"Design a formally verified real-time scheduler's admission-control test that guarantees no task set accepted can miss a deadline under worst-case execution time bounds.",10
+"Design a statistical arbitrage strategy that hedges factor exposures using a rolling PCA decomposition of the covariance matrix, and derive how estimation noise in the eigenvectors affects hedge-ratio stability.",7
+"Design an options market-making inventory model that adjusts quotes based on realized-versus-implied volatility divergence, and derive the resulting skew adjustment.",7
+"Design a cross-currency basis-swap valuation model and derive the no-arbitrage relationship it must satisfy relative to the covered interest-rate parity condition.",7
+"Design a tail-risk hedging overlay for an equity portfolio using out-of-the-money put spreads, and derive the cost-efficiency trade-off versus a simple protective put.",8
+"Design an optimal-stopping model for deciding when to exercise a callable bond, and derive the exercise boundary using a dynamic-programming formulation.",8
+"Design a bandwidth-aware chunked file-transfer protocol for a distributed backup service that adapts chunk size to observed network jitter without renegotiating the connection.",7
+"Design a distributed presence-tracking system for a messaging app that reconciles conflicting online/offline signals arriving out of order from different edge servers.",7
+"Design a quota-enforcement system for a shared multi-tenant object store that must reclaim over-quota usage gracefully without deleting a tenant's most recently written objects first.",7
+"Design an incremental-computation framework (Bloom/differential-dataflow style) for maintaining a materialized view under continuous upstream updates without full recomputation.",7
+"Design a leader-standby failover protocol for a stateful service where the standby must replay a write-ahead log before accepting traffic, and bound the resulting failover downtime.",7
+"Design an algorithm for maintaining a dynamic topological order of a DAG under edge insertions in amortized sublinear time per update.",7
+"Design a data structure for answering k-nearest-neighbor queries in a dynamic point set under a Euclidean metric with polylogarithmic update time.",7
+"Design an algorithm for computing the maximum weight independent set in an interval graph in polynomial time, and prove why this tractability doesn't extend to general graphs.",7
+"Design an architecture for a real-time translation service that must maintain per-speaker context across a multi-hour conversation while bounding memory growth.",7
+"Design an architecture for a compliance-archiving system that must make records immutable and tamper-evident while still supporting legal-hold-based selective retention beyond the default deletion policy.",7
+"Design a quantum circuit for implementing the quantum counting algorithm by combining amplitude estimation with Grover iterations, and derive its estimation-error scaling with circuit depth.",7
+"Explain how a quantum error-correcting stabilizer code's syndrome measurement circuit detects errors without collapsing the encoded logical state, and describe the role of ancilla qubits.",7
+"Design a variational quantum classifier's data-encoding circuit (angle encoding) and explain how the choice of encoding affects the expressibility of the resulting quantum kernel.",7
+"Design a Triton kernel autotuner's configuration space for a matrix-multiplication kernel and explain which parameters (block size, number of warps, pipelining stage count) most affect achieved throughput.",7
+"Design an ML compiler's constant-folding pass operating on a static computation graph and explain what invariants it must preserve when the graph contains a data-dependent control-flow node.",7
+"Explain how an ML accelerator compiler's operator-scheduling pass orders independent kernels to maximize overlap between compute and data-movement engines.",7
+"Design a happens-before-based verification approach for detecting atomicity violations (not just data races) in a concurrent program, and explain how it differs from a plain race detector.",7
+"Formalize the proof that a specific concurrent bounded buffer implementation never permits the consumer to read a slot the producer hasn't finished writing, using an invariant over buffer indices.",7
+"Design a differentially private top-k selection algorithm and derive its accuracy guarantee as a function of the privacy budget and the gap between the k-th and (k+1)-th true counts.",7
+"Explain how the moments accountant technique tracks cumulative privacy loss more tightly than basic composition for iterative algorithms like DP-SGD.",7
+"Prove that a specific two-party key-agreement protocol built from a noisy correlated-randomness source achieves a positive information-theoretically secure key rate.",7
+"Explain how a physically unclonable function (PUF) provides a hardware root of trust, and identify what statistical properties its challenge-response behavior must satisfy for information-theoretic unpredictability guarantees.",7
+"Design a hierarchical scheduler for a mixed-criticality real-time system that must guarantee high-criticality task deadlines even if low-criticality tasks are starved during an overload mode switch.",7
+"Design a multi-region database migration strategy that moves a live, high-throughput table between storage engines with zero downtime and a bounded dual-write consistency window.",8
+"Design a formally specified proof that a specific distributed rate-limiter implementation never permits more than a bounded overshoot of the configured quota under any message-delivery interleaving.",8
+"Design an approximate algorithm for the graph-coloring problem on a bounded-degree graph and derive a provable bound on the number of colors used relative to the chromatic number.",8
+"Design an architecture for a real-time credit-underwriting pipeline that combines a low-latency rules engine with an asynchronous ML risk model without blocking approval decisions on the slower model.",8
+"Design a quantum-circuit compilation pass that maps a logical circuit onto a hardware's limited qubit-connectivity graph, and derive the SWAP-gate overhead this introduces.",8
+"Design an ML compiler's automatic operator-placement pass for a heterogeneous CPU-GPU pipeline, and formalize the cost model it uses to decide which operators run on which device.",8
+"Design a formally specified proof that a specific fine-grained lock-based B-tree implementation preserves the B-tree balance invariant under concurrent insertions and deletions.",8
+"Prove a tight bound on the number of ancilla qubits required to implement a specific multi-controlled quantum gate using only single- and two-qubit gates.",9
+"Design a formally verified proof of linearizability for a persistent (non-volatile-memory) lock-free data structure that must also recover correctly after a crash mid-operation.",9
+"Prove a tight information-theoretic bound on the minimum key length required for perfectly secure computation of a specific two-party function in the information-theoretic MPC model.",10
+"Design a formally verified quantum-error-correction decoder and prove its logical error rate matches the theoretical threshold-theorem prediction for a given physical error rate.",10
+"Design a compiler-level proof that a specific ML-accelerator instruction-scheduling pass never reorders two operations with a true data dependency, formalized as a dependency-preserving simulation relation.",10
+"Prove a matching upper and lower bound on the differential-privacy sample complexity of releasing a covariance matrix under a bounded operator-norm accuracy requirement.",10
