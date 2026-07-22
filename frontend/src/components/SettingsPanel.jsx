@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { fetchProviders } from '../api'
+import { fetchProviders, fetchSettings, saveSettings, fetchCalibrate, setSharedThreshold } from '../api'
 import { API_BASE } from '../config'
 import TierConfigSection from './TierConfigSection'
+import ThresholdSlider from './ThresholdSlider'
 import useFocusTrap from '../useFocusTrap'
 
 async function fetchConfigForUser() {
@@ -86,6 +87,9 @@ export default function SettingsPanel({ onClose, onSaved }) {
     })
     return init
   })
+  const [threshold, setThreshold] = useState(1.0)
+  const [calibrating, setCalibrating] = useState(false)
+  const [calibrateResult, setCalibrateResult] = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
@@ -95,7 +99,30 @@ export default function SettingsPanel({ onClose, onSaved }) {
   useEffect(() => {
     fetchProviders().then(setProviders).catch(() => {})
     fetchConfigForUser().then(setActiveConfig).catch(() => {})
+    fetchSettings().then((s) => { setThreshold(s.router_threshold ?? 1.0); setSharedThreshold(s.router_threshold ?? 1.0) }).catch(() => {})
   }, [])
+
+  function handleThresholdChange(v) {
+    setThreshold(v)
+    setSharedThreshold(v)
+  }
+
+  async function handleCalibrate() {
+    setCalibrating(true)
+    setCalibrateResult(null)
+    try {
+      const data = await fetchCalibrate()
+      setCalibrateResult(data)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setCalibrating(false)
+    }
+  }
+
+  function handleApplyCalibrate(margin) {
+    handleThresholdChange(margin)
+  }
 
   useEffect(() => {
     function handleEscape(e) {
@@ -181,6 +208,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
 
     try {
       await saveConfigForUser(payload)
+      try { await saveSettings(threshold) } catch {}
 
       const localStore = {}
       for (const tier of TIERS) {
@@ -199,7 +227,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
       localStorage.setItem('byom_config', JSON.stringify(localStore))
 
       fetchConfigForUser().then(setActiveConfig).catch(() => {})
-      setSuccess('Config saved and validated successfully.')
+      setSuccess('Config and router threshold saved successfully.')
       setTimeout(() => { onSaved && onSaved() }, 800)
     } catch (e) {
       setError(e.message)
@@ -235,6 +263,59 @@ export default function SettingsPanel({ onClose, onSaved }) {
                 <span className="text-muted"> · {activeConfig[t]?.provider || '\u2014'}</span>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="px-6 py-5 border-b border-line">
+          <ThresholdSlider value={threshold} onChange={handleThresholdChange} />
+
+          <div className="mt-4 pt-4 border-t border-line">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-muted uppercase tracking-wide">Calibrate from traffic</span>
+              <button
+                type="button"
+                onClick={handleCalibrate}
+                disabled={calibrating}
+                className="font-mono text-[10px] px-2.5 py-1 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition disabled:opacity-50"
+              >
+                {calibrating ? 'Analyzing...' : 'Run calibration'}
+              </button>
+            </div>
+            {calibrateResult && calibrateResult.modes && (
+              <div className="space-y-2 mt-2">
+                <p className="font-mono text-[10px] text-muted">
+                  Based on {calibrateResult.analyzed_requests} recent requests:
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {calibrateResult.modes.map((m) => (
+                    <button
+                      key={m.mode}
+                      type="button"
+                      onClick={() => handleApplyCalibrate(m.margin)}
+                      className={`text-left p-2 rounded-lg border transition-colors ${
+                        Math.abs(threshold - m.margin) < 0.05
+                          ? 'border-signal bg-signal/10'
+                          : 'border-line hover:border-signal/30 bg-surface'
+                      }`}
+                    >
+                      <div className="font-mono text-[10px] font-semibold text-primary capitalize">{m.mode}</div>
+                      <div className="font-mono text-[9px] text-muted mt-0.5">
+                        C:{m.cheap_pct}% M:{m.mid_pct}% F:{m.frontier_pct}%
+                      </div>
+                      <div className="font-mono text-[9px] text-cool">Save {m.savings_pct}%</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {calibrateResult && !calibrateResult.modes && (
+              <p className="font-mono text-[10px] text-muted mt-2">{calibrateResult.message}</p>
+            )}
+            {!calibrateResult && !calibrating && (
+              <p className="font-mono text-[10px] text-muted/60 mt-2">
+                Analyze your traffic to find the best threshold automatically. Needs at least 5 routed requests.
+              </p>
+            )}
           </div>
         </div>
 

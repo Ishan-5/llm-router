@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { routeQuery, routeQueryStream } from '../api'
+import { routeQuery, routeQueryStream, getSharedThreshold, setSharedThreshold } from '../api'
 import { API_BASE, API_KEY } from '../config'
+import ThresholdSlider from './ThresholdSlider'
 
 const MAX_HISTORY = 15
 
@@ -151,6 +152,7 @@ function MetaBadge({ label, value, color }) {
 export default function ApiPlayground() {
   const [query, setQuery] = useState('')
   const [tier, setTier] = useState('auto')
+  const [threshold, setThreshold] = useState(() => getSharedThreshold() ?? 1.0)
   const [streaming, setStreaming] = useState(false)
   const [bypassCache, setBypassCache] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -216,9 +218,10 @@ export default function ApiPlayground() {
         },
         (err) => { setError(err); setLoading(false) },
         controller.signal,
+        threshold,
       )
     } else {
-      routeQuery(trimmed, tier === 'auto' ? null : tier, bypassCache, controller.signal)
+      routeQuery(trimmed, tier === 'auto' ? null : tier, bypassCache, controller.signal, threshold)
         .then((data) => {
           setResponse(data)
           addHistory({
@@ -309,6 +312,10 @@ export default function ApiPlayground() {
               >
                 {bypassCache ? 'cache off' : 'cache on'}
               </button>
+
+              <div className="w-28 sm:w-36">
+                <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
+              </div>
 
               <span className="font-mono text-[10px] text-muted/50 hidden sm:inline">⌘+Enter to send</span>
             </div>

@@ -13,12 +13,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from sqlalchemy import func
-from router.classifier import get_tier
+from router.classifier import get_tier, score_difficulty
+from predict_difficulty import predict_difficulty, score_to_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.providers import stream_model, validate_key
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, ModelPricing
-from router.auth import require_api_key, check_budget, require_user, require_admin, require_admin_api_key, require_admin_any, is_admin_user_id, invalidate_key_cache
+from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, UserSettings, ModelPricing, compute_quality_score
+from router.auth import require_api_key, check_budget, require_user, require_admin, require_admin_api_key, require_admin_any, require_any_auth, is_admin_user_id, invalidate_key_cache
 from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY, ADMIN_USER_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.providers_registry import PROVIDERS_REGISTRY
@@ -62,11 +63,26 @@ app.add_middleware(
 )
 
 
+DEFAULT_THRESHOLD = 1.0
+
+
+def load_user_threshold(user_id: str | None) -> float:
+    if not user_id:
+        return DEFAULT_THRESHOLD
+    session = SessionLocal()
+    try:
+        settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        return settings.router_threshold if settings else DEFAULT_THRESHOLD
+    finally:
+        session.close()
+
+
 class QueryRequest(BaseModel):
     query: str
     override_tier: str | None = None
-    user_api_keys: dict | None = None  # { tier: api_key } from localStorage, never stored
+    user_api_keys: dict | None = None
     bypass_cache: bool = False
+    threshold: float | None = None
 
     @field_validator("query")
     @classmethod
@@ -85,16 +101,25 @@ class QueryRequest(BaseModel):
             raise ValueError("override_tier must be 'cheap', 'mid', or 'frontier'")
         return v
 
+    @field_validator("threshold")
+    @classmethod
+    def validate_threshold(cls, v):
+        if v is not None and (v < 0.0 or v > 2.0):
+            raise ValueError("threshold must be between 0.0 and 2.0")
+        return v
+
 
 async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
     """
     Shared pre-processing for both /route and /route/stream.
     Returns one of three dicts:
-      {"type": "web",   "answer": str, "latency_ms": float}
-      {"type": "cache", "cached": dict, "tokens_saved_usd": float, "latency_ms": float}
-      {"type": "live",  "tier": str, "difficulty_score": float, "over_budget": bool, "user_config": dict}
+      {"type": "web",   "answer": str, "latency_ms": float, "quality_score": float}
+      {"type": "cache", "cached": dict, "tokens_saved_usd": float, "latency_ms": float, "quality_score": float}
+      {"type": "live",  "tier": str, "difficulty_score": float, "over_budget": bool, "user_config": dict, "threshold": float}
     """
     loop = asyncio.get_event_loop()
+
+    threshold = req.threshold if req.threshold is not None else load_user_threshold(api_key.user_id)
 
     # web search -- runs before cache/classifier
     if needs_web_search(req.query) and TAVILY_API_KEY:
@@ -125,8 +150,9 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
                 "fallback_used": False, "cache_hit": False, "cache_similarity": None,
                 "model_id": "tavily/search", "input_tokens": 0, "output_tokens": 0,
                 "cost_usd": 0.0, "latency_ms": latency_ms,
+                "quality_score": 1.0,
             })
-            return {"type": "web", "answer": answer, "latency_ms": latency_ms}
+            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "quality_score": 1.0}
 
     # cache check + classifier in parallel
     async def _maybe_check_cache():
@@ -136,7 +162,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
 
     cached, (difficulty_score, tier) = await asyncio.gather(
         _maybe_check_cache(),
-        loop.run_in_executor(executor, get_tier, req.query, TIER_MARGIN),
+        loop.run_in_executor(executor, get_tier, req.query, threshold),
     )
 
     if cached is not None:
@@ -145,6 +171,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
         tokens_saved_usd = round(
             (cached["input_tokens"] / 1_000_000 * price_in)
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
+        quality_score = compute_quality_score(cache_hit=True, cache_similarity=cached["similarity"], fallback_used=False)
         log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
             "query": sanitize_pii(req.query),
@@ -153,8 +180,9 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
             "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
             "model_id": cached["model_id"], "input_tokens": 0, "output_tokens": 0,
             "cost_usd": 0.0, "latency_ms": latency_ms, "tokens_saved_usd": tokens_saved_usd,
+            "quality_score": quality_score,
         })
-        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms}
+        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "quality_score": quality_score}
 
     # live model call -- resolve tier + budget
     routing_tier = req.override_tier if req.override_tier else tier
@@ -175,6 +203,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
         "predicted_tier": tier,
         "over_budget": over_budget,
         "user_config": user_config,
+        "threshold": threshold,
     }
 
 
@@ -216,6 +245,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
 
     latency_ms = round((time.time() - start) * 1000, 2)
+    quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=result["fallback_used"])
     log_request({
         "api_key_id": api_key.id, "user_id": api_key.user_id,
         "query": sanitize_pii(req.query),
@@ -226,6 +256,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
         "cost_usd": result["cost_usd"],
         "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
+        "quality_score": quality_score,
     })
     loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"])
     return {
@@ -234,7 +265,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "override_used": req.override_tier is not None, "budget_capped": over_budget,
         "fallback_used": result["fallback_used"], "cache_hit": False,
         "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
-        "latency_ms": latency_ms,
+        "latency_ms": latency_ms, "quality_score": quality_score,
     }
 
 
@@ -307,6 +338,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
 
         latency_ms = round((time.time() - start) * 1000, 2)
         full_response = "".join(full_text)
+        quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=False)
 
         log_request({"api_key_id": api_key.id, "user_id": api_key.user_id, "query": sanitize_pii(req.query),
             "response": full_response,
@@ -314,13 +346,14 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
             "cache_similarity": None, "model_id": meta["model_id"],
             "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
-            "cost_usd": meta["cost_usd"], "latency_ms": latency_ms})
+            "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
+            "quality_score": quality_score})
 
         loop.run_in_executor(executor, add_to_cache, req.query, full_response,
             meta["tier"], meta["model_id"], meta["cost_usd"],
             meta["input_tokens"], meta["output_tokens"])
 
-        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score})}\n\n"
 
     return StreamingResponse(_live_stream(), media_type="text/event-stream")
 
@@ -651,6 +684,12 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
         routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
         total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
 
+        average_quality = float(
+            session.query(func.avg(RequestLog.quality_score))
+            .filter(*base_filter, RequestLog.quality_score.isnot(None))
+            .scalar() or 0.0
+        )
+
         return {
             "total_requests": total_requests,
             "tier_counts": tier_counts,
@@ -664,6 +703,7 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "cache_savings_usd": cache_savings_usd,
             "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd,
+            "average_quality": round(average_quality, 4),
             "is_global": is_admin,
         }
     finally:
@@ -796,6 +836,171 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
         session.close()
 
 
+@app.get("/settings")
+def get_settings(user_id: str = Depends(require_user)):
+    session = SessionLocal()
+    try:
+        settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        if settings is None:
+            return {"router_threshold": DEFAULT_THRESHOLD}
+        return {"router_threshold": settings.router_threshold}
+    finally:
+        session.close()
+
+
+class SettingsRequest(BaseModel):
+    router_threshold: float
+
+    @field_validator("router_threshold")
+    @classmethod
+    def validate_threshold(cls, v):
+        if v < 0.0 or v > 2.0:
+            raise ValueError("router_threshold must be between 0.0 and 2.0")
+        return v
+
+
+@app.post("/settings")
+def save_settings(req: SettingsRequest, user_id: str = Depends(require_user)):
+    session = SessionLocal()
+    try:
+        settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        if settings:
+            settings.router_threshold = req.router_threshold
+            settings.updated_at = datetime.utcnow()
+        else:
+            session.add(UserSettings(user_id=user_id, router_threshold=req.router_threshold))
+        session.commit()
+        return {"router_threshold": req.router_threshold}
+    finally:
+        session.close()
+
+
+@app.get("/calibrate")
+def calibrate(auth=Depends(require_any_auth)):
+    session = SessionLocal()
+    try:
+        if auth["type"] == "api_key" and auth["record"]:
+            base_filter = [RequestLog.api_key_id == auth["record"].id, RequestLog.cache_hit == False, RequestLog.tier != "web", RequestLog.difficulty_score.isnot(None)]
+        else:
+            key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == auth["user_id"], ApiKey.is_active == True).all()]
+            if not key_ids:
+                return {"message": "No API keys found. Create one in Settings first.", "modes": []}
+            base_filter = [RequestLog.api_key_id.in_(key_ids), RequestLog.cache_hit == False, RequestLog.tier != "web", RequestLog.difficulty_score.isnot(None)]
+        rows = session.query(RequestLog.difficulty_score, RequestLog.input_tokens, RequestLog.output_tokens).filter(*base_filter).order_by(RequestLog.created_at.desc()).limit(200).all()
+
+        if not rows:
+            return {"message": "Not enough data yet. Send some routed requests first.", "recommendation": None}
+
+        margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+        results = []
+        for mode_name, margin in margins:
+            cheap_count = mid_count = frontier_count = 0
+            total_cost = 0.0
+            for score, in_tok, out_tok in rows:
+                if score >= (7 - margin):
+                    frontier_count += 1
+                    tier_prices = MODEL_CONFIG["frontier"]
+                elif score <= 3:
+                    cheap_count += 1
+                    tier_prices = MODEL_CONFIG["cheap"]
+                else:
+                    mid_count += 1
+                    tier_prices = MODEL_CONFIG["mid"]
+                total_cost += (in_tok or 0) / 1_000_000 * tier_prices["price_per_m_input"]
+                total_cost += (out_tok or 0) / 1_000_000 * tier_prices["price_per_m_output"]
+
+            frontier_cost = sum(
+                (in_tok or 0) / 1_000_000 * MODEL_CONFIG["frontier"]["price_per_m_input"]
+                + (out_tok or 0) / 1_000_000 * MODEL_CONFIG["frontier"]["price_per_m_output"]
+                for _, in_tok, out_tok in rows
+            )
+            savings_pct = round((1 - total_cost / frontier_cost) * 100, 1) if frontier_cost > 0 else 0
+            results.append({
+                "mode": mode_name,
+                "margin": margin,
+                "cheap_pct": round(cheap_count / len(rows) * 100, 1),
+                "mid_pct": round(mid_count / len(rows) * 100, 1),
+                "frontier_pct": round(frontier_count / len(rows) * 100, 1),
+                "estimated_cost": round(total_cost, 6),
+                "savings_pct": savings_pct,
+            })
+
+        return {"analyzed_requests": len(rows), "modes": results}
+    finally:
+        session.close()
+
+
+class EvaluateRequest(BaseModel):
+    queries: list[str]
+
+
+@app.post("/evaluate")
+def evaluate(req: EvaluateRequest):
+    margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+    results = []
+    for q in req.queries:
+        score = predict_difficulty(q)
+        entry = {"query": q, "difficulty_score": round(score, 4)}
+        for mode_name, margin in margins:
+            entry[f"tier_{mode_name}"] = score_to_tier(score, margin=margin)
+        results.append(entry)
+    thresholds = [
+        {"mode": "economy", "cheap_below": 3.0, "frontier_above": 7.0},
+        {"mode": "balanced", "cheap_below": 3.0, "frontier_above": 6.0},
+        {"mode": "quality", "cheap_below": 3.0, "frontier_above": 5.0},
+    ]
+    return {"results": results, "thresholds": thresholds}
+
+
+@app.get("/compare")
+def compare(auth=Depends(require_any_auth)):
+    session = SessionLocal()
+    try:
+        if auth["type"] == "api_key" and auth["record"]:
+            base_filter = [RequestLog.api_key_id == auth["record"].id, RequestLog.cache_hit == False, RequestLog.tier != "web", RequestLog.difficulty_score.isnot(None)]
+        else:
+            key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == auth["user_id"], ApiKey.is_active == True).all()]
+            if not key_ids:
+                return {"message": "No API keys found.", "modes": []}
+            base_filter = [RequestLog.api_key_id.in_(key_ids), RequestLog.cache_hit == False, RequestLog.tier != "web", RequestLog.difficulty_score.isnot(None)]
+        rows = session.query(RequestLog.difficulty_score, RequestLog.input_tokens, RequestLog.output_tokens, RequestLog.created_at).filter(*base_filter).order_by(RequestLog.created_at.desc()).limit(500).all()
+
+        if not rows:
+            return {"message": "Not enough data.", "modes": []}
+
+        ranges = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+        results = []
+        for mode_name, margin in ranges:
+            total_cost = 0.0
+            for score, in_tok, out_tok, _ in rows:
+                if score >= (7 - margin):
+                    tier_prices = MODEL_CONFIG["frontier"]
+                elif score <= 3:
+                    tier_prices = MODEL_CONFIG["cheap"]
+                else:
+                    tier_prices = MODEL_CONFIG["mid"]
+                total_cost += (in_tok or 0) / 1_000_000 * tier_prices["price_per_m_input"]
+                total_cost += (out_tok or 0) / 1_000_000 * tier_prices["price_per_m_output"]
+
+            baseline_cost = sum(
+                (in_tok or 0) / 1_000_000 * MODEL_CONFIG["frontier"]["price_per_m_input"]
+                + (out_tok or 0) / 1_000_000 * MODEL_CONFIG["frontier"]["price_per_m_output"]
+                for _, in_tok, out_tok, _ in rows
+            )
+            savings_vs_frontier = round((1 - total_cost / baseline_cost) * 100, 1) if baseline_cost > 0 else 0
+            results.append({
+                "mode": mode_name,
+                "margin": margin,
+                "estimated_cost": round(total_cost, 6),
+                "frontier_baseline_cost": round(baseline_cost, 6),
+                "savings_pct": savings_vs_frontier,
+            })
+
+        return {"analyzed_requests": len(rows), "modes": results}
+    finally:
+        session.close()
+
+
 # ------------------------------------------------------------------
 # Admin endpoints (require ADMIN_USER_ID)
 # ------------------------------------------------------------------
@@ -867,6 +1072,12 @@ def admin_stats(user_id: str = Depends(require_admin_any)):
         routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
         total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
 
+        average_quality = float(
+            session.query(func.avg(RequestLog.quality_score))
+            .filter(RequestLog.quality_score.isnot(None))
+            .scalar() or 0.0
+        )
+
         # Per-user breakdown
         user_request_counts = dict(
             session.query(ApiKey.user_id, func.count(RequestLog.id))
@@ -904,6 +1115,7 @@ def admin_stats(user_id: str = Depends(require_admin_any)):
             "cache_savings_usd": cache_savings_usd,
             "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd,
+            "average_quality": round(average_quality, 4),
             "user_breakdown": user_breakdown,
         }
     finally:
