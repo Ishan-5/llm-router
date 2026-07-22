@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
-import { fetchStats } from '../api'
+import { fetchStats, fetchCompare } from '../api'
 import AnimatedCounter from './AnimatedCounter'
 
 const TIER_ORDER = ['cheap', 'mid', 'frontier', 'web']
@@ -9,6 +9,7 @@ const TIER_LABELS = { cheap: 'Cheap', mid: 'Mid', frontier: 'Frontier', web: 'We
 
 export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [stats, setStats] = useState(null)
+  const [compareData, setCompareData] = useState(null)
   const [error, setError] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
@@ -17,15 +18,21 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
     return fetchStats().then((s) => { setStats(s); setLastUpdated(new Date()) }).catch((e) => setError(e.message))
   }
 
+  function loadCompare() {
+    return fetchCompare().then(setCompareData).catch(() => {})
+  }
+
   async function handleRefresh() {
     setRefreshing(true)
     await loadStats()
+    await loadCompare()
     setRefreshing(false)
   }
 
   useEffect(() => {
     if (!backendOnline) return
     loadStats()
+    loadCompare()
     const id = setInterval(loadStats, 30_000)
     return () => clearInterval(id)
   }, [backendOnline])
@@ -114,7 +121,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
       </div>
       <p className="text-sm text-muted mb-10">Every number comes from actual production traffic routed through this system.</p>
 
-      {/* Hero stat — savings */}
+      {/* Hero stat — savings + quality */}
       <div className="bg-panel border border-line rounded-xl p-6 md:p-8 mb-6">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
@@ -127,6 +134,11 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
               {savedPct > 0 && (
                 <span className="font-mono text-sm font-semibold text-signal bg-signal/10 border border-signal/20 rounded-full px-3 py-1">
                   {savedPct}% saved
+                </span>
+              )}
+              {stats.average_quality != null && stats.average_quality > 0 && (
+                <span className="font-mono text-sm font-semibold text-cool bg-cool/10 border border-cool/20 rounded-full px-3 py-1">
+                  {(stats.average_quality * 100).toFixed(0)}% quality
                 </span>
               )}
             </div>
@@ -147,8 +159,8 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         </div>
       </div>
 
-      {/* 4 stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+      {/* stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
         <StatBox
           label="Requests routed"
           value={stats.total_requests}
@@ -175,6 +187,13 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
           icon={<ShieldIcon />}
           color={successRate >= 99 ? 'cool' : successRate >= 95 ? 'signal' : 'danger'}
           sub={`${stats.fallback_count || 0} fallbacks triggered`}
+        />
+        <StatBox
+          label="Quality retained"
+          value={stats.average_quality != null && stats.average_quality > 0 ? `${(stats.average_quality * 100).toFixed(0)}%` : '—'}
+          icon={<StarIcon />}
+          color={stats.average_quality >= 0.97 ? 'cool' : stats.average_quality >= 0.90 ? 'signal' : 'danger'}
+          sub={stats.average_quality > 0 ? 'avg across all requests' : 'will appear after first request'}
         />
       </div>
 
@@ -292,6 +311,32 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         </div>
       </div>
 
+      {/* Multi-router comparison */}
+      {compareData && compareData.modes && compareData.modes.length > 0 && (
+        <div className="bg-panel border border-line rounded-xl p-5 mb-6">
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3">Mode comparison</h3>
+          <p className="font-mono text-[10px] text-muted mb-4">
+            What {compareData.analyzed_requests} recent requests would cost with different thresholds:
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {compareData.modes.map((m) => {
+              const isEconomy = m.mode === 'economy'
+              const isBalanced = m.mode === 'balanced'
+              const isQuality = m.mode === 'quality'
+              const borderClass = isEconomy ? 'border-cool/20' : isBalanced ? 'border-signal/20' : 'border-danger/20'
+              const textClass = isEconomy ? 'text-cool' : isBalanced ? 'text-signal' : 'text-danger'
+              return (
+                <div key={m.mode} className={`bg-surface border ${borderClass} rounded-lg p-3`}>
+                  <div className={`font-mono text-[10px] font-semibold ${textClass} capitalize mb-1`}>{m.mode}</div>
+                  <div className="font-display text-lg font-semibold text-primary">${m.estimated_cost.toFixed(4)}</div>
+                  <div className="font-mono text-[10px] text-muted mt-1">Save {m.savings_pct}% vs frontier</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Trust badges */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <TrustBadge
@@ -398,6 +443,14 @@ function BoltIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  )
+}
+
+function StarIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   )
 }

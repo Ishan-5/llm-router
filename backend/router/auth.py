@@ -168,3 +168,21 @@ async def require_admin_any(authorization: str = Header(None)) -> str:
 def is_admin_user_id(user_id: str | None) -> bool:
     """Check if a user_id belongs to the admin. Used for optional admin checks."""
     return bool(user_id) and user_id == ADMIN_USER_ID
+
+
+async def require_any_auth(authorization: str = Header(None)):
+    """Accepts either API key (rw_...) or Supabase JWT. Returns the auth identity."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing auth")
+
+    token = authorization.removeprefix("Bearer ").strip()
+
+    if token.startswith("rw_"):
+        record = _lookup_key_cached(token)
+        if record:
+            check_rate_limit(token)
+            return {"type": "api_key", "record": record, "user_id": record.user_id}
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    user_id = await require_user(authorization)
+    return {"type": "jwt", "record": None, "user_id": user_id}

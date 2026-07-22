@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchStats, fetchConfig } from '../api'
+import { fetchStats, fetchConfig, fetchSettings, setSharedThreshold, getSharedThreshold } from '../api'
 import TierCircuit from './TierCircuit'
+import ThresholdSlider from './ThresholdSlider'
 import QueryForm, { ChatSuggestions } from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
 
@@ -11,6 +12,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
+  const [threshold, setThreshold] = useState(() => getSharedThreshold() ?? 1.0)
   const abortRef = useRef(null)
   const scrollRef = useRef(null)
   const latestResult = messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.result || null
@@ -19,6 +21,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     if (!backendOnline) return
     fetchStats().then(setTicker).catch(() => setTicker(null))
     fetchConfig().then(setActiveConfig).catch(() => {})
+    fetchSettings().then((s) => { const v = s.router_threshold ?? 1.0; setThreshold(v); setSharedThreshold(v) }).catch(() => {})
     return () => abortRef.current?.abort()
   }, [configVersion, backendOnline])
 
@@ -54,6 +57,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         override === 'auto' ? null : override,
         bypassCache,
         controller.signal,
+        threshold,
       )
       setMessages((prev) => [...prev, { role: 'assistant', result: data }])
       fetchStats().then(setTicker).catch(() => {})
@@ -180,6 +184,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             tiers={TIERS}
             activeConfig={activeConfig}
           />
+          <div className="mt-4 px-1">
+            <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
+          </div>
         </div>
 
         {/* right column: SVG diagram — always visible */}

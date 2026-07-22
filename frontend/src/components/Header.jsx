@@ -89,6 +89,10 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
         className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/guide') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
         Guide
       </Link>
+      <Link to="/evaluate"
+        className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/evaluate') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
+        Evaluate
+      </Link>
       <Link to="/about"
         className={`px-3 py-1.5 rounded-md transition-colors ${isActive('/about') ? 'text-primary bg-surface' : 'hover:text-primary hover:bg-surface/50'}`}>
         About

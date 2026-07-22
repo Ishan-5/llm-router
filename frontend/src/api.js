@@ -15,13 +15,22 @@ function _getUserKeys() {
   }
 }
 
-export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal) {
+const THRESHOLD_KEY = 'router_threshold'
+let _sharedThreshold = (() => {
+  try { return parseFloat(localStorage.getItem(THRESHOLD_KEY)) || 1.0 } catch { return 1.0 }
+})()
+export function getSharedThreshold() { return _sharedThreshold }
+export function setSharedThreshold(v) { _sharedThreshold = v; localStorage.setItem(THRESHOLD_KEY, String(v)) }
+
+export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null) {
   const userKeys = _getUserKeys()
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
   if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
+  const t = threshold ?? _sharedThreshold
+  if (t != null) body.threshold = t
 
   const res = await fetch(`${API_BASE}/route/stream`, {
     method: 'POST',
@@ -58,13 +67,15 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   }
 }
 
-export async function routeQuery(query, overrideTier = null, bypassCache = false, signal) {
+export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null) {
   const userKeys = _getUserKeys()
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
   if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
+  const t = threshold ?? _sharedThreshold
+  if (t != null) body.threshold = t
 
   const res = await fetch(`${API_BASE}/route`, {
     method: 'POST',
@@ -172,6 +183,95 @@ export async function fetchAnalytics(key) {
     headers: { 'Authorization': `Bearer ${authKey}` },
   })
   if (!res.ok) throw new Error('Could not load analytics')
+  return res.json()
+}
+
+export async function fetchSettings() {
+  let token = null
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    token = session?.access_token || null
+  } catch {}
+  if (!token) {
+    const local = _sharedThreshold ?? 1.0
+    return { router_threshold: local }
+  }
+  const res = await fetch(`${API_BASE}/settings`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  if (!res.ok) return { router_threshold: _sharedThreshold ?? 1.0 }
+  const data = await res.json()
+  _sharedThreshold = data.router_threshold ?? _sharedThreshold ?? 1.0
+  localStorage.setItem(THRESHOLD_KEY, String(_sharedThreshold))
+  return data
+}
+
+export async function saveSettings(router_threshold) {
+  let token = null
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    token = session?.access_token || null
+  } catch {}
+  if (!token) {
+    _sharedThreshold = router_threshold
+    localStorage.setItem(THRESHOLD_KEY, String(router_threshold))
+    return { router_threshold }
+  }
+  const res = await fetch(`${API_BASE}/settings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    body: JSON.stringify({ router_threshold }),
+  })
+  if (!res.ok) throw new Error('Failed to save settings')
+  return res.json()
+}
+
+export async function fetchCalibrate() {
+  const headers = {}
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  } catch {}
+  if (!headers['Authorization'] && API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`
+  if (!headers['Authorization']) throw new Error('Sign in or configure an API key to calibrate')
+  const res = await fetch(`${API_BASE}/calibrate`, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to calibrate')
+  }
+  return res.json()
+}
+
+export async function fetchCompare() {
+  const headers = {}
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  } catch {}
+  if (!headers['Authorization'] && API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`
+  if (!headers['Authorization']) throw new Error('Sign in or configure an API key to compare')
+  const res = await fetch(`${API_BASE}/compare`, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to compare')
+  }
+  return res.json()
+}
+
+export async function evaluateQueries(queries) {
+  const res = await fetch(`${API_BASE}/evaluate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ queries }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Evaluation failed — is the backend running?')
+  }
   return res.json()
 }
 

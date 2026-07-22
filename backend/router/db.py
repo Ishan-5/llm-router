@@ -1,8 +1,9 @@
 """
-Three tables — keys, logs, config. 
-Everything the router tracks flows through RequestLog. 
-The ApiKey table is what makes auth and budget enforcement possible. 
-UserConfig is what makes BYOM possible. Base.metadata.create_all(engine) means zero manual DB setup needed.
+Four tables — keys, logs, config, settings.
+Everything the router tracks flows through RequestLog.
+The ApiKey table is what makes auth and budget enforcement possible.
+UserConfig is what makes BYOM possible. UserSettings stores per-user router preferences.
+Base.metadata.create_all(engine) means zero manual DB setup needed.
 """
 
 import os
@@ -24,9 +25,9 @@ class ApiKey(Base):
     __tablename__ = "api_keys"
     id = Column(Integer, primary_key=True)
     key = Column(String, unique=True, index=True)
-    name = Column(String)  # e.g. "acme-corp-demo"
-    user_id = Column(String, nullable=True, index=True)  # Supabase auth user UUID
-    daily_budget_usd = Column(Float, nullable=True)  # None = no cap
+    name = Column(String)
+    user_id = Column(String, nullable=True, index=True)
+    daily_budget_usd = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -34,12 +35,11 @@ class ApiKey(Base):
 class RequestLog(Base):
     __tablename__ = "request_logs"
     __table_args__ = (
-        # Indexes for high-traffic query columns
         {"sqlite_autoincrement": True},
     )
     id = Column(Integer, primary_key=True)
-    api_key_id = Column(Integer, nullable=True, index=True)  # which key made this request
-    user_id = Column(String, nullable=True, index=True)       # Supabase auth user UUID (denormalized from api_keys for fast admin queries)
+    api_key_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(String, nullable=True, index=True)
     query = Column(String)
     response = Column(Text, nullable=True)
     difficulty_score = Column(Float)
@@ -53,17 +53,27 @@ class RequestLog(Base):
     output_tokens = Column(Integer)
     cost_usd = Column(Float)
     latency_ms = Column(Float)
-    tokens_saved_usd = Column(Float, nullable=True)  # dollar value saved on cache hits
+    tokens_saved_usd = Column(Float, nullable=True)
+    quality_score = Column(Float, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class UserConfig(Base):
     __tablename__ = "user_configs"
     id = Column(Integer, primary_key=True)
-    user_id = Column(String, nullable=True, index=True)  # Supabase auth user UUID
-    tier = Column(String)        # cheap / mid / frontier
-    provider = Column(String)    # groq / openai / anthropic / ollama
-    model_id = Column(String)    # e.g. gpt-4o-mini
+    user_id = Column(String, nullable=True, index=True)
+    tier = Column(String)
+    provider = Column(String)
+    model_id = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserSettings(Base):
+    __tablename__ = "user_settings"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=True, index=True, unique=True)
+    router_threshold = Column(Float, default=1.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -71,12 +81,12 @@ class UserConfig(Base):
 class ModelPricing(Base):
     __tablename__ = "model_pricing"
     id = Column(Integer, primary_key=True)
-    provider = Column(String, nullable=False)           # groq / openai / anthropic / etc.
+    provider = Column(String, nullable=False)
     model_id = Column(String, nullable=False, index=True)
     display_name = Column(String, nullable=False)
     price_per_m_input = Column(Float, nullable=False)
     price_per_m_output = Column(Float, nullable=False)
-    notes = Column(Text, nullable=True)                 # e.g. tiered pricing detail
+    notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -85,6 +95,23 @@ try:
     Base.metadata.create_all(engine)
 except Exception as e:
     log.warning("DB init failed (will retry on first request): %s", e)
+
+# Migration: add quality_score column if missing on existing tables
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN quality_score FLOAT"))
+        conn.commit()
+except Exception:
+    pass
+
+
+def compute_quality_score(cache_hit: bool, cache_similarity: float | None, fallback_used: bool) -> float:
+    if cache_hit and cache_similarity is not None:
+        return round(min(float(cache_similarity), 1.0), 4)
+    if fallback_used:
+        return 0.85
+    return 1.0
 
 
 def log_request(data: dict):
