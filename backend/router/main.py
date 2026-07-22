@@ -891,7 +891,7 @@ def calibrate(auth=Depends(require_any_auth)):
         if not rows:
             return {"message": "Not enough data yet. Send some routed requests first.", "recommendation": None}
 
-        margins = [("economy", 0.0), ("balanced", 0.3), ("quality", 0.6)]
+        margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
         results = []
         for mode_name, margin in margins:
             cheap_count = mid_count = frontier_count = 0
@@ -937,7 +937,7 @@ class EvaluateRequest(BaseModel):
 
 @app.post("/evaluate")
 def evaluate(req: EvaluateRequest):
-    margins = [("economy", 0.0), ("balanced", 0.3), ("quality", 0.6)]
+    margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
     results = []
     for q in req.queries:
         score = predict_difficulty(q)
@@ -969,7 +969,7 @@ def compare(auth=Depends(require_any_auth)):
         if not rows:
             return {"message": "Not enough data.", "modes": []}
 
-        ranges = [("economy", 0.0), ("balanced", 0.3), ("quality", 0.6)]
+        ranges = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
         results = []
         for mode_name, margin in ranges:
             total_cost = 0.0
