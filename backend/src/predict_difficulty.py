@@ -59,10 +59,22 @@ def predict_difficulty(query: str) -> float:
     return float(np.clip(score, 0, 10)) # the final feature vector is 388 numbers: 384 semantic + 4 handcrafted
 
 
-def score_to_tier(score: float, margin: float = 1.0) -> str:
-    if score >= (7 - margin):
+# Thresholds calibrated to this model's actual output range (~1.5-5.8).
+# Training data compression means hard queries (label 7-10) score ~4.8-5.8.
+# cheap: <=3.4, frontier: >=4.9 (margin nudges borderline queries up, never down).
+# Known limitation: model scores ~0.4 points apart queries that are 3 difficulty
+# levels apart (e.g. 'explain recursion' vs 'derive NTK'). We bias toward
+# over-routing rather than under-routing -- a frontier model on an easy query
+# wastes money; a cheap model on a hard query gives a wrong answer.
+def score_to_tier(score: float, margin: float = 0.3) -> str:
+    # Both boundaries shift with margin.
+    # Economy (low margin) raises cheap ceiling + raises frontier floor → more cheap, less frontier.
+    # Quality (high margin) lowers cheap ceiling + lowers frontier floor → less cheap, more frontier.
+    cheap_ceil = 3.4 - (margin - 1.0) * 0.25   # economy=3.65, balanced=3.4, quality=3.15
+    frontier_floor = 4.9 - margin                # economy=4.9, balanced=3.9, quality=2.9
+    if score >= frontier_floor:
         return "frontier"
-    elif score <= 3:
+    elif score <= cheap_ceil:
         return "cheap"
     else:
         return "mid"

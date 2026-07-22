@@ -891,16 +891,17 @@ def calibrate(auth=Depends(require_any_auth)):
         if not rows:
             return {"message": "Not enough data yet. Send some routed requests first.", "recommendation": None}
 
-        margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+        margins = [("economy", 0.0), ("balanced", 0.3), ("quality", 0.6)]
         results = []
         for mode_name, margin in margins:
             cheap_count = mid_count = frontier_count = 0
             total_cost = 0.0
             for score, in_tok, out_tok in rows:
-                if score >= (7 - margin):
+                tier = score_to_tier(score, margin=margin)
+                if tier == "frontier":
                     frontier_count += 1
                     tier_prices = MODEL_CONFIG["frontier"]
-                elif score <= 3:
+                elif tier == "cheap":
                     cheap_count += 1
                     tier_prices = MODEL_CONFIG["cheap"]
                 else:
@@ -936,7 +937,7 @@ class EvaluateRequest(BaseModel):
 
 @app.post("/evaluate")
 def evaluate(req: EvaluateRequest):
-    margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+    margins = [("economy", 0.0), ("balanced", 0.3), ("quality", 0.6)]
     results = []
     for q in req.queries:
         score = predict_difficulty(q)
@@ -945,9 +946,9 @@ def evaluate(req: EvaluateRequest):
             entry[f"tier_{mode_name}"] = score_to_tier(score, margin=margin)
         results.append(entry)
     thresholds = [
-        {"mode": "economy", "cheap_below": 3.0, "frontier_above": 7.0},
-        {"mode": "balanced", "cheap_below": 3.0, "frontier_above": 6.0},
-        {"mode": "quality", "cheap_below": 3.0, "frontier_above": 5.0},
+        {"mode": "economy",  "cheap_below": 3.65, "frontier_above": 4.9},
+        {"mode": "balanced", "cheap_below": 3.4,  "frontier_above": 3.9},
+        {"mode": "quality",  "cheap_below": 3.15, "frontier_above": 2.9},
     ]
     return {"results": results, "thresholds": thresholds}
 
@@ -968,14 +969,15 @@ def compare(auth=Depends(require_any_auth)):
         if not rows:
             return {"message": "Not enough data.", "modes": []}
 
-        ranges = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+        ranges = [("economy", 0.0), ("balanced", 0.3), ("quality", 0.6)]
         results = []
         for mode_name, margin in ranges:
             total_cost = 0.0
             for score, in_tok, out_tok, _ in rows:
-                if score >= (7 - margin):
+                tier = score_to_tier(score, margin=margin)
+                if tier == "frontier":
                     tier_prices = MODEL_CONFIG["frontier"]
-                elif score <= 3:
+                elif tier == "cheap":
                     tier_prices = MODEL_CONFIG["cheap"]
                 else:
                     tier_prices = MODEL_CONFIG["mid"]

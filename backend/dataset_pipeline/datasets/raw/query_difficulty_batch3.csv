@@ -1,0 +1,200 @@
+"Design a hinted-handoff mechanism for a Dynamo-style store and explain how it must interact with read-repair to avoid resurrecting deleted keys.",7
+"Explain how a Raft implementation's log compaction (snapshotting) interacts with lagging followers that need entries already discarded from the log.",7
+"Design a distributed outbox pattern for reliably publishing events transactionally alongside a database write, without a distributed transaction.",7
+"Implement a bounded-staleness read protocol for a follower replica and explain how it uses a high-water-mark timestamp to reject overly stale reads.",7
+"Design a service discovery system that handles rolling deployments without routing requests to instances mid-shutdown.",7
+"Explain how a quorum-based system chooses read/write quorum sizes to trade off latency against consistency, and design a tunable-consistency API for it.",7
+"Design a backfill strategy for repopulating a newly added read replica without blocking live writes to the primary.",7
+"Design a distributed semaphore service that correctly releases permits when a client holding one crashes without heartbeating.",7
+"Design a multi-region-aware load balancer that shifts traffic during a regional outage while respecting per-region capacity limits and avoiding cascading overload.",8
+"Design a saga-based orchestration system for a multi-service checkout flow with compensating transactions for partial failures.",8
+"Design a control plane for dynamically reconfiguring shard-to-node assignments in a sharded database with zero-downtime data movement.",8
+"Explain how a distributed rate limiter built on a CRDT-based counter trades off precision for availability compared to one requiring synchronous coordination.",8
+"Design a cross-datacenter replication topology (hub-and-spoke vs mesh) for a globally distributed cache and analyze the write-amplification trade-off.",8
+"Design a distributed job scheduler that must guarantee at-most-once execution for non-idempotent tasks despite worker crashes and network partitions.",8
+"Explain how a partitioned Kafka-style log's consumer group rebalancing protocol can cause duplicate or lost message processing during a rolling restart, and design a mitigation.",8
+"Design a two-level hierarchical consensus scheme (per-shard Raft groups coordinated by a meta-Raft group) and analyze its failure-recovery latency under a meta-group leader crash.",9
+"Prove that a given hybrid logical clock preserves the happens-before partial order while remaining within a bounded drift of physical time.",9
+"Design a formally specified membership-change protocol for a replicated state machine (joint consensus) and prove it prevents dual-leader scenarios during reconfiguration.",9
+"Design a globally linearizable distributed counter service and prove a fundamental lower bound on its cross-region write latency.",10
+"Design a Byzantine-fault-tolerant state machine replication protocol optimized for geo-distributed WAN deployment, and prove its latency bound matches the network diameter under the optimistic case.",10
+"Implement a wavelet tree over a sequence supporting rank/select/quantile queries in O(log sigma) time, and explain its space usage relative to the zero-order entropy.",7
+"Design an algorithm for finding a minimum spanning tree in a dynamic graph with edge insertions and deletions, maintaining the MST in sub-linear amortized time per update.",7
+"Implement a rolling hash-based algorithm for finding the longest common substring between two large strings and analyze its collision-probability guarantees.",7
+"Design an algorithm to compute strongly connected components using Tarjan's algorithm and prove its single-pass O(V+E) correctness via the low-link invariant.",7
+"Implement a persistent (functional) leftist heap supporting O(log n) merge, and explain why this beats a binary heap for this operation.",7
+"Design an algorithm for the stable marriage problem using Gale-Shapley and prove it always terminates with a proposer-optimal matching.",7
+"Implement an offline algorithm for the least common ancestor problem using Tarjan's union-find-based approach, and derive its near-linear time bound.",7
+"Design a rope data structure for efficient string concatenation and slicing in a text editor, and analyze its amortized edit-operation complexity.",7
+"Design a parallel algorithm for constructing a suffix array using prefix doubling, and derive its O(n log n) work and O(log^2 n) depth bounds.",8
+"Implement a wavelet matrix supporting O(1) rank queries over a large alphabet and compare its cache behavior to a wavelet tree.",8
+"Design an approximate algorithm for the k-median clustering problem with a provable constant-factor approximation ratio.",8
+"Implement a segment tree beats structure supporting chmin/chmax range updates with range sum queries in amortized O(log n) per operation.",8
+"Design an algorithm for maximum bipartite matching using the Hopcroft-Karp algorithm and prove its O(E sqrt(V)) time bound.",8
+"Design a data structure supporting dynamic connectivity queries on an undirected graph using an Euler tour tree in O(log^2 n) per update.",8
+"Design an external-memory sorting algorithm (multi-way merge sort) and derive its I/O complexity in terms of the number of block transfers.",8
+"Prove the correctness of Karger's randomized min-cut algorithm and derive the number of trials needed for high-probability success.",9
+"Design a streaming algorithm for the heavy-hitters problem using the Count-Min sketch and derive its space-error trade-off with a formal proof.",9
+"Design a parallel algorithm for the all-pairs shortest path problem that achieves near-linear work in sparse graphs using randomized techniques.",9
+"Prove tight bounds on the query complexity of the element-distinctness problem in the quantum query model, contrasting with the classical lower bound.",10
+"Design a cache-oblivious B-tree structure that achieves optimal I/O complexity without knowledge of the cache-line or block size, and prove the bound.",10
+"Design a serverless event-processing architecture for a fraud pipeline that must maintain sub-second cold-start-free latency across bursty traffic.",7
+"Design a microservices decomposition for a monolithic e-commerce inventory system that avoids distributed-transaction anti-patterns across the new service boundaries.",7
+"Design a multi-tenant data warehouse architecture with workload isolation guaranteeing no tenant's ad-hoc query can starve another tenant's scheduled reports.",7
+"Design an architecture for a push-notification system delivering to 500M devices with per-user rate limits and delivery-receipt tracking.",7
+"Design a canary-deployment traffic-shaping system that automatically rolls back based on real-time error-rate and latency regression detection.",7
+"Design an architecture for a geofencing service that evaluates millions of concurrent location updates against dynamic polygon boundaries in near real time.",7
+"Design an API versioning and backward-compatibility strategy for a public API used by thousands of third-party integrations.",7
+"Design a log-aggregation pipeline architecture that can absorb a 50x traffic spike during an incident without dropping or delaying alerting-critical log lines.",7
+"Design the architecture of a recommendation-serving system that blends a candidate-generation stage with a real-time re-ranking model under a 20ms latency budget.",8
+"Design an architecture for a distributed rate-limited web crawler that respects per-domain politeness policies across thousands of worker nodes.",8
+"Design a multi-region active-active architecture for a social-media feed service that reconciles conflicting concurrent edits to the same post.",8
+"Design an architecture for a real-time anomaly-detection system monitoring millions of IoT sensor streams with adaptive per-device baselining.",8
+"Design a data-pipeline architecture for training-serving skew prevention, ensuring feature computation is identical between offline training and online inference.",8
+"Design an architecture for a multi-cloud disaster-recovery strategy for a stateful service that avoids vendor-specific consistency-model assumptions.",8
+"Design a large-scale A/B testing platform architecture that avoids interaction effects between overlapping simultaneous experiments.",8
+"Design the full architecture of a global inventory-reservation system for a flash-sale event handling 1M concurrent reservation attempts on a fixed-stock item without overselling.",9
+"Design the architecture of a real-time collaborative whiteboard supporting thousands of concurrent editors per board with conflict-free merge semantics at scale.",9
+"Design a planet-scale secrets-management system with sub-second key rotation propagation and provable guarantees against partial-rotation inconsistency.",9
+"Design a pipeline-parallel training architecture (GPipe-style) for a model that doesn't fit on a single accelerator, and derive the pipeline-bubble overhead as a function of micro-batch count.",7
+"Explain how gradient checkpointing trades recomputation for memory savings during backpropagation, and derive the optimal checkpoint placement for a fixed memory budget.",7
+"Design a data-parallel training setup using ring all-reduce and derive its bandwidth-optimal communication cost independent of the number of workers.",7
+"Explain how gradient compression via top-k sparsification affects convergence, and design an error-feedback mechanism to correct for the resulting bias.",7
+"Design a mixed-precision training pipeline with dynamic loss scaling and explain how it prevents gradient underflow without sacrificing numerical stability.",7
+"Explain how tensor parallelism splits a transformer's attention and MLP layers across devices, and derive the resulting all-reduce communication volume per layer.",7
+"Design a parameter-server architecture for asynchronous distributed training and analyze how staleness bounds affect convergence guarantees.",7
+"Explain how ZeRO (Zero Redundancy Optimizer) partitions optimizer state, gradients, and parameters across data-parallel workers, and derive its memory savings versus standard data parallelism.",8
+"Design a 3D-parallelism training configuration (data, tensor, pipeline) for a trillion-parameter model, and derive how to choose the parallelism degrees given a fixed GPU count and interconnect topology.",8
+"Explain how activation recomputation interacts with pipeline parallelism's microbatching to bound peak memory, and derive the resulting throughput trade-off.",8
+"Design a fault-tolerant distributed training system that can resume from a mid-epoch worker failure without restarting from the last full checkpoint.",8
+"Explain how gradient compression using quantization (e.g. 1-bit SGD) introduces bias, and design a correction scheme that preserves convergence guarantees.",8
+"Design an elastic distributed training system that can add or remove workers mid-training without restarting the job, and analyze the learning-rate rescaling required.",8
+"Explain how sequence parallelism reduces activation memory for long-context transformer training beyond what tensor parallelism alone achieves.",8
+"Prove a convergence bound for asynchronous SGD under bounded staleness and derive how the bound degrades as the number of stale workers grows.",9
+"Design a communication-avoiding distributed training algorithm that overlaps gradient all-reduce with backward-pass computation, and derive the theoretical speedup limit.",9
+"Derive the optimal micro-batch size and pipeline depth that minimizes end-to-end training time for a given model size, device count, and interconnect bandwidth, accounting for pipeline bubbles.",9
+"Prove a tight lower bound on the communication complexity of distributed gradient aggregation across p workers for a d-dimensional model, and connect it to the ring all-reduce's optimality.",10
+"Design a decentralized (all-reduce-free) distributed training algorithm using gossip-based gradient averaging and prove its convergence rate matches centralized SGD up to a network-topology-dependent factor.",10
+"Prove that a finitely presented group has decidable word problem if and only if it satisfies a specific small-cancellation condition, and outline the algorithmic construction.",7
+"Prove the classification theorem for finitely generated abelian groups and explain its use in computing the Smith normal form of an integer matrix.",7
+"Prove that the fundamental group of a topological space is a homotopy invariant, and use it to show the torus and sphere are not homeomorphic.",7
+"Prove the existence of a Groebner basis for any polynomial ideal using Dickson's lemma, and explain Buchberger's algorithm's termination argument.",7
+"Prove the Cayley-Hamilton theorem via the adjugate matrix identity and explain its use in computing matrix minimal polynomials efficiently.",7
+"Prove that the category of finite-dimensional vector spaces is equivalent to the category of matrices, and explain the functorial correspondence.",7
+"Prove Zorn's lemma is equivalent to the axiom of choice via the well-ordering theorem, and outline the proof strategy.",7
+"Prove Hensel's lemma for lifting a simple root of a polynomial modulo p to a root modulo p^k, and explain its role in p-adic root-finding algorithms.",7
+"Prove the classification of finite simple groups' role in bounding the automorphism group of a strongly regular graph, at a high level.",8
+"Prove the Atiyah-Singer index theorem's statement for the special case of the Gauss-Bonnet theorem, connecting curvature integration to the Euler characteristic.",8
+"Prove that the Galois group of a general quintic polynomial is not solvable, and connect this to the impossibility of a radical formula for its roots.",8
+"Prove the Riemann-Roch theorem for algebraic curves and explain its role in bounding the dimension of a linear system of divisors.",8
+"Formalize and prove the correctness of a red-black tree's insertion invariant preservation in a dependently typed proof assistant, describing the invariant-carrying type.",8
+"Formalize the type-safety proof of a simply typed lambda calculus in Coq using the progress and preservation lemmas, and describe the induction principle used.",8
+"Formalize a proof of Cantor-Schroder-Bernstein theorem in Lean using classical logic, and explain where the axiom of choice is or isn't required.",8
+"Prove the Nash embedding theorem's statement (isometric embedding of Riemannian manifolds into Euclidean space) at a high level and explain the role of the Nash-Moser implicit function theorem.",9
+"Formalize and machine-check a proof of the irrationality of e in Isabelle/HOL, describing the continued-fraction-based proof strategy encoded.",9
+"Prove the Poincare conjecture's reduction to Ricci flow with surgery at a conceptual level, explaining why singularity formation required Perelman's surgery technique.",9
+"Formalize a proof of Godel's incompleteness theorem inside Lean's type theory itself, and explain the self-reference encoding challenge this presents for the proof assistant's own consistency.",10
+"Prove the Weil conjectures' statement relating point counts over finite fields to the topology of a complex variety, and outline Deligne's use of etale cohomology.",10
+"Design an authenticated key exchange protocol resistant to a compromised long-term key still preserving forward secrecy for prior sessions (as in the Signal protocol's X3DH).",7
+"Explain how a length-extension attack against SHA-256-based MACs works, and design a construction that avoids it without switching hash families.",7
+"Design a secure enclave (SGX-style) attestation protocol and identify what trust assumptions it makes about the enclave manufacturer.",7
+"Explain how a downgrade attack against TLS cipher-suite negotiation can force a weak cipher, and design a signed-transcript mitigation.",7
+"Design an anonymous credential scheme allowing a user to prove group membership without revealing which member they are, and describe the underlying primitive.",7
+"Explain how a birthday attack against a hash function's collision resistance determines the practical security level given its output size.",7
+"Design a secure firmware-update mechanism with rollback protection that prevents downgrade to a known-vulnerable signed version.",7
+"Explain how format-preserving encryption is constructed from a Feistel network over a non-binary domain, and analyze its security margin at small domain sizes.",7
+"Design a privacy-preserving contact-discovery protocol using private set intersection, and analyze its communication complexity versus a naive approach.",8
+"Explain how the Logjam attack exploited export-grade Diffie-Hellman parameters, and design a parameter-selection policy that prevents similar precomputation attacks.",8
+"Design a ratcheting encryption scheme (Double Ratchet-style) providing both forward secrecy and post-compromise security, and explain the role of the symmetric-key and DH ratchets.",8
+"Explain how a Meltdown/Spectre-style speculative-execution attack leaks memory across a privilege boundary, and design a mitigation using speculation barriers.",8
+"Design an attribute-based encryption scheme enforcing fine-grained access policies over ciphertexts, and explain the trust model for the policy-issuing authority.",8
+"Explain how a supply-chain attack against a package manager's dependency-resolution algorithm can inject malicious transitive dependencies, and design a reproducible-build defense.",8
+"Design a secure aggregation protocol for federated learning that prevents the server from seeing individual client updates while still computing their sum.",8
+"Prove the security of a commitment scheme's binding and hiding properties under the discrete-log assumption.",9
+"Design a post-quantum key-encapsulation mechanism based on the module-LWE problem and explain its ciphertext-expansion trade-off versus classical ECDH.",9
+"Explain the mathematical construction of a pairing-based BLS signature scheme and prove its aggregate-signature verification correctness.",9
+"Design a formally verified constant-time cryptographic implementation methodology and specify what side-channel classes it provably eliminates versus what remain out of scope.",10
+"Prove the security of the Signal protocol's continuous key ratchet against an adaptive adversary in the generalized universal composability framework.",10
+"Compile a WebAssembly module's linear memory model and explain how it enforces spatial memory safety despite lacking a traditional MMU-based page table.",7
+"Design a WASM runtime's trampoline mechanism for calling imported host functions, and explain the overhead versus a native function call.",7
+"Explain how WebAssembly's structured control flow (blocks, loops, branches) enables single-pass validation, contrasting it with arbitrary-goto bytecode formats.",7
+"Design a garbage-collected language's compilation target for WebAssembly using the GC proposal's typed references, and explain the tracing implications.",7
+"Explain how a WASI capability-based sandboxing model restricts a compiled module's filesystem access compared to a native process.",7
+"Design a JIT tiering strategy (interpreter to baseline to optimizing compiler) for a WASM engine and explain the on-stack-replacement mechanism for hot-loop upgrades.",7
+"Explain how WebAssembly's SIMD proposal maps portable 128-bit vector operations onto heterogeneous host ISAs (SSE vs NEON), and identify semantics that can't be preserved exactly.",7
+"Design a control-flow-integrity mechanism for a WASM engine's indirect calls, and explain how function-signature checking prevents type-confusion exploits.",8
+"Design a component-model-based linking strategy for composing multiple WASM modules with shared-nothing interfaces, and analyze the marshaling overhead at the boundary.",8
+"Explain how a WASM engine implements exception handling using the exception-handling proposal's tag-based mechanism, and compare it to native zero-cost unwinding.",8
+"Design a deterministic WASM execution environment for a blockchain smart-contract platform and identify sources of non-determinism (floating point, memory growth) that must be eliminated.",8
+"Explain how ahead-of-time compiling WASM to native code handles the module's dynamic memory-growth semantics without sacrificing bounds-check elimination optimizations.",8
+"Design a multi-threading model for WebAssembly using shared memory and atomics, and explain the memory-consistency model it must expose to guest code.",8
+"Explain how stack-switching (the WASM stack-switching proposal) enables implementing green threads or generators inside a WASM module, and what it requires from the host engine.",8
+"Design a formally specified type-soundness proof for the WebAssembly core semantics, and explain the role of the validation algorithm in the proof.",9
+"Design a WASM-based confidential-computing runtime that provides remote attestation over the compiled module's hash, and analyze its trust boundary versus native SGX enclaves.",9
+"Design a whole-program dead-code-elimination and tree-shaking pass operating on the WASM binary format post-compilation, and prove it preserves observable behavior.",9
+"Prove the type-safety and determinism guarantees of a WebAssembly-based smart-contract virtual machine under adversarial host-function inputs.",10
+"Design a formally verified WASM-to-native compiler backend and specify the semantic-preservation theorem it must establish relative to the WASM reference interpreter.",10
+"Explain how a GPU's SIMT execution model causes warp divergence on a data-dependent branch, and design a branchless reformulation of a conditional kernel to avoid it.",7
+"Design a CUDA kernel for matrix multiplication using shared-memory tiling and derive the arithmetic-intensity improvement over a naive global-memory implementation.",7
+"Explain how memory coalescing affects global-memory bandwidth utilization on a GPU, and redesign a strided-access kernel to achieve coalesced access patterns.",7
+"Design a CUDA reduction kernel that avoids bank conflicts in shared memory and minimizes warp-level divergence during the tree-reduction phase.",7
+"Explain the occupancy trade-off between registers-per-thread and threads-per-block on a GPU, and derive the optimal block size for a given kernel's register usage.",7
+"Design a persistent-kernel GPU architecture for a streaming workload that avoids kernel-launch overhead for many small sequential operations.",7
+"Explain how a GPU's memory hierarchy (L1/L2 cache, shared memory, global memory) trades off latency and bandwidth, and design a tiling strategy for a convolution kernel that maximizes L2 reuse.",7
+"Design a multi-GPU NCCL-based all-reduce implementation and explain how the ring topology minimizes bandwidth usage across NVLink-connected devices.",8
+"Explain how tensor cores accelerate mixed-precision matrix multiplication, and design a kernel that correctly handles the FP32 accumulation to avoid precision loss.",8
+"Design a CUDA graph-based execution strategy to reduce kernel-launch overhead for a workload with many small dependent kernels, and analyze the capture-and-replay trade-off.",8
+"Explain how warp-level primitives (shuffle, ballot) enable register-only reductions without shared memory, and design a warp-level softmax kernel using them.",8
+"Design a GPU kernel-fusion strategy for a sequence of elementwise operations to minimize global-memory round-trips, and analyze the compute-versus-memory-bound trade-off.",8
+"Explain how a GPU scheduler's thread-block-to-SM assignment affects load balancing for an irregular workload, and design a persistent-thread-based load-balancing scheme.",8
+"Design a custom CUDA kernel for flash-attention that avoids materializing the full attention matrix in global memory, and derive its memory-complexity improvement over the naive implementation.",8
+"Design an analytical performance model (roofline model) for a GPU kernel and use it to determine whether a given kernel is compute-bound or memory-bound, deriving the arithmetic-intensity threshold.",9
+"Explain how a GPU's asynchronous copy and multi-stage software pipelining (as in Hopper's TMA) hide global-memory latency behind compute, and design a pipelined kernel using it.",9
+"Design a sparse-matrix GPU kernel format (e.g. blocked-ELL) optimized for a specific sparsity pattern, and derive its load-balancing guarantees across thread blocks.",9
+"Design a formally analyzed GPU memory-consistency model for a kernel using inter-thread-block synchronization via atomics, and prove the absence of a specific class of data races.",10
+"Derive the theoretical peak FLOP/s achievable on a specific GPU architecture's tensor cores accounting for instruction-issue and memory-bandwidth bottlenecks, and design a kernel that provably approaches this bound.",10
+"Design a mean-reversion trading strategy using an Ornstein-Uhlenbeck process fit via maximum likelihood, and derive the optimal entry/exit thresholds under a transaction-cost constraint.",7
+"Design a volatility-targeting portfolio rebalancing scheme and derive how its turnover scales with the realized-volatility estimation window length.",7
+"Design an optimal execution algorithm for a large order that must minimize a combination of market impact and timing risk over a fixed horizon, and derive its closed-form trading trajectory under linear impact.",7
+"Design a credit-default-swap pricing model incorporating a hazard-rate term structure calibrated to observed CDS spreads.",7
+"Design a factor-timing strategy using macro regime indicators, and derive how estimation error in regime probabilities degrades the strategy's realized Sharpe ratio.",7
+"Design a collateral-optimization system for a derivatives portfolio subject to variation-margin calls, and derive the funding-cost minimization objective.",7
+"Design a statistical model for intraday seasonality in trading volume and use it to construct a volume-weighted execution schedule (VWAP-tracking algorithm).",7
+"Design a multi-curve interest-rate framework separating discounting and forwarding curves post-2008, and derive the basis-spread adjustment it requires relative to a single-curve model.",8
+"Design a stochastic volatility inspired (SVI) parameterization for fitting an implied-volatility smile, and derive the no-arbitrage constraints its parameters must satisfy.",8
+"Design a counterparty credit risk exposure model (potential future exposure) for a derivatives netting set, and derive how netting and collateral thresholds reduce the exposure profile.",8
+"Design an optimal hedging strategy for a variance swap under a stochastic-volatility model, and derive the residual hedging error from discrete rebalancing.",8
+"Design a regime-switching model (Markov-modulated) for asset returns and derive the filtering equations used to infer the latent regime in real time.",8
+"Design a liquidity-adjusted value-at-risk model that accounts for bid-ask spread costs under stressed-liquidation scenarios.",8
+"Design a cross-asset arbitrage detection system exploiting triangular mispricing in FX markets, and derive the no-arbitrage constraint it must check in real time.",8
+"Derive the exact solution for the optimal liquidation trajectory under the Almgren-Chriss model with both permanent and temporary market impact, and characterize how risk-aversion changes the trajectory's convexity.",9
+"Design a multi-factor stochastic volatility model with jumps (SVJ) and derive its Fourier-transform-based option-pricing formula via the characteristic function.",9
+"Design a robust portfolio optimization formulation under model uncertainty (worst-case over an ambiguity set of covariance matrices), and derive the resulting tractable convex reformulation.",9
+"Derive the exact free-boundary condition for the optimal exercise boundary of an American option under a stochastic-volatility model, and characterize its dependence on the volatility-of-volatility parameter.",10
+"Design a mean-field game formulation for optimal execution among many strategic traders competing for the same liquidity, and derive the resulting equilibrium trading-rate equations.",10
+"Design a leader-lease mechanism for a primary-backup system that safely bounds the time a demoted leader might still serve stale reads after losing its lease.",7
+"Design a bulk-loading strategy for rebuilding a distributed index from a full data snapshot without blocking concurrent incremental updates.",7
+"Implement a monotonic-stack-based algorithm for the largest rectangle in a histogram problem and prove its linear-time correctness.",7
+"Design an algorithm for computing the median of a data stream using two heaps and analyze its amortized insertion cost.",7
+"Design a rate-limited multi-tenant job queue's fair-share scheduling algorithm using a deficit round-robin approach, and derive its fairness bound.",7
+"Design a circuit-breaker library's half-open state transition logic and explain how it avoids reopening the circuit on a single probe failure.",7
+"Explain how a WASM module's memory64 proposal changes the linear-memory addressing model, and identify what existing sandboxing invariants must be re-verified.",7
+"Design a CUDA kernel launch configuration selector that picks grid and block dimensions based on a target occupancy, and explain the trade-offs versus a fixed configuration.",7
+"Design a checkpoint-restart mechanism for a long-running distributed training job that must resume deterministically across a heterogeneous mix of GPU generations.",7
+"Formalize the proof that insertion sort is a stable sorting algorithm in a proof assistant, describing the invariant used in the loop-based induction.",7
+"Explain how a GPU's L2 cache persistence hints can be used to pin frequently reused data (e.g. KV-cache) across kernel launches, and analyze the eviction-policy trade-off.",7
+"Design a distributed rolling-upgrade coordinator for a stateful cluster that enforces a minimum quorum of upgraded-compatible nodes before proceeding to the next batch.",7
+"Design a gang-scheduling policy for a multi-GPU cluster shared by many distributed training jobs, and explain how it avoids the deadlock that plain FIFO scheduling can cause.",8
+"Design a hierarchical all-reduce topology-aware collective communication scheme for a training cluster spanning multiple network fabrics (NVLink, InfiniBand, Ethernet).",8
+"Explain how a WASM engine's ahead-of-time tiering decision (interpret vs compile) affects cold-start latency for a serverless FaaS platform, and design a hybrid strategy.",8
+"Design a GPU kernel autotuning system that searches tile sizes and thread-block configurations offline, and explain how it generalizes across input-shape distributions without re-tuning per shape.",8
+"Formalize a machine-checked proof of the AVL tree's rebalancing invariant preservation in Coq, describing the height-difference invariant carried through rotations.",8
+"Design a distributed checkpointing protocol for asynchronous SGD that captures a globally consistent snapshot without pausing all workers simultaneously (Chandy-Lamport style).",8
+"Explain how a GPU's cooperative-groups API enables grid-wide synchronization within a single kernel launch, and design a kernel that uses it to implement a multi-phase reduction.",8
+"Design a formally verified WASM bytecode validator and specify what invariant it must establish to guarantee the interpreter never accesses out-of-bounds memory.",9
+"Prove a tight bound on the minimum number of communication rounds required for a pipeline-parallel schedule to achieve a target GPU-utilization ratio, given a fixed number of pipeline stages.",9
+"Design a formally specified memory-safety proof for a WASM linear-memory bounds-check-elimination optimization, and show it preserves the trap semantics of the unoptimized code.",9
+"Design a mixed data- and expert-parallel training architecture for a sparse mixture-of-experts model spanning thousands of GPUs, and derive the all-to-all communication cost as a function of expert-capacity factor.",10
+"Formalize and machine-check a full compiler-correctness proof from a simply typed source language down to WebAssembly, specifying the simulation relation between source and target semantics.",10
+"Prove a tight theoretical lower bound on GPU memory bandwidth required to train a transformer of a given size at a target tokens-per-second throughput, accounting for activation recomputation trade-offs.",10
+"Design a formally verified distributed checkpoint-consistency proof for elastic distributed training that tolerates workers joining mid-epoch with a different data shard assignment.",10

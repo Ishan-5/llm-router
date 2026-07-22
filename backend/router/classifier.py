@@ -17,7 +17,7 @@ def score_difficulty(query: str) -> float:
     return predict_difficulty(query)
 
 
-def get_tier(query: str, margin: float = 1.0) -> tuple[float, str]:
+def get_tier(query: str, margin: float = 0.3) -> tuple[float, str]:
     score = predict_difficulty(query)
     tier = score_to_tier(score, margin=margin)
     return score, tier
