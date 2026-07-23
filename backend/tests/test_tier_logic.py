@@ -30,5 +30,9 @@ def test_margin_zero_uses_hard_cutoff():
 def test_cheap_boundary_moves_with_margin():
     # economy margin=0.0: cheap<=3.65, so 3.5 is cheap
     assert score_to_tier(3.5, margin=0.0) == "cheap"
-    # quality margin=2.0: cheap<=3.15, so 3.5 is mid
-    assert score_to_tier(3.5, margin=2.0) == "mid"
+    # quality margin=2.0: frontier>=2.9, cheap<=3.15, so 3.5 is frontier
+    assert score_to_tier(3.5, margin=2.0) == "frontier"
+    # to test cheap ceiling lowering: use balanced margin=1.0 where frontier>=3.9
+    # score 3.3 is cheap at economy (<=3.65) but mid at balanced (<=3.4 ceiling)
+    assert score_to_tier(3.3, margin=0.0) == "cheap"
+    assert score_to_tier(3.5, margin=1.0) == "mid"
