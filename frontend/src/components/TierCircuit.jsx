@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 const SCAN_ORDER = ['cheap', 'mid', 'frontier']
 
-export default function TierCircuit({ tiers, activeTier, score, cacheHit, loading }) {
+export default function TierCircuit({ tiers, activeTier, score, cacheHit, loading, cheapCeil, frontierFloor }) {
   const [scanIndex, setScanIndex] = useState(-1)
 
   useEffect(() => {
@@ -47,6 +47,9 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
 
   const GX = 75, GW = 250, GY = 120
   const gx = (s) => GX + (Math.min(10, Math.max(0, s)) / 10) * GW
+  // use actual thresholds from last response, fall back to balanced defaults
+  const cheapTick = cheapCeil ?? 3.4
+  const frontierTick = frontierFloor ?? 4.6
 
   return (
     <svg viewBox="0 0 400 400" className="w-full h-auto">
@@ -148,14 +151,14 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
             />
           </>
         )}
-        <line x1={gx(3)} y1={GY - 5} x2={gx(3)} y2={GY + 5}
+        <line x1={gx(cheapTick)} y1={GY - 5} x2={gx(cheapTick)} y2={GY + 5}
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
-        <line x1={gx(7)} y1={GY - 5} x2={gx(7)} y2={GY + 5}
+        <line x1={gx(frontierTick)} y1={GY - 5} x2={gx(frontierTick)} y2={GY + 5}
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
-        <text x={gx(3)} y={GY + 16} textAnchor="middle"
-          className="font-mono" fontSize="8" fill="var(--color-muted)">3</text>
-        <text x={gx(7)} y={GY + 16} textAnchor="middle"
-          className="font-mono" fontSize="8" fill="var(--color-muted)">7</text>
+        <text x={gx(cheapTick)} y={GY + 16} textAnchor="middle"
+          className="font-mono" fontSize="8" fill="var(--color-muted)">{cheapTick.toFixed(1)}</text>
+        <text x={gx(frontierTick)} y={GY + 16} textAnchor="middle"
+          className="font-mono" fontSize="8" fill="var(--color-muted)">{frontierTick.toFixed(1)}</text>
         {/* score value — positioned below the gauge, not on it */}
         {score != null && !loading && (
           <text x="200" y={GY + 30} textAnchor="middle"

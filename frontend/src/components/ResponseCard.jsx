@@ -45,7 +45,7 @@ export function AssistantBubble({ result }) {
             prose-ul:my-1 prose-ul:pl-4 prose-li:my-0.5
             prose-ol:my-1 prose-ol:pl-4
             prose-code:font-mono prose-code:text-xs prose-code:bg-line prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-            prose-pre:bg-base prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto
+            prose-pre:bg-base prose-pre:text-primary prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto prose-pre:border prose-pre:border-line
             prose-strong:font-semibold
             prose-blockquote:border-l-2 prose-blockquote:border-signal prose-blockquote:pl-3 prose-blockquote:text-muted
           ">

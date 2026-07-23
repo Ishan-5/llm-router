@@ -66,18 +66,21 @@ def predict_difficulty(query: str) -> float:
 # levels apart (e.g. 'explain recursion' vs 'derive NTK'). We bias toward
 # over-routing rather than under-routing -- a frontier model on an easy query
 # wastes money; a cheap model on a hard query gives a wrong answer.
-def score_to_tier(score: float, margin: float = 0.3) -> str:
+def score_to_tier(score: float, margin: float = 0.3) -> tuple[str, float, float]:
     # Both boundaries shift with margin.
     # Economy (low margin) raises cheap ceiling + raises frontier floor → more cheap, less frontier.
     # Quality (high margin) lowers cheap ceiling + lowers frontier floor → less cheap, more frontier.
-    cheap_ceil = 3.4 - (margin - 1.0) * 0.25   # economy=3.65, balanced=3.4, quality=3.15
-    frontier_floor = 4.9 - margin                # economy=4.9, balanced=3.9, quality=2.9
+    # Slider range is 0-2. Scale margin down so balanced (1.0) keeps sensible defaults.
+    scaled = margin * 0.3          # 0.0→0.0, 1.0→0.3, 2.0→0.6
+    cheap_ceil = 3.4 - (scaled - 0.3) * 0.25   # economy=3.475, balanced=3.4, quality=3.325
+    frontier_floor = 4.9 - scaled               # economy=4.9, balanced=4.6, quality=4.3
     if score >= frontier_floor:
-        return "frontier"
+        tier = "frontier"
     elif score <= cheap_ceil:
-        return "cheap"
+        tier = "cheap"
     else:
-        return "mid"
+        tier = "mid"
+    return tier, round(cheap_ceil, 3), round(frontier_floor, 3)
 
 # Test
 if __name__ == "__main__":
