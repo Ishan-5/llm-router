@@ -3,7 +3,10 @@ import time
 import asyncio
 import logging
 import secrets
+import ipaddress
+import re
 import httpx
+from urllib.parse import urlparse
 from contextlib import asynccontextmanager
 from datetime import datetime
 from collections import defaultdict
@@ -18,7 +21,7 @@ from predict_difficulty import predict_difficulty, score_to_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.providers import stream_model, validate_key
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, UserSettings, ModelPricing, compute_quality_score
+from router.db import log_request, SessionLocal, RequestLog, ApiKey, UserConfig, UserSettings, ModelPricing, AlertRule, compute_quality_score
 from router.auth import require_api_key, check_budget, require_user, require_admin, require_admin_api_key, require_admin_any, require_any_auth, is_admin_user_id, invalidate_key_cache
 from router.config import TIER_MARGIN, MODEL_CONFIG, SUPPORTED_PROVIDERS, ALLOWED_ORIGINS, TAVILY_API_KEY, ADMIN_USER_ID, SUPABASE_URL, SUPABASE_SERVICE_KEY
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
@@ -29,14 +32,126 @@ from router.openai_compat import router as openai_compat_router
 log = logging.getLogger("routewise")
 
 
+# ------------------------------------------------------------------
+# SSRF-safe webhook validator
+# ------------------------------------------------------------------
+
+_PRIVATE_RANGES = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),  # link-local / AWS metadata
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _validate_webhook_url(url: str):
+    """Raises ValueError if the URL is unsafe (SSRF risk)."""
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError("Webhook URL must use https://")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("Invalid webhook URL")
+    try:
+        addr = ipaddress.ip_address(host)
+        for net in _PRIVATE_RANGES:
+            if addr in net:
+                raise ValueError("Webhook URL must not point to a private/internal address")
+    except ValueError as e:
+        if "private" in str(e) or "internal" in str(e):
+            raise
+        # hostname, not IP — do a basic check for localhost
+        if host.lower() in ("localhost", "metadata.google.internal"):
+            raise ValueError("Webhook URL must not point to a private/internal address")
+
+
+# ------------------------------------------------------------------
+# Alert checker
+# ------------------------------------------------------------------
+
+ALERT_COOLDOWN_SECONDS = 3600  # 1 hour between repeat alerts
+
+
+def _check_and_fire_alerts():
+    """Check all active alert rules and fire webhooks if thresholds are breached."""
+    session = SessionLocal()
+    try:
+        rules = session.query(AlertRule).filter(AlertRule.is_active == True).all()
+        if not rules:
+            return
+
+        now = datetime.utcnow()
+        today_start = datetime.combine(now.date(), datetime.min.time())
+        hour_ago = datetime.utcnow().replace(microsecond=0) - __import__('datetime').timedelta(hours=1)
+
+        for rule in rules:
+            # cooldown check
+            if rule.last_fired_at and (now - rule.last_fired_at).total_seconds() < ALERT_COOLDOWN_SECONDS:
+                continue
+
+            breached = False
+            payload = {"alert_type": rule.alert_type, "threshold": rule.threshold}
+
+            if rule.alert_type == "daily_spend":
+                key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == rule.user_id, ApiKey.is_active == True).all()]
+                spent = float(session.query(func.sum(RequestLog.cost_usd)).filter(
+                    RequestLog.api_key_id.in_(key_ids),
+                    RequestLog.created_at >= today_start,
+                ).scalar() or 0.0)
+                payload["current_value"] = round(spent, 6)
+                payload["message"] = f"Daily spend ${spent:.4f} exceeded threshold ${rule.threshold:.4f}"
+                breached = spent >= rule.threshold
+
+            elif rule.alert_type == "error_rate":
+                key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == rule.user_id, ApiKey.is_active == True).all()]
+                total = session.query(func.count(RequestLog.id)).filter(
+                    RequestLog.api_key_id.in_(key_ids),
+                    RequestLog.created_at >= hour_ago,
+                ).scalar() or 0
+                errors = session.query(func.count(RequestLog.id)).filter(
+                    RequestLog.api_key_id.in_(key_ids),
+                    RequestLog.created_at >= hour_ago,
+                    RequestLog.tier == "failed",
+                ).scalar() or 0
+                rate = (errors / total * 100) if total > 0 else 0.0
+                payload["current_value"] = round(rate, 2)
+                payload["message"] = f"Error rate {rate:.1f}% exceeded threshold {rule.threshold:.1f}%"
+                breached = rate >= rule.threshold
+
+            elif rule.alert_type == "latency":
+                key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == rule.user_id, ApiKey.is_active == True).all()]
+                avg_latency = float(session.query(func.avg(RequestLog.latency_ms)).filter(
+                    RequestLog.api_key_id.in_(key_ids),
+                    RequestLog.created_at >= hour_ago,
+                    RequestLog.tier != "failed",
+                ).scalar() or 0.0)
+                payload["current_value"] = round(avg_latency, 1)
+                payload["message"] = f"Avg latency {avg_latency:.0f}ms exceeded threshold {rule.threshold:.0f}ms"
+                breached = avg_latency >= rule.threshold
+
+            if breached:
+                try:
+                    httpx.post(rule.webhook_url, json=payload, timeout=5, follow_redirects=False)
+                    rule.last_fired_at = now
+                    session.commit()
+                    log.info("Alert fired: %s for user %s", rule.alert_type, rule.user_id)
+                except Exception as e:
+                    log.warning("Webhook delivery failed for rule %s: %s", rule.id, e)
+    except Exception as e:
+        log.warning("Alert checker error: %s", e)
+    finally:
+        session.close()
+
+
 @asynccontextmanager
 async def lifespan(app):
-    # Configure logging
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
-    # Startup: pre-load ML models
     try:
         import sys
         sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent / 'src'))
@@ -45,8 +160,18 @@ async def lifespan(app):
         log.info("ML models loaded successfully")
     except Exception as e:
         log.warning("ML model preload failed: %s", e)
+
+    async def _alert_loop():
+        while True:
+            await asyncio.sleep(300)  # every 5 minutes
+            try:
+                await asyncio.get_event_loop().run_in_executor(executor, _check_and_fire_alerts)
+            except Exception as e:
+                log.warning("Alert loop error: %s", e)
+
+    task = asyncio.create_task(_alert_loop())
     yield
-    # Shutdown: nothing to clean up
+    task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -242,6 +367,17 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
     except AllTiersFailedError as e:
         log.error("AllTiersFailedError: %s", e)
+        log_request({
+            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "query": sanitize_pii(req.query),
+            "response": None,
+            "difficulty_score": difficulty_score, "intended_tier": routing_tier,
+            "tier": "failed", "fallback_used": False,
+            "cache_hit": False, "cache_similarity": None, "model_id": None,
+            "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
+            "latency_ms": round((time.time() - start) * 1000, 2),
+            "quality_score": 0.0,
+        })
         raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
 
     latency_ms = round((time.time() - start) * 1000, 2)
@@ -999,6 +1135,88 @@ def compare(auth=Depends(require_any_auth)):
             })
 
         return {"analyzed_requests": len(rows), "modes": results}
+    finally:
+        session.close()
+
+
+# ------------------------------------------------------------------
+# Alert endpoints
+# ------------------------------------------------------------------
+
+class AlertRuleRequest(BaseModel):
+    alert_type: str
+    threshold: float
+    webhook_url: str
+
+    @field_validator("alert_type")
+    @classmethod
+    def validate_alert_type(cls, v):
+        if v not in ("daily_spend", "error_rate", "latency"):
+            raise ValueError("alert_type must be daily_spend, error_rate, or latency")
+        return v
+
+    @field_validator("threshold")
+    @classmethod
+    def validate_threshold_positive(cls, v):
+        if v <= 0:
+            raise ValueError("threshold must be positive")
+        return v
+
+    @field_validator("webhook_url")
+    @classmethod
+    def validate_webhook(cls, v):
+        _validate_webhook_url(v)
+        return v
+
+
+@app.get("/alerts")
+def get_alerts(user_id: str = Depends(require_user)):
+    session = SessionLocal()
+    try:
+        rows = session.query(AlertRule).filter(AlertRule.user_id == user_id, AlertRule.is_active == True).all()
+        return [
+            {
+                "id": r.id,
+                "alert_type": r.alert_type,
+                "threshold": r.threshold,
+                "webhook_url": r.webhook_url,
+                "last_fired_at": r.last_fired_at.isoformat() if r.last_fired_at else None,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
+    finally:
+        session.close()
+
+
+@app.post("/alerts")
+def create_alert(req: AlertRuleRequest, user_id: str = Depends(require_user)):
+    session = SessionLocal()
+    try:
+        rule = AlertRule(
+            user_id=user_id,
+            alert_type=req.alert_type,
+            threshold=req.threshold,
+            webhook_url=req.webhook_url,
+        )
+        session.add(rule)
+        session.commit()
+        session.refresh(rule)
+        return {"id": rule.id, "alert_type": rule.alert_type, "threshold": rule.threshold, "webhook_url": rule.webhook_url}
+    finally:
+        session.close()
+
+
+@app.delete("/alerts/{alert_id}")
+def delete_alert(alert_id: int, user_id: str = Depends(require_user)):
+    session = SessionLocal()
+    try:
+        rule = session.query(AlertRule).filter(AlertRule.id == alert_id, AlertRule.user_id == user_id).first()
+        if not rule:
+            raise HTTPException(status_code=404, detail="Alert rule not found")
+        rule.is_active = False
+        session.commit()
+        return {"deleted": alert_id}
     finally:
         session.close()
 

@@ -14,6 +14,163 @@ async function authHeaders() {
   }
 }
 
+const ALERT_TYPES = [
+  { value: 'daily_spend', label: 'Daily Spend', unit: '$', placeholder: '1.00', hint: 'Alert when daily spend exceeds this amount in USD' },
+  { value: 'error_rate', label: 'Error Rate', unit: '%', placeholder: '5', hint: 'Alert when error rate exceeds this % in the last hour' },
+  { value: 'latency', label: 'Avg Latency', unit: 'ms', placeholder: '3000', hint: 'Alert when average latency exceeds this in the last hour' },
+]
+
+function AlertsTab() {
+  const [alerts, setAlerts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [alertType, setAlertType] = useState('daily_spend')
+  const [threshold, setThreshold] = useState('')
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState(null)
+  const [success, setSuccess] = useState(null)
+
+  useEffect(() => { loadAlerts() }, [])
+
+  async function loadAlerts() {
+    setLoading(true)
+    const headers = await authHeaders()
+    const res = await fetch(`${API_BASE}/alerts`, { headers })
+    if (res.ok) setAlerts(await res.json())
+    setLoading(false)
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault()
+    if (!threshold || !webhookUrl) return
+    setCreating(true)
+    setError(null)
+    setSuccess(null)
+    const headers = await authHeaders()
+    const res = await fetch(`${API_BASE}/alerts`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ alert_type: alertType, threshold: parseFloat(threshold), webhook_url: webhookUrl }),
+    })
+    if (res.ok) {
+      setThreshold('')
+      setWebhookUrl('')
+      setSuccess('Alert created.')
+      loadAlerts()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setError(err.detail || 'Failed to create alert')
+    }
+    setCreating(false)
+  }
+
+  async function handleDelete(id) {
+    const headers = await authHeaders()
+    await fetch(`${API_BASE}/alerts/${id}`, { method: 'DELETE', headers })
+    setAlerts((prev) => prev.filter((a) => a.id !== id))
+  }
+
+  const selectedType = ALERT_TYPES.find((t) => t.value === alertType)
+
+  return (
+    <div>
+      <p className="text-muted text-sm mb-8">
+        Get notified via webhook when cost, error rate, or latency crosses a threshold.
+        Works with Slack, Discord, or any HTTP endpoint.
+      </p>
+
+      <form onSubmit={handleCreate} className="border border-line rounded-lg p-5 mb-8 flex flex-col gap-4">
+        <p className="font-mono text-[10px] text-muted uppercase tracking-wide">New alert rule</p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <label className="font-mono text-[10px] text-muted">Alert type</label>
+            <select
+              value={alertType}
+              onChange={(e) => setAlertType(e.target.value)}
+              className="bg-panel border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+            >
+              {ALERT_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-mono text-[10px] text-muted">Threshold ({selectedType?.unit})</label>
+            <input
+              type="number"
+              value={threshold}
+              onChange={(e) => setThreshold(e.target.value)}
+              placeholder={selectedType?.placeholder}
+              min="0"
+              step="any"
+              className="bg-panel border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-mono text-[10px] text-muted">Webhook URL (https://)</label>
+            <input
+              type="url"
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+              placeholder="https://hooks.slack.com/..."
+              className="bg-panel border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
+            />
+          </div>
+        </div>
+
+        {selectedType && (
+          <p className="font-mono text-[10px] text-muted">{selectedType.hint}</p>
+        )}
+
+        {error && <p className="font-mono text-xs text-danger">{error}</p>}
+        {success && <p className="font-mono text-xs text-cool">{success}</p>}
+
+        <button
+          type="submit"
+          disabled={creating || !threshold || !webhookUrl}
+          className="self-start bg-signal text-white font-semibold text-xs px-5 py-2.5 rounded-lg hover:brightness-110 transition disabled:opacity-50"
+        >
+          {creating ? 'Creating…' : 'Create alert'}
+        </button>
+      </form>
+
+      <div className="border-t border-line">
+        {loading ? (
+          <div className="py-8 flex flex-col gap-3">
+            {[1, 2].map((i) => <div key={i} className="h-12 bg-line rounded-lg animate-pulse" />)}
+          </div>
+        ) : alerts.length === 0 ? (
+          <p className="font-mono text-xs text-muted py-8">No alert rules yet.</p>
+        ) : (
+          alerts.map((a) => {
+            const type = ALERT_TYPES.find((t) => t.value === a.alert_type)
+            return (
+              <div key={a.id} className="flex items-center justify-between py-4 border-b border-line gap-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-body text-sm font-medium">{type?.label} &gt; {a.threshold}{type?.unit}</p>
+                  <p className="font-mono text-[10px] text-muted truncate">{a.webhook_url}</p>
+                  {a.last_fired_at && (
+                    <p className="font-mono text-[10px] text-signal">last fired {new Date(a.last_fired_at).toLocaleString()}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleDelete(a.id)}
+                  className="font-mono text-[10px] px-3 py-1.5 rounded border border-danger/40 text-danger hover:bg-danger/10 transition shrink-0"
+                >
+                  delete
+                </button>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const [keys, setKeys] = useState([])
   const [keyName, setKeyName] = useState('')
@@ -105,6 +262,7 @@ export default function DashboardPage() {
             { id: 'playground', label: 'Playground' },
             { id: 'analytics', label: 'Analytics' },
             { id: 'logs', label: 'Request Logs' },
+            { id: 'alerts', label: 'Alerts' },
           ] : []),
         ].map((tab) => (
           <button
@@ -228,7 +386,6 @@ export default function DashboardPage() {
 
       {activeTab === 'logs' && hasKeys && (
         <div>
-          {/* Key selector */}
           {keys.length > 1 && (
             <div className="flex items-center gap-3 mb-6">
               <label className="font-mono text-[10px] text-muted uppercase tracking-wide">Viewing key:</label>
@@ -246,6 +403,9 @@ export default function DashboardPage() {
           <RequestLogs apiKey={selectedKey?.key} />
         </div>
       )}
+
+      {activeTab === 'alerts' && hasKeys && <AlertsTab />}
+
     </div>
   )
 }
