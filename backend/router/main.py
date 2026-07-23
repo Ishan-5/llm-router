@@ -8,7 +8,7 @@ import re
 import httpx
 from urllib.parse import urlparse
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import FastAPI, HTTPException, Depends, Header
@@ -85,7 +85,7 @@ def _check_and_fire_alerts():
 
         now = datetime.utcnow()
         today_start = datetime.combine(now.date(), datetime.min.time())
-        hour_ago = datetime.utcnow().replace(microsecond=0) - __import__('datetime').timedelta(hours=1)
+        hour_ago = now - timedelta(hours=1)
 
         for rule in rules:
             # cooldown check
@@ -163,9 +163,11 @@ async def lifespan(app):
 
     async def _alert_loop():
         while True:
-            await asyncio.sleep(300)  # every 5 minutes
+            await asyncio.sleep(300)
             try:
-                await asyncio.get_event_loop().run_in_executor(executor, _check_and_fire_alerts)
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(executor, _check_and_fire_alerts)
+                log.info("Alert check completed")
             except Exception as e:
                 log.warning("Alert loop error: %s", e)
 

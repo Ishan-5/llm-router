@@ -155,13 +155,12 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
         <line x1={gx(frontierTick)} y1={GY - 5} x2={gx(frontierTick)} y2={GY + 5}
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
-        <text x={gx(cheapTick)} y={GY + 16} textAnchor="middle"
-          className="font-mono" fontSize="8" fill="var(--color-muted)">{cheapTick.toFixed(1)}</text>
-        <text x={gx(frontierTick)} y={GY + 16} textAnchor="middle"
-          className="font-mono" fontSize="8" fill="var(--color-muted)">{frontierTick.toFixed(1)}</text>
-        {/* score value — positioned below the gauge, not on it */}
+        <text x={gx(cheapTick)} y={GY - 9} textAnchor="middle"
+          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">c:{cheapTick.toFixed(1)}</text>
+        <text x={gx(frontierTick)} y={GY - 9} textAnchor="middle"
+          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">f:{frontierTick.toFixed(1)}</text>
         {score != null && !loading && (
-          <text x="200" y={GY + 30} textAnchor="middle"
+          <text x="200" y={GY + 18} textAnchor="middle"
             className="font-mono" fontSize="11" fontWeight="600" fill="var(--color-signal)">
             score {score.toFixed(1)}
           </text>
