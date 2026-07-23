@@ -285,7 +285,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
             return None
         return await loop.run_in_executor(executor, check_cache, req.query)
 
-    cached, (difficulty_score, tier) = await asyncio.gather(
+    cached, (difficulty_score, tier, cheap_ceil, frontier_floor) = await asyncio.gather(
         _maybe_check_cache(),
         loop.run_in_executor(executor, get_tier, req.query, threshold),
     )
@@ -329,6 +329,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
         "over_budget": over_budget,
         "user_config": user_config,
         "threshold": threshold,
+        "cheap_ceil": cheap_ceil,
+        "frontier_floor": frontier_floor,
     }
 
 
@@ -402,6 +404,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "fallback_used": result["fallback_used"], "cache_hit": False,
         "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms, "quality_score": quality_score,
+        "cheap_ceil": pre["cheap_ceil"], "frontier_floor": pre["frontier_floor"],
     }
 
 
@@ -1033,7 +1036,7 @@ def calibrate(auth=Depends(require_any_auth)):
             cheap_count = mid_count = frontier_count = 0
             total_cost = 0.0
             for score, in_tok, out_tok in rows:
-                tier = score_to_tier(score, margin=margin)
+                tier, _, _ = score_to_tier(score, margin=margin)
                 if tier == "frontier":
                     frontier_count += 1
                     tier_prices = MODEL_CONFIG["frontier"]
@@ -1079,12 +1082,12 @@ def evaluate(req: EvaluateRequest):
         score = predict_difficulty(q)
         entry = {"query": q, "difficulty_score": round(score, 4)}
         for mode_name, margin in margins:
-            entry[f"tier_{mode_name}"] = score_to_tier(score, margin=margin)
+            entry[f"tier_{mode_name}"] = score_to_tier(score, margin=margin)[0]
         results.append(entry)
     thresholds = [
-        {"mode": "economy",  "cheap_below": 3.65, "frontier_above": 4.9},
-        {"mode": "balanced", "cheap_below": 3.4,  "frontier_above": 3.9},
-        {"mode": "quality",  "cheap_below": 3.15, "frontier_above": 2.9},
+        {"mode": "economy",  "cheap_below": 3.475, "frontier_above": 4.9},
+        {"mode": "balanced", "cheap_below": 3.4,   "frontier_above": 4.6},
+        {"mode": "quality",  "cheap_below": 3.325, "frontier_above": 4.3},
     ]
     return {"results": results, "thresholds": thresholds}
 
@@ -1110,7 +1113,7 @@ def compare(auth=Depends(require_any_auth)):
         for mode_name, margin in ranges:
             total_cost = 0.0
             for score, in_tok, out_tok, _ in rows:
-                tier = score_to_tier(score, margin=margin)
+                tier, _, _ = score_to_tier(score, margin=margin)
                 if tier == "frontier":
                     tier_prices = MODEL_CONFIG["frontier"]
                 elif tier == "cheap":
