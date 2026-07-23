@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
-from sqlalchemy import func
+from sqlalchemy import func, String
 from router.classifier import get_tier, score_difficulty
 from predict_difficulty import predict_difficulty, score_to_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
@@ -96,7 +96,7 @@ def _check_and_fire_alerts():
             payload = {"alert_type": rule.alert_type, "threshold": rule.threshold}
 
             if rule.alert_type == "daily_spend":
-                key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == rule.user_id, ApiKey.is_active == True).all()]
+                key_ids = [k.id for k in session.query(ApiKey.id).filter(func.cast(ApiKey.user_id, String) == rule.user_id, ApiKey.is_active == True).all()]
                 spent = float(session.query(func.sum(RequestLog.cost_usd)).filter(
                     RequestLog.api_key_id.in_(key_ids),
                     RequestLog.created_at >= today_start,
@@ -106,7 +106,7 @@ def _check_and_fire_alerts():
                 breached = spent >= rule.threshold
 
             elif rule.alert_type == "error_rate":
-                key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == rule.user_id, ApiKey.is_active == True).all()]
+                key_ids = [k.id for k in session.query(ApiKey.id).filter(func.cast(ApiKey.user_id, String) == rule.user_id, ApiKey.is_active == True).all()]
                 total = session.query(func.count(RequestLog.id)).filter(
                     RequestLog.api_key_id.in_(key_ids),
                     RequestLog.created_at >= hour_ago,
@@ -122,7 +122,7 @@ def _check_and_fire_alerts():
                 breached = rate >= rule.threshold
 
             elif rule.alert_type == "latency":
-                key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == rule.user_id, ApiKey.is_active == True).all()]
+                key_ids = [k.id for k in session.query(ApiKey.id).filter(func.cast(ApiKey.user_id, String) == rule.user_id, ApiKey.is_active == True).all()]
                 avg_latency = float(session.query(func.avg(RequestLog.latency_ms)).filter(
                     RequestLog.api_key_id.in_(key_ids),
                     RequestLog.created_at >= hour_ago,
