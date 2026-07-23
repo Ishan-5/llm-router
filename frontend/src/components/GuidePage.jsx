@@ -13,6 +13,7 @@ const TABS = [
   { id: 'streaming', label: 'Streaming' },
   { id: 'byom', label: 'BYOM' },
   { id: 'config', label: 'Configuration' },
+  { id: 'mcp', label: 'MCP' },
 ]
 
 const EXAMPLES = {
@@ -298,6 +299,68 @@ client.reset()`,
       "mid": "gsk-your-groq-key"
     }
   }'`,
+        lang: 'bash',
+      },
+    ],
+  },
+  mcp: {
+    title: 'MCP Gateway — Agent Tool Use',
+    description: 'Run Routewise as a local MCP server so agents (Claude Desktop, Cursor, etc.) can call it as a tool. The full routing pipeline runs in-process — no HTTP round-trip.',
+    sections: [
+      {
+        label: 'Install',
+        code: `# From the llm-router/backend directory
+pip install mcp`,
+        lang: 'bash',
+      },
+      {
+        label: 'Start the server',
+        code: `# Runs via stdio — MCP clients launch this automatically
+cd llm-router/backend
+python -m router.mcp_server`,
+        lang: 'bash',
+      },
+      {
+        label: 'Claude Desktop (~/.claude/claude_desktop_config.json)',
+        code: `{
+  "mcpServers": {
+    "routewise": {
+      "command": "python",
+      "args": ["-m", "router.mcp_server"],
+      "cwd": "/path/to/llm-router/backend"
+    }
+  }
+}`,
+        lang: 'json',
+      },
+      {
+        label: 'Cursor / other MCP clients (mcp.json)',
+        code: `{
+  "mcpServers": {
+    "routewise": {
+      "command": "python",
+      "args": ["-m", "router.mcp_server"],
+      "cwd": "/path/to/llm-router/backend"
+    }
+  }
+}`,
+        lang: 'json',
+      },
+      {
+        label: 'Tool schema — what the agent sees',
+        code: `tool: ask_routewise
+
+parameters:
+  query        string   required  — the question or task
+  override_tier  enum   optional  — "cheap" | "mid" | "frontier"
+  threshold    number   optional  — 0.0 (economy) → 1.0 (balanced) → 2.0 (quality)
+
+returns:
+  [tier score=X.XX $0.00123]
+  <response text>
+
+  or [cache:mid] <cached response>
+  or [web] <live search result>`,
         lang: 'bash',
       },
     ],
