@@ -149,6 +149,16 @@ function MetaBadge({ label, value, color }) {
   )
 }
 
+const MCP_CONFIG_SNIPPET = `{
+  "mcpServers": {
+    "routewise": {
+      "command": "python",
+      "args": ["-m", "router.mcp_server"],
+      "cwd": "/path/to/llm-router/backend"
+    }
+  }
+}`
+
 export default function ApiPlayground() {
   const [query, setQuery] = useState('')
   const [tier, setTier] = useState('auto')
@@ -162,6 +172,8 @@ export default function ApiPlayground() {
   const [history, setHistory] = useState([])
   const [showSnippets, setShowSnippets] = useState(false)
   const [activeSnippetQuery, setActiveSnippetQuery] = useState('')
+  const [showMcp, setShowMcp] = useState(false)
+  const [mcpCopied, setMcpCopied] = useState(false)
   const textareaRef = useRef(null)
   const responseEndRef = useRef(null)
   const abortRef = useRef(null)
@@ -443,6 +455,36 @@ export default function ApiPlayground() {
           )}
         </div>
       )}
+
+      {/* MCP config */}
+      <div className="space-y-2">
+        <button
+          onClick={() => setShowMcp((v) => !v)}
+          className="font-mono text-[10px] text-muted hover:text-primary transition-colors flex items-center gap-1"
+        >
+          {showMcp ? '▾' : '▸'} MCP agent config
+        </button>
+        {showMcp && (
+          <div className="animate-[cmd-slide_0.15s_ease-out] rounded-xl border border-line overflow-hidden">
+            <div className="flex items-center justify-between bg-panel px-3 py-2 border-b border-line">
+              <span className="font-mono text-[10px] text-muted uppercase">claude_desktop_config.json</span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(MCP_CONFIG_SNIPPET)
+                  setMcpCopied(true)
+                  setTimeout(() => setMcpCopied(false), 2000)
+                }}
+                className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-base"
+              >
+                {mcpCopied ? 'copied' : 'copy'}
+              </button>
+            </div>
+            <pre className="bg-surface px-4 py-3 overflow-x-auto text-xs font-mono text-primary leading-relaxed">
+              <code>{MCP_CONFIG_SNIPPET}</code>
+            </pre>
+          </div>
+        )}
+      </div>
 
       {/* Request history */}
       {history.length > 0 && (
