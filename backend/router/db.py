@@ -78,6 +78,18 @@ class UserSettings(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class AlertRule(Base):
+    __tablename__ = "alert_rules"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=False, index=True)
+    alert_type = Column(String, nullable=False)  # daily_spend | error_rate | latency
+    threshold = Column(Float, nullable=False)
+    webhook_url = Column(String, nullable=False)
+    last_fired_at = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class ModelPricing(Base):
     __tablename__ = "model_pricing"
     id = Column(Integer, primary_key=True)
