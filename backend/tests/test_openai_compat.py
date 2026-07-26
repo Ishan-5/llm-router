@@ -94,7 +94,7 @@ def test_returns_400_on_injection():
 def test_auto_response_matches_openai_schema():
     key = _make_test_key("schema-test")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(1.5, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(1.5, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover") as mock_call:
         mock_call.return_value = _fake_model_result("Paris is the capital of France.")
         resp = client.post(ENDPOINT, json=_basic_body("capital of france"), headers=_auth_header(key))
@@ -115,7 +115,7 @@ def test_auto_response_matches_openai_schema():
 def test_auto_response_has_routewise_headers():
     key = _make_test_key("headers-test")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(2.0, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(2.0, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover") as mock_call:
         mock_call.return_value = _fake_model_result("42")
         resp = client.post(ENDPOINT, json=_basic_body("what is 6*7"), headers=_auth_header(key))
@@ -132,7 +132,7 @@ def test_auto_response_has_routewise_headers():
 def test_force_tier_override():
     key = _make_test_key("tier-override")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover") as mock_call:
         mock_call.return_value = _fake_model_result("response", tier="mid")
         resp = client.post(
@@ -153,7 +153,7 @@ def test_force_tier_override():
 def test_cache_hit_returns_valid_response():
     key = _make_test_key("cache-hit")
     with patch("router.openai_compat.check_cache") as mock_cache, \
-         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")):
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)):
         mock_cache.return_value = {
             "response": "cached answer",
             "tier": "cheap",
@@ -177,7 +177,7 @@ def test_cache_hit_returns_valid_response():
 def test_system_and_user_messages_both_present():
     key = _make_test_key("sys-user")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover") as mock_call:
         mock_call.return_value = _fake_model_result("Sure, I can help.")
         body = {
@@ -200,7 +200,7 @@ def test_system_and_user_messages_both_present():
 def test_streaming_returns_sse_with_done():
     key = _make_test_key("stream-test")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.stream_model") as mock_stream:
         def fake_stream(tier, query, messages=None, max_tokens=None, temperature=None):
             yield "Hello"
@@ -229,7 +229,7 @@ def test_streaming_returns_sse_with_done():
 def test_streaming_error_returns_error_chunk():
     key = _make_test_key("stream-err")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.stream_model") as mock_stream:
         def bad_stream(tier, query, messages=None):
             raise Exception("provider exploded")
@@ -252,7 +252,7 @@ def test_streaming_error_returns_error_chunk():
 def test_usage_tokens_populated_from_provider():
     key = _make_test_key("usage-tokens")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(3.0, "mid")), \
+         patch("router.openai_compat.get_tier", return_value=(3.0, "mid", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover") as mock_call:
         mock_call.return_value = {
             "text": "response",
@@ -278,7 +278,7 @@ def test_usage_tokens_populated_from_provider():
 def test_fallback_used_still_returns_valid_response():
     key = _make_test_key("fallback-test")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(8.0, "frontier")), \
+         patch("router.openai_compat.get_tier", return_value=(8.0, "frontier", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover") as mock_call:
         mock_call.return_value = {
             "text": "served by fallback",
@@ -302,7 +302,7 @@ def test_all_tiers_failed_returns_503():
     from router.rate_limiter import AllTiersFailedError
     key = _make_test_key("all-fail")
     with patch("router.openai_compat.check_cache", return_value=None), \
-         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap")), \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.openai_compat.call_with_failover", side_effect=AllTiersFailedError("All tiers failed")):
         resp = client.post(ENDPOINT, json=_basic_body("test"), headers=_auth_header(key))
         assert resp.status_code == 503
