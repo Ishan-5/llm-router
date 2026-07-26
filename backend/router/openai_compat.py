@@ -177,7 +177,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     async def _maybe_check_cache():
         return await loop.run_in_executor(executor, check_cache, user_query)
 
-    cached, (difficulty_score, tier) = await asyncio.gather(
+    cached, (difficulty_score, tier, _, _) = await asyncio.gather(
         _maybe_check_cache(),
         loop.run_in_executor(executor, get_tier, user_query, TIER_MARGIN),
     )
