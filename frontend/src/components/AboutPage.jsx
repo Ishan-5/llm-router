@@ -14,10 +14,10 @@ export default function AboutPage() {
     setError(null)
     try {
       await emailjs.send(
-        'service_05o8qzp',
-        'template_702pyo5',
+        import.meta.env.VITE_EMAILJS_SERVICE_ID,
+        import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
         { name: feedback.name, email: feedback.email, message: feedback.message },
-        'u6Le31Mh1YxjCQXaK'
+        import.meta.env.VITE_EMAILJS_PUBLIC_KEY
       )
       setSent(true)
     } catch {
