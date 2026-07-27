@@ -19,6 +19,7 @@ const ApiPlayground = lazy(() => import('./components/ApiPlayground'))
 const GuidePage = lazy(() => import('./components/GuidePage'))
 const AdminPage = lazy(() => import('./components/AdminPage'))
 const EvaluatePage = lazy(() => import('./components/EvaluatePage'))
+const GetStartedPage = lazy(() => import('./components/GetStartedPage'))
 const Features = lazy(() => import('./components/Features'))
 
 const TITLES = {
@@ -29,6 +30,7 @@ const TITLES = {
   '/guide': 'Routewise — Developer Guide',
   '/admin': 'Routewise — Admin',
   '/evaluate': 'Routewise — Evaluate',
+  '/get-started': 'Routewise — Get Started',
   '/about': 'Routewise — About',
   '/auth': 'Routewise — Sign in',
   '/dashboard': 'Routewise — Dashboard',
@@ -190,7 +192,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
-      if (event === 'SIGNED_IN') { showToast('Signed in'); handleNavigate('/') }
+      if (event === 'SIGNED_IN') { showToast('Signed in'); handleNavigate('/get-started') }
       if (event === 'SIGNED_OUT') { showToast('Signed out'); handleNavigate('/') }
     })
     return () => subscription.unsubscribe()
@@ -253,6 +255,7 @@ export default function App() {
             } />
             <Route path="/guide" element={<GuidePage />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
+            <Route path="/get-started" element={<GetStartedPage />} />
             <Route path="/admin" element={<AdminPage user={user} />} />
             <Route path="*" element={
               <div className="max-w-3xl mx-auto px-6 py-32 text-center">
