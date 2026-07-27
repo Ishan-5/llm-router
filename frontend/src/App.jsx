@@ -135,7 +135,7 @@ function HomePage({ configVersion, backendOnline }) {
             </div>
           </div>
         }>
-          <MetricsDashboard isDark={undefined} backendOnline={backendOnline} />
+          <MetricsDashboard isDark={isDark} backendOnline={backendOnline} />
         </Suspense>
       </Reveal>
     </>
@@ -254,6 +254,14 @@ export default function App() {
             <Route path="/guide" element={<GuidePage />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
             <Route path="/admin" element={<AdminPage user={user} />} />
+            <Route path="*" element={
+              <div className="max-w-3xl mx-auto px-6 py-32 text-center">
+                <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">404</p>
+                <h1 className="font-display text-3xl font-semibold mb-4">Page not found</h1>
+                <p className="text-muted text-sm mb-8">The page you're looking for doesn't exist.</p>
+                <a href="/" className="font-mono text-xs px-4 py-2 rounded-lg border border-signal text-signal hover:bg-signal/10 transition">Go home</a>
+              </div>
+            } />
           </Routes>
         </Suspense>
       </div>
