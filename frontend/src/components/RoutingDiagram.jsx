@@ -81,8 +81,12 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
   const activeTier = loading ? null : latestResult?.routed_to
   const score = loading ? null : latestResult?.difficulty_score
-  const cheapCeil = loading ? null : latestResult?.cheap_ceil
-  const frontierFloor = loading ? null : latestResult?.frontier_floor
+
+  const scaled = threshold * 0.3
+  const defaultCheapCeil = +(3.4 - (scaled - 0.3) * 0.25).toFixed(3)
+  const defaultFrontierFloor = +(4.9 - scaled).toFixed(3)
+  const cheapCeil = loading ? null : (latestResult?.cheap_ceil ?? defaultCheapCeil)
+  const frontierFloor = loading ? null : (latestResult?.frontier_floor ?? defaultFrontierFloor)
 
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
     ? Math.round((1 - (ticker.total_actual_cost - (ticker.cache_savings_usd || 0)) / ticker.total_hypothetical_cost) * 100)

@@ -131,10 +131,10 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
         </circle>
       )}
 
-      {/* difficulty gauge — moved below tier nodes */}
+      {/* difficulty gauge */}
       <g>
-        <text x="200" y={GY - 14} textAnchor="middle"
-          className="font-mono" fontSize="9" fill="var(--color-muted)" letterSpacing="0.1em">
+        <text x={GX - 8} y={GY + 3} textAnchor="end"
+          className="font-mono" fontSize="8" fill="var(--color-muted)" letterSpacing="0.05em">
           DIFFICULTY
         </text>
         <rect x={GX} y={GY - 1.5} width={GW} height="3" rx="1.5" fill="var(--color-line)" />
@@ -155,16 +155,16 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
         <line x1={gx(frontierTick)} y1={GY - 5} x2={gx(frontierTick)} y2={GY + 5}
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
-        <text x={gx(cheapTick)} y={GY - 9} textAnchor="middle"
-          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">c:{cheapTick.toFixed(1)}</text>
-        <text x={gx(frontierTick)} y={GY - 9} textAnchor="middle"
-          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">f:{frontierTick.toFixed(1)}</text>
         {score != null && !loading && (
-          <text x="200" y={GY + 18} textAnchor="middle"
-            className="font-mono" fontSize="11" fontWeight="600" fill="var(--color-signal)">
-            score {score.toFixed(1)}
+          <text x={GX + GW + 10} y={GY + 3} textAnchor="start"
+            className="font-mono" fontSize="9" fontWeight="600" fill="var(--color-signal)">
+            {score.toFixed(1)}
           </text>
         )}
+        <text x={gx(cheapTick)} y={GY + 14} textAnchor="middle"
+          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">c:{cheapTick.toFixed(1)}</text>
+        <text x={gx(frontierTick)} y={GY + 14} textAnchor="middle"
+          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">f:{frontierTick.toFixed(1)}</text>
       </g>
 
       {/* query node */}
