@@ -151,7 +151,6 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [user, setUser] = useState(null)
-  const [authLoaded, setAuthLoaded] = useState(false)
   const [toast, setToast] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [cmdOpen, setCmdOpen] = useState(false)
@@ -188,10 +187,9 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => { setUser(session?.user ?? null); setAuthLoaded(true) })
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
-      setAuthLoaded(true)
       if (event === 'SIGNED_IN') { showToast('Signed in'); handleNavigate('/') }
       if (event === 'SIGNED_OUT') { showToast('Signed out'); handleNavigate('/') }
     })
@@ -244,7 +242,7 @@ export default function App() {
             <Route path="/pricing" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={<DashboardPage user={user} authLoaded={authLoaded} />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/playground" element={
               <div className="max-w-3xl mx-auto px-6 py-20">
                 <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">API Playground</p>
