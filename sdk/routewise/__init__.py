@@ -14,6 +14,7 @@ Supports:
 """
 import json
 import requests
+from typing import Optional
 
 DEFAULT_BASE_URL = "https://llm-router-d2b2.onrender.com"
 
@@ -76,9 +77,9 @@ class RouteWiseClient:
     def ask(
         self,
         query: str,
-        override_tier: str | None = None,
+        override_tier: Optional[str] = None,
         bypass_cache: bool = False,
-        user_api_keys: dict | None = None,
+        user_api_keys: Optional[dict] = None,
     ) -> dict:
         """
         Send a query through the router. Returns the full response dict
@@ -113,9 +114,9 @@ class RouteWiseClient:
     def ask_stream(
         self,
         query: str,
-        override_tier: str | None = None,
+        override_tier: Optional[str] = None,
         bypass_cache: bool = False,
-        user_api_keys: dict | None = None,
+        user_api_keys: Optional[dict] = None,
     ):
         """
         Streaming version of ask(). Yields text chunks, then a final dict
@@ -181,11 +182,11 @@ class RouteWiseClient:
 
     def chat(
         self,
-        messages: list[dict],
+        messages: list,
         model: str = "auto",
         stream: bool = False,
-        max_tokens: int | None = None,
-        temperature: float | None = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
     ) -> dict:
         """
         OpenAI-compatible /v1/chat/completions endpoint.
@@ -243,9 +244,9 @@ class RouteWiseClient:
 
     def configure(
         self,
-        cheap: dict | None = None,
-        mid: dict | None = None,
-        frontier: dict | None = None,
+        cheap: Optional[dict] = None,
+        mid: Optional[dict] = None,
+        frontier: Optional[dict] = None,
     ) -> dict:
         """
         Set custom provider/model/api_key for any tier.
@@ -289,7 +290,7 @@ class RouteWiseClient:
         Returns the currently active model config for all tiers
         (user overrides merged with defaults). API keys are never returned.
         """
-        response = requests.get(f"{self.base_url}/config", timeout=self.timeout)
+        response = requests.get(f"{self.base_url}/config", headers=self._headers(), timeout=self.timeout)
         _raise_for_status(response)
         return response.json()
 
@@ -312,7 +313,7 @@ class RouteWiseClient:
         Returns all supported providers and their available models.
         Useful for discovering what you can pass to configure().
         """
-        response = requests.get(f"{self.base_url}/providers", timeout=self.timeout)
+        response = requests.get(f"{self.base_url}/providers", headers=self._headers(), timeout=self.timeout)
         _raise_for_status(response)
         return response.json()
 
@@ -369,6 +370,6 @@ class RouteWiseClient:
         """
         Fetch all active model pricing rows.
         """
-        response = requests.get(f"{self.base_url}/pricing", timeout=self.timeout)
+        response = requests.get(f"{self.base_url}/pricing", headers=self._headers(), timeout=self.timeout)
         _raise_for_status(response)
         return response.json()
