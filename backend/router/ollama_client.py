@@ -5,6 +5,7 @@ def call_ollama(prompt: str, model: str = "llama3.2", timeout: int = 30) -> dict
         model=model,
         messages=[{"role": "user", "content": prompt}],
         options={"num_predict": 1000},
+        timeout=timeout,
     )
     return {
         "text": response["message"]["content"],

@@ -1077,7 +1077,7 @@ class EvaluateRequest(BaseModel):
 
 
 @app.post("/evaluate")
-def evaluate(req: EvaluateRequest):
+def evaluate(req: EvaluateRequest, api_key: ApiKey = Depends(require_api_key)):
     margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
     results = []
     for q in req.queries:
