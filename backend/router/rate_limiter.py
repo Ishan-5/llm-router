@@ -46,20 +46,19 @@ def _call_with_one_retry(tier: str, query: str, user_config: dict, messages: lis
         return call_model(tier, query, user_config.get(tier), messages=messages, max_tokens=max_tokens, temperature=temperature)  # let this one raise if it fails again
 
 
-def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | None = None, messages: list[dict] | None = None, max_tokens: int | None = None, temperature: float | None = None) -> dict:
+def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | None = None, messages: list[dict] | None = None, max_tokens: int | None = None, temperature: float | None = None, user_config: dict | None = None) -> dict:
     """
     Tries intended_tier, then falls back through FALLBACK_CHAIN on failure.
-    Loads active config (user overrides merged with defaults) once per call.
-    user_api_keys: { tier: api_key } sent from frontend localStorage -- merged
-    into config here so keys are never stored server-side.
+    user_config: pre-built config from _preprocess (already has user overrides + injected keys).
+                 If not passed, falls back to get_active_config() with no user_id.
     """
-    user_config = get_active_config()
-
-    # inject api keys from request into the config for each tier
-    if user_api_keys:
-        for tier, key in user_api_keys.items():
-            if tier in user_config and key:
-                user_config[tier]["api_key"] = key
+    if user_config is None:
+        user_config = get_active_config()
+        # inject api keys from request into the config for each tier
+        if user_api_keys:
+            for tier, key in user_api_keys.items():
+                if tier in user_config and key:
+                    user_config[tier]["api_key"] = key
 
     chain = [intended_tier] + FALLBACK_CHAIN.get(intended_tier, [])
     errors = []

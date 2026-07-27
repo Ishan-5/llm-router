@@ -208,6 +208,7 @@ class QueryRequest(BaseModel):
     query: str
     override_tier: str | None = None
     user_api_keys: dict | None = None
+    byom_config: dict | None = None  # non-logged-in users send provider/model from localStorage
     bypass_cache: bool = False
     threshold: float | None = None
 
@@ -322,6 +323,14 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float):
         for t, key in req.user_api_keys.items():
             if t in user_config and key:
                 user_config[t]["api_key"] = key
+    # non-logged-in users send provider/model from localStorage via byom_config
+    if req.byom_config:
+        for t, cfg in req.byom_config.items():
+            if t in user_config and isinstance(cfg, dict):
+                if cfg.get("provider"):
+                    user_config[t]["provider"] = cfg["provider"]
+                if cfg.get("model_id"):
+                    user_config[t]["model_id"] = cfg["model_id"]
 
     return {
         "type": "live",
@@ -368,7 +377,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     loop = asyncio.get_event_loop()
 
     try:
-        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {})
+        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {}, None, None, None, pre["user_config"])
     except AllTiersFailedError as e:
         log.error("AllTiersFailedError: %s", e)
         log_request({

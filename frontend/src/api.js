@@ -15,6 +15,21 @@ function _getUserKeys() {
   }
 }
 
+function _getByomConfig() {
+  try {
+    const saved = localStorage.getItem('byom_config')
+    if (!saved) return {}
+    const parsed = JSON.parse(saved)
+    const config = {}
+    Object.entries(parsed).forEach(([tier, cfg]) => {
+      if (cfg.provider && cfg.model_id) config[tier] = { provider: cfg.provider, model_id: cfg.model_id }
+    })
+    return config
+  } catch {
+    return {}
+  }
+}
+
 const THRESHOLD_KEY = 'router_threshold'
 let _sharedThreshold = (() => {
   try { return parseFloat(localStorage.getItem(THRESHOLD_KEY)) || 1.0 } catch { return 1.0 }
@@ -24,11 +39,13 @@ export function setSharedThreshold(v) { _sharedThreshold = v; localStorage.setIt
 
 export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null) {
   const userKeys = _getUserKeys()
+  const byomConfig = _getByomConfig()
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
   if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
+  if (Object.keys(byomConfig).length > 0) body.byom_config = byomConfig
   const t = threshold ?? _sharedThreshold
   if (t != null) body.threshold = t
 
@@ -69,11 +86,13 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
 
 export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null) {
   const userKeys = _getUserKeys()
+  const byomConfig = _getByomConfig()
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
   if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
+  if (Object.keys(byomConfig).length > 0) body.byom_config = byomConfig
   const t = threshold ?? _sharedThreshold
   if (t != null) body.threshold = t
 

@@ -205,13 +205,15 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     if over_budget:
         routing_tier = "cheap"
 
+    user_config = get_active_config(api_key.user_id)
+
     provider_messages = _build_messages_for_provider(req.messages)
 
     # --- non-streaming ---
     if not req.stream:
         try:
             result = await loop.run_in_executor(
-                executor, call_with_failover, routing_tier, user_query, None, provider_messages, req.max_tokens, req.temperature
+                executor, call_with_failover, routing_tier, user_query, None, provider_messages, req.max_tokens, req.temperature, user_config
             )
         except AllTiersFailedError:
             raise HTTPException(status_code=503, detail="All model tiers failed to respond.")
