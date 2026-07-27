@@ -132,7 +132,8 @@ def log_request(data: dict):
         entry = RequestLog(**data)
         session.add(entry)
         session.commit()
-    except Exception:
+    except Exception as e:
+        log.error("log_request failed: %s | data=%s", e, {k: v for k, v in data.items() if k != 'response'})
         session.rollback()
     finally:
         session.close()

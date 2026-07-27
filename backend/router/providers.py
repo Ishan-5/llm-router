@@ -16,7 +16,7 @@ def _get_client(api_key: str, base_url: str) -> OpenAI:
     """Return a cached OpenAI client for the given (api_key, base_url) pair."""
     key = (api_key, base_url)
     if key not in _client_cache:
-        _client_cache[key] = OpenAI(api_key=api_key, base_url=base_url)
+        _client_cache[key] = OpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
     return _client_cache[key]
 
 # default Groq client (used when no user api key supplied)

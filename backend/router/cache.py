@@ -3,24 +3,21 @@ import os
 import json
 import logging
 import numpy as np
-from sqlalchemy import create_engine, Column, Integer, String, Float, Text, DateTime
-from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime, timedelta
 
 log = logging.getLogger("routewise.cache")
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from predict_difficulty import get_embedder
+from router.db import engine, SessionLocal as _SessionLocal
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime
+from sqlalchemy.orm import declarative_base
 
-SIMILARITY_THRESHOLD = 0.95  # conservative on purpose -- see module docstring
-MAX_SCAN_ROWS = 500  # only check most recent rows for similarity (full table scan is too slow)
+SIMILARITY_THRESHOLD = 0.95
+MAX_SCAN_ROWS = 500
 
 Base = declarative_base()
-
-_db_url = os.getenv("DATABASE_URL", "")
-_connect_args = {"connect_timeout": 10} if _db_url.startswith("postgresql") else {}
-engine = create_engine(_db_url, connect_args=_connect_args)
-SessionLocal = sessionmaker(bind=engine)
+SessionLocal = _SessionLocal
 
 
 class QueryCache(Base):
