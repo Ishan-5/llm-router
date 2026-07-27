@@ -100,7 +100,7 @@ function PageSkeleton({ type }) {
 
 const PAGE_SKELETONS = { '/models': 'pricing', '/pricing': 'pricing', '/about': 'about', '/auth': 'auth', '/dashboard': 'dashboard' }
 
-function HomePage({ configVersion, backendOnline }) {
+function HomePage({ configVersion, backendOnline, isDark }) {
   return (
     <>
       <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
@@ -237,7 +237,7 @@ export default function App() {
       <div key={location.pathname} className="animate-[page-fade-in_0.25s_ease-out]">
         <Suspense fallback={<PageSkeleton type={PAGE_SKELETONS[location.pathname]} />}>
           <Routes location={location}>
-            <Route path="/" element={<HomePage configVersion={configVersion} backendOnline={backendOnline} />} />
+            <Route path="/" element={<HomePage configVersion={configVersion} backendOnline={backendOnline} isDark={isDark} />} />
             <Route path="/models" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/pricing" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/about" element={<AboutPage />} />
