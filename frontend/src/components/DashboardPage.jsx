@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
 import { fetchLogs, fetchLogDetail, fetchAnalytics } from '../api'
@@ -171,7 +172,8 @@ function AlertsTab() {
   )
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({ user, authLoaded }) {
+  const navigate = useNavigate()
   const [keys, setKeys] = useState([])
   const [keyName, setKeyName] = useState('')
   const [newKey, setNewKey] = useState(null)
@@ -183,7 +185,10 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('keys')
   const [selectedKeyId, setSelectedKeyId] = useState(null)
 
-  useEffect(() => { loadKeys() }, [])
+  useEffect(() => {
+    if (authLoaded && user === null) { navigate('/auth', { replace: true }); return }
+    if (user) loadKeys()
+  }, [user, authLoaded])
 
   useEffect(() => {
     if (keys.length > 0 && !selectedKeyId) {
