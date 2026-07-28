@@ -40,10 +40,10 @@ def test_route_rejects_empty_query():
 
 def test_route_success_with_mocked_model_and_provider():
     key = _make_test_key("happy-path-test")
-    with patch("router.main.check_cache", return_value=None), \
-         patch("router.main.get_tier", return_value=(1.5, "cheap", 3.4, 4.6)), \
-         patch("router.main.add_to_cache"), \
-         patch("router.main.call_with_failover") as mock_call:
+    with patch("router.routes.route.check_cache", return_value=None), \
+         patch("router.routes.route.get_tier", return_value=(1.5, "cheap", 3.4, 4.6)), \
+         patch("router.routes.route.add_to_cache"), \
+         patch("router.routes.route.call_with_failover") as mock_call:
         mock_call.return_value = {
             "text": "Paris", "tier": "cheap", "model_id": "test-model",
             "input_tokens": 5, "output_tokens": 3, "cost_usd": 0.0,
@@ -62,8 +62,8 @@ def test_route_success_with_mocked_model_and_provider():
 
 def test_route_uses_cache_when_available():
     key = _make_test_key("cache-hit-test")
-    with patch("router.main.check_cache") as mock_cache, \
-         patch("router.main.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)):
+    with patch("router.routes.route.check_cache") as mock_cache, \
+         patch("router.routes.route.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)):
         mock_cache.return_value = {
             "response": "cached answer", "tier": "cheap",
             "model_id": "test-model", "similarity": 0.99,
