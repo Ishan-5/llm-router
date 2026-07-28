@@ -41,6 +41,7 @@ class QueryRequest(BaseModel):
     byom_config: dict | None = None
     bypass_cache: bool = False
     threshold: float | None = None
+    messages: list[dict] | None = None  # multi-turn: [{"role": "user"|"assistant", "content": str}]
 
     @field_validator("query")
     @classmethod
@@ -157,6 +158,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         "threshold": threshold,
         "cheap_ceil": cheap_ceil,
         "frontier_floor": frontier_floor,
+        "messages": req.messages,
     }
 
 
@@ -191,7 +193,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     loop = asyncio.get_event_loop()
 
     try:
-        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {}, None, None, None, pre["user_config"])
+        result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {}, pre["messages"], None, None, pre["user_config"])
     except AllTiersFailedError as e:
         log.error("AllTiersFailedError: %s", e)
         log_request({
@@ -270,7 +272,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
 
         def _run_generator():
             try:
-                for item in stream_model(routing_tier, req.query, user_config.get(routing_tier)):
+                for item in stream_model(routing_tier, req.query, user_config.get(routing_tier), messages=pre.get("messages")):
                     loop.call_soon_threadsafe(queue.put_nowait, item)
             except Exception as e:
                 loop.call_soon_threadsafe(queue.put_nowait, Exception(str(e)))
