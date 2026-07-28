@@ -37,7 +37,7 @@ let _sharedThreshold = (() => {
 export function getSharedThreshold() { return _sharedThreshold }
 export function setSharedThreshold(v) { _sharedThreshold = v; localStorage.setItem(THRESHOLD_KEY, String(v)) }
 
-export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null) {
+export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null, messages = null) {
   const userKeys = _getUserKeys()
   const byomConfig = _getByomConfig()
 
@@ -48,6 +48,7 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   if (Object.keys(byomConfig).length > 0) body.byom_config = byomConfig
   const t = threshold ?? _sharedThreshold
   if (t != null) body.threshold = t
+  if (messages && messages.length > 0) body.messages = messages
 
   const res = await fetch(`${API_BASE}/route/stream`, {
     method: 'POST',
@@ -84,7 +85,7 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   }
 }
 
-export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null) {
+export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null, messages = null) {
   const userKeys = _getUserKeys()
   const byomConfig = _getByomConfig()
 
@@ -95,6 +96,7 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
   if (Object.keys(byomConfig).length > 0) body.byom_config = byomConfig
   const t = threshold ?? _sharedThreshold
   if (t != null) body.threshold = t
+  if (messages && messages.length > 0) body.messages = messages
 
   const res = await fetch(`${API_BASE}/route`, {
     method: 'POST',

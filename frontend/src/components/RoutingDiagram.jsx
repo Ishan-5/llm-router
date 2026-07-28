@@ -46,6 +46,21 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     const controller = new AbortController()
     abortRef.current = controller
 
+    // build conversation history for multi-turn
+    const history = messages.flatMap((m) =>
+      m.role === 'user'
+        ? [{ role: 'user', content: m.text }]
+        : m.result?.response ? [{ role: 'assistant', content: m.result.response }] : []
+    )
+    const conversationMessages = [...history, { role: 'user', content: query }]
+
+    // save to localStorage history
+    try {
+      const prev = JSON.parse(localStorage.getItem('rw_query_history') || '[]')
+      const updated = [query, ...prev.filter((q) => q !== query)].slice(0, 50)
+      localStorage.setItem('rw_query_history', JSON.stringify(updated))
+    } catch {}
+
     setMessages((prev) => [...prev, { role: 'user', text: query }])
     setLoading(true)
     setError(null)
@@ -58,6 +73,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         bypassCache,
         controller.signal,
         threshold,
+        conversationMessages,
       )
       setMessages((prev) => [...prev, { role: 'assistant', result: data }])
       fetchStats().then(setTicker).catch(() => {})

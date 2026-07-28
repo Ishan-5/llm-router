@@ -9,13 +9,36 @@ const SUGGESTIONS = [
   'Summarize today\'s news',
 ]
 
+function useQueryHistory() {
+  const [history, setHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('rw_query_history') || '[]') } catch { return [] }
+  })
+  useEffect(() => {
+    function onStorage(e) {
+      if (e.key === 'rw_query_history') {
+        try { setHistory(JSON.parse(e.newValue || '[]')) } catch {}
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+  function clearHistory() {
+    localStorage.removeItem('rw_query_history')
+    setHistory([])
+  }
+  return { history, clearHistory }
+}
+
 export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
   const [query, setQuery] = useState('')
   const [override, setOverride] = useState('auto')
   const [bypassCache, setBypassCache] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [clientError, setClientError] = useState(null)
   const textareaRef = useRef(null)
+  const historyRef = useRef(null)
+  const { history, clearHistory } = useQueryHistory()
 
   useEffect(() => {
     const el = textareaRef.current
@@ -23,6 +46,15 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 160) + 'px'
   }, [query])
+
+  useEffect(() => {
+    if (!showHistory) return
+    function handleClick(e) {
+      if (historyRef.current && !historyRef.current.contains(e.target)) setShowHistory(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showHistory])
 
   function handleSubmit(e) {
     if (e) e.preventDefault()
@@ -72,6 +104,15 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
               >
                 {showOptions ? '▾' : '▸'} Options
               </button>
+              {history.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowHistory((v) => !v)}
+                  className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-base"
+                >
+                  ↑ History
+                </button>
+              )}
               {clientError && (
                 <span className="font-mono text-[10px] text-danger">{clientError}</span>
               )}
@@ -120,6 +161,36 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
           </div>
         )}
       </form>
+
+      {showHistory && history.length > 0 && (
+        <div
+          ref={historyRef}
+          className="absolute z-20 left-0 right-0 mt-1 bg-panel border border-line rounded-xl shadow-lg overflow-hidden animate-[cmd-slide_0.15s_ease-out]"
+        >
+          <div className="flex items-center justify-between px-3 py-2 border-b border-line">
+            <span className="font-mono text-[10px] text-muted">Recent queries</span>
+            <button
+              onClick={clearHistory}
+              className="font-mono text-[10px] text-muted hover:text-danger transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+          <ul className="max-h-48 overflow-y-auto">
+            {history.map((q, i) => (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => { setQuery(q); setShowHistory(false); textareaRef.current?.focus() }}
+                  className="w-full text-left px-3 py-2 font-body text-xs text-primary hover:bg-base transition-colors truncate"
+                >
+                  {q}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
