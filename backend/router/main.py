@@ -48,7 +48,6 @@ _PRIVATE_RANGES = [
 
 
 def _validate_webhook_url(url: str):
-    """Raises ValueError if the URL is unsafe (SSRF risk)."""
     parsed = urlparse(url)
     if parsed.scheme != "https":
         raise ValueError("Webhook URL must use https://")
