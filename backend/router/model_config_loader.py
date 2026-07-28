@@ -13,10 +13,10 @@ assert "groq" in PROVIDERS_REGISTRY
 
 PROVIDER_DEFAULTS = {
     "cheap": {
-        "provider": "ollama",
-        "model_id": "llama3.2",
-        "price_per_m_input": OLLAMA_FALLBACK_CONFIG["price_per_m_input"],
-        "price_per_m_output": OLLAMA_FALLBACK_CONFIG["price_per_m_output"],
+        "provider": "groq",
+        "model_id": MODEL_CONFIG["cheap"]["model_id"],
+        "price_per_m_input": MODEL_CONFIG["cheap"]["price_per_m_input"],
+        "price_per_m_output": MODEL_CONFIG["cheap"]["price_per_m_output"],
     },
     "mid": {
         "provider": "groq",
