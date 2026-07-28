@@ -243,7 +243,7 @@ class EvaluateRequest(BaseModel):
 
 
 @router.post("/evaluate")
-def evaluate(req: EvaluateRequest, api_key: ApiKey = Depends(require_api_key)):
+def evaluate(req: EvaluateRequest):
     from predict_difficulty import predict_difficulty
     margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
     results = []
