@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 from sqlalchemy import func
 from router.db import SessionLocal, RequestLog, ApiKey
 from router.auth import require_api_key, require_any_auth
