@@ -14,7 +14,7 @@ from router.classifier import get_tier
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, ApiKey
 from router.auth import require_api_key, check_budget
-from router.config import TIER_MARGIN, MODEL_CONFIG
+from router.config import MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.providers import stream_model
@@ -177,9 +177,18 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     async def _maybe_check_cache():
         return await loop.run_in_executor(executor, check_cache, user_query)
 
+    from router.db import SessionLocal, UserSettings
+    def _load_threshold():
+        session = SessionLocal()
+        try:
+            s = session.query(UserSettings).filter(UserSettings.user_id == api_key.user_id).first()
+            return s.router_threshold if s else 1.0
+        finally:
+            session.close()
+
     cached, (difficulty_score, tier, _, _) = await asyncio.gather(
         _maybe_check_cache(),
-        loop.run_in_executor(executor, get_tier, user_query, TIER_MARGIN),
+        loop.run_in_executor(executor, lambda: get_tier(user_query, _load_threshold())),
     )
 
     if cached is not None:
