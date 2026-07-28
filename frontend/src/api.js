@@ -284,7 +284,7 @@ export async function fetchCompare() {
 export async function evaluateQueries(queries) {
   const res = await fetch(`${API_BASE}/evaluate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ queries }),
   })
   if (!res.ok) {
