@@ -8,16 +8,21 @@ Base.metadata.create_all(engine) means zero manual DB setup needed.
 
 import os
 import logging
+from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
+
+load_dotenv()
 
 log = logging.getLogger("routewise.db")
 
 Base = declarative_base()
 _db_url = os.getenv("DATABASE_URL", "")
-_connect_args = {"connect_timeout": 10} if _db_url.startswith("postgresql") else {}
-engine = create_engine(_db_url, connect_args=_connect_args)
+_is_postgres = _db_url.startswith("postgresql")
+_connect_args = {"connect_timeout": 10} if _is_postgres else {}
+_pool_kwargs = {"pool_pre_ping": True, "pool_recycle": 300, "pool_size": 5, "max_overflow": 10} if _is_postgres else {}
+engine = create_engine(_db_url, connect_args=_connect_args, **_pool_kwargs)
 SessionLocal = sessionmaker(bind=engine)
 
 
@@ -135,5 +140,15 @@ def log_request(data: dict):
     except Exception as e:
         log.error("log_request failed: %s | data=%s", e, {k: v for k, v in data.items() if k != 'response'})
         session.rollback()
+        try:
+            # one retry with a fresh connection
+            session.close()
+            session = SessionLocal()
+            entry = RequestLog(**data)
+            session.add(entry)
+            session.commit()
+        except Exception as e2:
+            log.error("log_request retry also failed: %s", e2)
+            session.rollback()
     finally:
         session.close()
