@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>routewise — Cost-Aware LLM Request Router</title>
-  <meta name="description" content="A regression model scores every query for difficulty, routes it to the cheapest model tier that can handle it, checks live web results for time-sensitive queries, and caches near-duplicates." />
+  <meta name="description" content="Cost-aware LLM router. Scores query difficulty, routes to the cheapest model tier, caches near-duplicates. Saves 40%+ vs always using frontier models." />
   <meta name="theme-color" content="#C2570C" />
   <meta property="og:title" content="routewise — Cost-Aware LLM Request Router" />
   <meta property="og:description" content="Scores every query for difficulty, routes to the cheapest tier that can handle it. Saves 40%+ vs routing everything to frontier." />
@@ -41,7 +41,9 @@
   </script>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Routewise — Cost-Aware LLM Request Router</h1>
+  </div></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
