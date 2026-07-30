@@ -133,3 +133,38 @@ app.include_router(settings_router)
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
+
+
+@app.get("/metrics")
+def metrics():
+    from router.db import SessionLocal, RequestLog
+    from router.circuit_breaker import get_all_stats
+    from router.load_balancer import get_pool_stats
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    session = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        hour_ago = now - timedelta(hours=1)
+        total = session.query(func.count(RequestLog.id)).scalar() or 0
+        total_1h = session.query(func.count(RequestLog.id)).filter(RequestLog.created_at >= hour_ago).scalar() or 0
+        errors_1h = session.query(func.count(RequestLog.id)).filter(RequestLog.created_at >= hour_ago, RequestLog.tier == "failed").scalar() or 0
+        cache_hits_1h = session.query(func.count(RequestLog.id)).filter(RequestLog.created_at >= hour_ago, RequestLog.cache_hit == True).scalar() or 0
+        avg_latency = float(session.query(func.avg(RequestLog.latency_ms)).filter(RequestLog.created_at >= hour_ago, RequestLog.tier != "failed").scalar() or 0)
+        total_cost = float(session.query(func.sum(RequestLog.cost_usd)).scalar() or 0)
+        tier_counts_1h = dict(session.query(RequestLog.tier, func.count(RequestLog.id)).filter(RequestLog.created_at >= hour_ago).group_by(RequestLog.tier).all())
+        return {
+            "requests_total": total,
+            "requests_1h": total_1h,
+            "errors_1h": errors_1h,
+            "error_rate_1h_pct": round(errors_1h / total_1h * 100, 2) if total_1h else 0,
+            "cache_hits_1h": cache_hits_1h,
+            "cache_hit_rate_1h_pct": round(cache_hits_1h / total_1h * 100, 2) if total_1h else 0,
+            "avg_latency_ms_1h": round(avg_latency, 1),
+            "total_cost_usd": round(total_cost, 6),
+            "tier_counts_1h": tier_counts_1h,
+            "circuit_breakers": get_all_stats(),
+            "key_pools": get_pool_stats(),
+        }
+    finally:
+        session.close()

@@ -20,6 +20,7 @@ from router.config import FALLBACK_CHAIN
 from router.providers import call_model, call_gemini
 from router.model_config_loader import get_active_config
 from router.load_balancer import report_rate_limit_from_error
+from router.circuit_breaker import get_breaker
 
 log = logging.getLogger("routewise.failover")
 
@@ -64,8 +65,14 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
     errors = []
 
     for i, tier in enumerate(chain):
+        breaker = get_breaker(tier)
+        if breaker.is_open():
+            log.info("Circuit OPEN for '%s' — skipping", tier)
+            errors.append(f"{tier}: circuit open")
+            continue
         try:
             result = _call_with_one_retry(tier, query, user_config, messages=messages, max_tokens=max_tokens, temperature=temperature)
+            breaker.record_success()
             result["intended_tier"] = intended_tier
             result["fallback_used"] = (tier != intended_tier)
             if result["fallback_used"]:
@@ -73,25 +80,32 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
                       intended_tier, tier, errors[-1] if errors else 'unknown')
             return result
         except Exception as e:
+            breaker.record_failure()
             error_detail = f"{tier}: {type(e).__name__}: {e}"
             errors.append(error_detail)
             log.warning("tier '%s' failed -- %s", tier, error_detail)
-            continue  # try next tier in the chain
+            continue
 
     # Entire chain failed -- last resort: try a genuinely
     # independent provider before giving up completely.
-    try:
-        result = call_gemini(query)
-        result["tier"] = intended_tier  # keep tier label consistent for frontend/logs
-        result["intended_tier"] = intended_tier
-        result["fallback_used"] = True
-        result["cross_provider_fallback"] = True
-        log.info("entire chain failed for '%s', served by Gemini (independent provider) instead",
-              intended_tier)
-        return result
-    except Exception as e:
-        errors.append(f"gemini: {type(e).__name__}: {e}")
-        log.error("Gemini last-resort also failed -- %s", errors[-1])
+    gemini_breaker = get_breaker("gemini")
+    if not gemini_breaker.is_open():
+        try:
+            result = call_gemini(query)
+            gemini_breaker.record_success()
+            result["tier"] = intended_tier
+            result["intended_tier"] = intended_tier
+            result["fallback_used"] = True
+            result["cross_provider_fallback"] = True
+            log.info("entire chain failed for '%s', served by Gemini (independent provider) instead",
+                  intended_tier)
+            return result
+        except Exception as e:
+            gemini_breaker.record_failure()
+            errors.append(f"gemini: {type(e).__name__}: {e}")
+            log.error("Gemini last-resort also failed -- %s", errors[-1])
+    else:
+        log.warning("Gemini circuit also OPEN — all providers unavailable")
 
     raise AllTiersFailedError(
         f"All tiers failed for intended_tier='{intended_tier}'. Errors: {errors}"

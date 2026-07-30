@@ -135,6 +135,18 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     if over_budget:
         routing_tier = "cheap"
 
+    # build route_reason
+    if req.override_tier:
+        route_reason = f"override: forced to {req.override_tier}"
+    elif over_budget:
+        route_reason = f"budget exceeded — forced to cheap (score {difficulty_score:.2f})"
+    elif routing_tier == "cheap":
+        route_reason = f"score {difficulty_score:.2f} ≤ cheap ceiling {cheap_ceil:.2f}"
+    elif routing_tier == "frontier":
+        route_reason = f"score {difficulty_score:.2f} ≥ frontier floor {frontier_floor:.2f}"
+    else:
+        route_reason = f"score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} → mid"
+
     user_config = get_active_config(api_key.user_id)
     if req.user_api_keys:
         for t, key in req.user_api_keys.items():
@@ -159,6 +171,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         "cheap_ceil": cheap_ceil,
         "frontier_floor": frontier_floor,
         "messages": req.messages,
+        "route_reason": route_reason,
     }
 
 
@@ -185,6 +198,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "cache_hit": True, "cache_similarity": cached["similarity"],
             "cost_usd": 0.0, "tokens_saved_usd": pre["tokens_saved_usd"],
             "latency_ms": pre["latency_ms"],
+            "route_reason": f"cache hit (similarity {cached['similarity']:.2f})",
         }
 
     routing_tier = pre["tier"]
@@ -229,6 +243,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms, "quality_score": quality_score,
         "cheap_ceil": pre["cheap_ceil"], "frontier_floor": pre["frontier_floor"],
+        "route_reason": pre["route_reason"] if not result["fallback_used"] else f"{pre['route_reason']} (fallback to {result['tier']})",
     }
 
 
