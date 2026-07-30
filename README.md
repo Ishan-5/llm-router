@@ -22,9 +22,10 @@ Sending every query — `"hi"`, a summarization job, a system-design question �
 ![Hero — live routing diagram](./screenshots/hero.png)
 The right panel is a live circuit diagram of the tiers — the active node lights up based on the real routing decision for whatever you type, not a static illustration. Tick marks on the gauge show the actual `cheap_ceil` and `frontier_floor` thresholds in real time as the slider moves.
 
-![Metrics dashboard](./screenshots/metrics1.png)
-![Metrics dashboard](./screenshots/metrics2.png)
+![Metrics dashboard](./screenshots/metrics_1.png)
+![Metrics dashboard](./screenshots/metrics_2.png)
 Pulled from `/stats`. **Note on this data:** it reflects test usage over several days while building and validating the system, including a seeding script whose second pass intentionally sent semantically similar queries to populate cache-hit metrics for demonstration — not an organic cache hit rate from real traffic. Stated here plainly rather than left ambiguous.
+![BYOM](./screenshots/BYOM.png)
 
 ## How it works
 
