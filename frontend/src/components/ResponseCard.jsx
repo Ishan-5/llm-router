@@ -79,6 +79,11 @@ export function AssistantBubble({ result }) {
               fallback
             </span>
           )}
+          {result.route_reason && (
+            <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line" title={result.route_reason}>
+              {result.route_reason}
+            </span>
+          )}
           <button
             onClick={handleCopy}
             className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-1.5 py-0.5 rounded-md hover:bg-base"
