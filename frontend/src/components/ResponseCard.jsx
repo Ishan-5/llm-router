@@ -80,7 +80,10 @@ export function AssistantBubble({ result }) {
             </span>
           )}
           {result.route_reason && (
-            <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line" title={result.route_reason}>
+            <span
+              className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line max-w-[200px] truncate"
+              title={result.route_reason}
+            >
               {result.route_reason}
             </span>
           )}
