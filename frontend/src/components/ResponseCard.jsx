@@ -33,6 +33,7 @@ export function AssistantBubble({ result }) {
     web: 'text-cool bg-cool/10 border-cool/30',
   }
   const tierClass = tierColors[result.routed_to] || 'text-muted bg-panel border-line'
+  const modelName = (result.model_id || '').split('/').pop()
 
   return (
     <div className="flex justify-start mb-4 animate-[slide-in_0.25s_ease-out]">
@@ -58,6 +59,14 @@ export function AssistantBubble({ result }) {
           <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md border ${tierClass}`}>
             {result.routed_to === 'web' ? 'web search' : result.routed_to}
           </span>
+          {result.model_id && (
+            <span
+              className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md border ${tierClass}`}
+              title={result.model_id}
+            >
+              {modelName}
+            </span>
+          )}
           {result.difficulty_score != null && (
             <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
               score {result.difficulty_score.toFixed(1)}

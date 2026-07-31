@@ -189,6 +189,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "predicted_tier": "web", "override_used": False, "budget_capped": False,
             "fallback_used": False, "cache_hit": False, "difficulty_score": None,
             "cost_usd": 0.0, "latency_ms": pre["latency_ms"],
+            "model_id": "tavily/search",
         }
 
     if pre["type"] == "cache":
@@ -197,7 +198,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "response": cached["response"], "routed_to": cached["tier"],
             "cache_hit": True, "cache_similarity": cached["similarity"],
             "cost_usd": 0.0, "tokens_saved_usd": pre["tokens_saved_usd"],
-            "latency_ms": pre["latency_ms"],
+            "latency_ms": pre["latency_ms"], "model_id": cached["model_id"],
             "route_reason": f"cache hit (similarity {cached['similarity']:.2f})",
         }
 
@@ -243,6 +244,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms, "quality_score": quality_score,
         "cheap_ceil": pre["cheap_ceil"], "frontier_floor": pre["frontier_floor"],
+        "model_id": result["model_id"],
         "route_reason": pre["route_reason"] if not result["fallback_used"] else f"{pre['route_reason']} (fallback to {result['tier']})",
     }
 
@@ -259,7 +261,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         answer = pre["answer"]
         latency_ms = pre["latency_ms"]
         async def _web_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms, 'model_id': 'tavily/search'})}\n\n"
             yield f"data: {json.dumps({'type': 'chunk', 'text': answer})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return StreamingResponse(_web_stream(), media_type="text/event-stream")
@@ -269,7 +271,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         tokens_saved_usd = pre["tokens_saved_usd"]
         latency_ms = pre["latency_ms"]
         async def _cache_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms, 'model_id': cached['model_id']})}\n\n"
             yield f"data: {json.dumps({'type': 'chunk', 'text': cached['response']})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return StreamingResponse(_cache_stream(), media_type="text/event-stream")
@@ -330,6 +332,6 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             meta["tier"], meta["model_id"], meta["cost_usd"],
             meta["input_tokens"], meta["output_tokens"])
 
-        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id']})}\n\n"
 
     return StreamingResponse(_live_stream(), media_type="text/event-stream")
