@@ -101,7 +101,7 @@ Last-resort fallback (all model tiers above failed): `gemini-1.5-flash` via Goog
 
 ## Engineering decisions
 
-- **Continuous score, not fixed categories.** The difficulty model outputs a float (practical range ~1.5–5.8 due to training data compression). Routing thresholds can be retuned without relabeling any data.
+- **Continuous score, not fixed categories.** The difficulty model outputs a float (practical range ~1.5–5.8 due to training data compression) theoretical range 0-10. Routing thresholds can be retuned without relabeling any data.
 - **Both tier boundaries move with the slider.** `cheap_ceil` and `frontier_floor` both shift together — economy mode raises both (more cheap), quality mode lowers both (more frontier). The slider maps 0–2 to a scaled margin so the defaults at `balanced=1.0` stay sensible.
 - **`score_to_tier` returns a tuple `(tier, cheap_ceil, frontier_floor)`.** The thresholds are returned alongside the tier so the `/route` response can include them and the frontend diagram can render live tick marks without a separate API call.
 - **Cache threshold is conservative (0.95 cosine similarity) on purpose.** Semantic similarity isn't correctness — *"convert 5 miles to km"* and *"convert 10 miles to km"* are ~95%+ similar in embedding space with different correct answers. Fewer cache hits beats a wrong cached answer.
