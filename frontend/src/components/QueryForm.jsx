@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { API_BASE } from '../config'
 
 const MAX_QUERY_LENGTH = 1000
 
@@ -6,7 +7,6 @@ const SUGGESTIONS = [
   'What is 2+2?',
   'Explain quantum entanglement',
   "Who is OpenAI's CEO?",
-  'Summarize today\'s news',
 ]
 
 function useQueryHistory() {
@@ -196,15 +196,35 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
 }
 
 export function ChatSuggestions({ onSelect }) {
+  const [liveHeadline, setLiveHeadline] = useState(null)
+  const staticSuggestions = SUGGESTIONS.map((q) => ({ label: q, query: q }))
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${API_BASE}/news/headlines`)
+      .then((res) => res.ok ? res.json() : { headlines: [] })
+      .then((data) => {
+        if (cancelled || !data?.headlines?.length) return
+        setLiveHeadline(data.headlines[0].title)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  const suggestions = liveHeadline
+    ? [...staticSuggestions, { label: liveHeadline, query: liveHeadline }]
+    : [...staticSuggestions, { label: "Summarize today's news", query: "Summarize today's news" }]
+
   return (
     <div className="flex flex-wrap gap-2">
-      {SUGGESTIONS.map((q) => (
+      {suggestions.map(({ label, query }) => (
         <button
-          key={q}
-          onClick={() => onSelect(q)}
-          className="font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-signal hover:border-signal/40 transition-colors"
+          key={query}
+          onClick={() => onSelect(query)}
+          title={query}
+          className="font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-signal hover:border-signal/40 transition-colors max-w-[280px] truncate"
         >
-          {q}
+          {label}
         </button>
       ))}
     </div>
