@@ -1,13 +1,3 @@
-"""
-Load balancer for multiple API keys per tier.
-
-Supports:
-- Comma-separated keys in env vars: GROQ_KEYS_CHEAP=gk_abc,gk_def,gk_ghi
-- Round-robin rotation across available keys
-- Rate limit detection: skips keys that got 429'd (30s cooldown)
-- Falls back to single GROQ_API_KEY if no multi-key config exists
-"""
-
 import time
 import logging
 import threading
@@ -51,10 +41,7 @@ class KeyPool:
                 self._cooldowns[target] = time.time() + self._cooldown_seconds
 
     def mark_rate_limited_from_exception(self, key: str, error: Exception):
-        """Check if an exception is a rate limit error and mark accordingly."""
         error_str = str(error).lower()
-        # Check for specific rate-limit indicators, avoiding false positives
-        # from unrelated errors that happen to contain "rate" or "limit"
         if "429" in error_str or "rate_limit" in error_str or "rate limit" in error_str or "too many requests" in error_str:
             self.mark_rate_limited(key)
 

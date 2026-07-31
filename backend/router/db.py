@@ -1,11 +1,3 @@
-"""
-Four tables — keys, logs, config, settings.
-Everything the router tracks flows through RequestLog.
-The ApiKey table is what makes auth and budget enforcement possible.
-UserConfig is what makes BYOM possible. UserSettings stores per-user router preferences.
-Base.metadata.create_all(engine) means zero manual DB setup needed.
-"""
-
 import os
 import logging
 from dotenv import load_dotenv
@@ -141,7 +133,6 @@ def log_request(data: dict):
         log.error("log_request failed: %s | data=%s", e, {k: v for k, v in data.items() if k != 'response'})
         session.rollback()
         try:
-            # one retry with a fresh connection
             session.close()
             session = SessionLocal()
             entry = RequestLog(**data)

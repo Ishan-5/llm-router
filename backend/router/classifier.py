@@ -1,9 +1,3 @@
-"""
-It's a 17-line adapter. Its only real job is to bridge the path gap
-between router/ and src/ and expose a clean get_tier() 
-function that returns (score, tier) as a tuple — exactly what main.py needs in one call.
-"""
-
 import sys
 import os
 

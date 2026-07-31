@@ -19,8 +19,6 @@ def _get_client(api_key: str, base_url: str) -> OpenAI:
         _client_cache[key] = OpenAI(api_key=api_key, base_url=base_url, timeout=30.0)
     return _client_cache[key]
 
-# default Groq client (used when no user api key supplied)
-
 
 def _get_groq_key(tier: str) -> str:
     """Get a Groq API key for the tier. Uses load balancer if multi-key configured, else falls back to single key."""
@@ -184,7 +182,6 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
         price_in = user_config.get("price_per_m_input", 0.0)
         price_out = user_config.get("price_per_m_output", 0.0)
 
-        # if no user api_key supplied, use the default key for known providers
         if not api_key:
             if provider == "groq":
                 api_key = _get_groq_key(tier)
@@ -209,7 +206,6 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
         effective_max = max_tokens or 1000
         return call_provider(provider, model_id, query, tier, api_key, price_in, price_out, effective_max, messages)
 
-    # --- default path (no user config) ---
     if tier == "cheap":
         if not DISABLE_OLLAMA:
             try:

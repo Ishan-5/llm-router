@@ -1,16 +1,6 @@
 """
-routewise -- a thin Python client for the routewise cost-aware LLM router.
-
-This does NOT contain any routing logic. It just wraps HTTP calls to the
-real API so callers don't have to write requests.post()/headers/error
-handling by hand every time.
-
-Supports:
-- /route (standard routing)
-- /route/stream (SSE streaming)
-- /v1/chat/completions (OpenAI-compatible)
-- /analytics, /logs, /logs/{id} (observability)
-- /config, /providers, /stats (management)
+routewise -- Python client for the routewise LLM router.
+Wraps HTTP calls to /route, /route/stream, /v1/chat/completions, and management endpoints.
 """
 import json
 import requests
@@ -64,15 +54,10 @@ class RouteWiseClient:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        # user api keys stored in memory -- never sent to DB, passed per-request
         self._user_api_keys: dict = {}
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
-
-    # ------------------------------------------------------------------
-    # Querying (native endpoint)
-    # ------------------------------------------------------------------
 
     def ask(
         self,
@@ -176,10 +161,6 @@ class RouteWiseClient:
             elif event.get("type") == "meta":
                 pass  # intermediate metadata, skip
 
-    # ------------------------------------------------------------------
-    # OpenAI-compatible endpoint
-    # ------------------------------------------------------------------
-
     def chat(
         self,
         messages: list,
@@ -237,10 +218,6 @@ class RouteWiseClient:
                 yield chunk
             except json.JSONDecodeError:
                 continue
-
-    # ------------------------------------------------------------------
-    # BYOM config
-    # ------------------------------------------------------------------
 
     def configure(
         self,
@@ -316,10 +293,6 @@ class RouteWiseClient:
         response = requests.get(f"{self.base_url}/providers", headers=self._headers(), timeout=self.timeout)
         _raise_for_status(response)
         return response.json()
-
-    # ------------------------------------------------------------------
-    # Observability
-    # ------------------------------------------------------------------
 
     def stats(self) -> dict:
         """Fetch aggregate usage stats (total requests, cost saved, tier distribution, etc.)"""

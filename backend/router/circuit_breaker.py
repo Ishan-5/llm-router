@@ -1,15 +1,3 @@
-"""
-Circuit breaker per provider tier.
-
-States:
-  CLOSED  — normal, requests go through
-  OPEN    — too many failures, skip this tier for cooldown_seconds
-  HALF    — cooldown expired, try one request to see if provider recovered
-
-Thresholds (conservative defaults):
-  failure_threshold = 3  consecutive failures → OPEN
-  cooldown_seconds  = 60 seconds before trying again (HALF state)
-"""
 import time
 import threading
 import logging
