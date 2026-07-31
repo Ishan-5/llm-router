@@ -83,7 +83,7 @@ Default tiers if the caller doesn't configure their own (see [BYOM](#sdk)):
 
 | Tier | Model | Backend |
 |---|---|---|
-| Cheap | Ollama (local) | Falls back to Groq `llama-3.1-8b-instant` if Ollama is unreachable |
+| Cheap | Groq `llama-3.1-8b-instant` | Falls back from Ollama (local) if running locally with Ollama enabled |
 | Mid | `llama-3.3-70b-versatile` | Groq |
 | Frontier | `openai/gpt-oss-120b` | Groq |
 | Web | live search results | Tavily, for time-sensitive queries only |
@@ -234,11 +234,20 @@ Ollama still runs natively on the host, not in the container — see `docker-com
 llm-router/
 ├── backend/
 │   ├── router/
-│   │   ├── main.py               # FastAPI app, all endpoints
+│   │   ├── main.py               # FastAPI app, mounts all routers, alert loop, /health, /metrics
+│   │   ├── routes/
+│   │   │   ├── route.py          # /route, /route/stream
+│   │   │   ├── keys.py           # /keys CRUD
+│   │   │   ├── config.py         # /config, /pricing, /providers
+│   │   │   ├── stats.py          # /stats, /logs, /analytics, /calibrate, /compare, /evaluate
+│   │   │   ├── alerts.py         # /alerts CRUD
+│   │   │   ├── settings.py       # /settings
+│   │   │   └── admin.py          # /admin/*
 │   │   ├── classifier.py         # get_tier() — wraps predict_difficulty + score_to_tier
 │   │   ├── providers.py          # call_model(), call_gemini(), stream_model()
 │   │   ├── providers_registry.py # all supported providers + model lists
 │   │   ├── rate_limiter.py       # call_with_failover(), AllTiersFailedError
+│   │   ├── circuit_breaker.py    # per-tier circuit breaker (CLOSED/OPEN/HALF)
 │   │   ├── load_balancer.py      # multi-key round-robin with 429 cooldown
 │   │   ├── cache.py              # semantic cache (cosine similarity, vectorized)
 │   │   ├── guardrails.py         # injection detection, PII sanitization, web search detection
