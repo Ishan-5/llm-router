@@ -1,18 +1,6 @@
-"""
-Runs before any test imports router modules. Forces an isolated, disposable
-SQLite DB so tests NEVER touch the real Supabase/Postgres database.
-
-IMPORTANT: this is an unconditional override, not setdefault(). If
-DATABASE_URL is already set in your real environment (likely, since you use
-it for local dev against Supabase), setdefault() would silently do nothing
-and tests would run against your real database -- which is exactly what
-happened before this fix, causing duplicate-key errors from real rows
-accumulating in Supabase across repeated test runs.
-
-A fresh temp file is created per test session (not a shared/fixed path),
-so there's no possibility of stale data from a previous run causing
-collisions either.
-"""
+# Forces an isolated SQLite DB for tests so they never touch the real Supabase/Postgres.
+# Unconditional override (not setdefault) -- if DATABASE_URL is already set in the environment,
+# setdefault would silently do nothing and tests would run against the real DB.
 import os
 import sys
 import tempfile

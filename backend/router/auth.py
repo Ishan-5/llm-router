@@ -1,18 +1,4 @@
-"""
-Three functions, three jobs:
-
-check_rate_limit — sliding window, in-memory, 20 req/min per key
-
-check_budget — DB query, daily spend cap, forces cheap tier if over
-
-require_api_key — the FastAPI dependency that gates every protected endpoint. Validates format → DB lookup → rate limit check → returns the key record
-
-require_user — extracts and verifies the Supabase JWT from Authorization header, returns the user_id (UUID string). Used for dashboard endpoints (key management, BYOM config).
-
-Every protected endpoint (/route, /logs, /config POST, /config DELETE) 
-has Depends(require_api_key) which runs all three of these in sequence 
-before the endpoint logic even starts.
-"""
+# Auth layer: API key validation, rate limiting, budget enforcement, JWT verification.
 import time
 import logging
 import httpx

@@ -1,10 +1,3 @@
-"""
-It's the single place where you control what models run, 
-what they cost, how the fallback chain works, and what safety margin to apply.
-If you want to swap the mid model, change pricing, or
-tighten/loosen the frontier boundary — this is the only file you touch.
-"""
-
 import os
 from dotenv import load_dotenv
 from router.providers_registry import PROVIDERS_REGISTRY

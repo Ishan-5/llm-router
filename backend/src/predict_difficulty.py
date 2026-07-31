@@ -1,16 +1,3 @@
-"""
-Two jobs:
-
-predict_difficulty(query) — takes raw text, returns a 0–10 float. Does this by combining a 384-dim semantic embedding from MiniLM with 4 handcrafted features, feeding all 388 into LightGBM
-
-score_to_tier(score) — maps that float to "cheap", "mid", or "frontier" with an asymmetric safety margin at the frontier boundary
-
-The lazy loading pattern means the ~400MB of model weights 
-load once at first request and stay in memory for the lifetime
-of the server process. get_embedder() exposes the MiniLM instance
-so cache.py can reuse it without loading it a second time.
-"""
-
 import os
 import joblib
 import numpy as np
@@ -38,14 +25,15 @@ def preload_models():
     _load()
     return True
 
-def get_embedder():  #Expose the shared embedder so other modules (e.g. semantic cache) reuse it instead of loading MiniLM a second time.
+def get_embedder():
+    # shared embedder — cache.py reuses this instead of loading MiniLM twice
     _load()
     return _embedder
 
 
 def predict_difficulty(query: str) -> float:
     bundle, embedder = _load()
-    embed = embedder.encode([query]) #converts the query string into a 384-dimensional vector
+    embed = embedder.encode([query])
 
     word_count = len(query.split())
     has_code = int(bool(re.search(r"(?:def |function|class |import |SELECT |for\(|while\()", query)))
@@ -56,16 +44,13 @@ def predict_difficulty(query: str) -> float:
 
     X = np.hstack([embed, extra])
     score = bundle["model"].predict(X)[0]
-    return float(np.clip(score, 0, 10)) # the final feature vector is 388 numbers: 384 semantic + 4 handcrafted
+    return float(np.clip(score, 0, 10))
 
 
-# Thresholds calibrated to this model's actual output range (~1.5-5.8).
+# score_to_tier thresholds are calibrated to this model's actual output range (~1.5-5.8).
 # Training data compression means hard queries (label 7-10) score ~4.8-5.8.
-# cheap: <=3.4, frontier: >=4.9 (margin nudges borderline queries up, never down).
-# Known limitation: model scores ~0.4 points apart queries that are 3 difficulty
-# levels apart (e.g. 'explain recursion' vs 'derive NTK'). We bias toward
-# over-routing rather than under-routing -- a frontier model on an easy query
-# wastes money; a cheap model on a hard query gives a wrong answer.
+# We bias toward over-routing rather than under-routing — a frontier model on an easy
+# query wastes money; a cheap model on a hard query gives a wrong answer.
 def score_to_tier(score: float, margin: float = 0.3) -> tuple[str, float, float]:
     # Both boundaries shift with margin.
     # Economy (low margin) raises cheap ceiling + raises frontier floor → more cheap, less frontier.

@@ -1,9 +1,3 @@
-"""
-Merges user-supplied model config (from user_configs table) with the
-hardcoded defaults. Any tier the user hasn't configured falls back to
-the default model for that tier. Pricing is looked up from model_pricing
-table first -- falls back to hardcoded defaults if not found.
-"""
 from router.db import SessionLocal, UserConfig, ModelPricing
 from router.config import MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG
 from router.providers_registry import PROVIDERS_REGISTRY
@@ -65,7 +59,7 @@ def get_pricing_for_model(model_id: str) -> tuple[float, float]:
     for cfg in MODEL_CONFIG.values():
         if cfg["model_id"] == model_id:
             return cfg["price_per_m_input"], cfg["price_per_m_output"]
-    # unknown model -- use cheap tier pricing as conservative floor
+    # unknown model — use cheap tier pricing as a floor
     return MODEL_CONFIG["cheap"]["price_per_m_input"], MODEL_CONFIG["cheap"]["price_per_m_output"]
 
 
