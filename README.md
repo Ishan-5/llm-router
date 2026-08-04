@@ -115,14 +115,13 @@ Last-resort fallback (all model tiers above failed): `gemini-1.5-flash` via Goog
 
 - **Ollama doesn't run in the cloud deployment.** Render has no local GPU, so every cheap-tier request there hits Ollama, fails, and falls back to Groq. Local demos are the only place the local-model path actually runs.
 - **Dashboard data is seeded** — see the disclosure under [Screenshots](#screenshots).
-- **BYOM configuration is currently global, not per-API-key.** One caller's model configuration currently affects all callers — a real multi-tenant version would scope this per key. Documented here rather than silently left as a surprise.
+- **BYOM configuration is scoped per user, not per-API-key.** Config is loaded per user (`get_active_config(user_id)`), so each signed-in user's model choices are isolated from others — but two API keys belonging to the same user share that user's config, and script-created keys without a `user_id` share the default/global config. A fully per-key version would scope this at the `api_keys` row level.
 - **The difficulty model is weaker on system-design/architecture queries** — the training data has very few real examples of that category.
 - **Training labels have some noise.** Auto-labeled by an LLM, validated against a 210-row hand-labeled gold set, not fully human-audited. Current model: MAE 1.09, Spearman 0.74 on held-out data.
 - **Injection/PII detection is regex-based**, not a trained classifier — catches known patterns, not a guarantee against novel attacks.
 - **Rate limiting is in-memory** — correct for a single server instance, would need Redis for a distributed deployment.
-- **Alert cooldown is in-memory** — same issue as rate limiting. `last_fired_at` is persisted to the DB, but the 5-minute check loop runs per-process. Multiple Render instances would double-fire alerts.
+- **Alert cooldown is DB-backed, but the check loop runs per-process.** `last_fired_at` is read from and written back to the DB on every loop iteration, so a fired alert won't re-fire for an hour even across instances — except for a small race window if two processes check the same rule before either commits. Not a concern for a single instance.
 - **MCP server has no auth.** It's a local stdio process — the assumption is it runs on the developer's machine. Don't expose it as a network service without adding auth.
-- **`/v1/chat/completions` (OpenAI-compat) uses a fixed margin.** The OpenAI-compatible endpoint doesn't yet read the per-user threshold setting — it uses the default `TIER_MARGIN` from config. The `/route` endpoint is fully dynamic.
 
 ## SDK
 
@@ -297,13 +296,12 @@ llm-router/
 ## Roadmap
 
 - No true PII/injection ML classifier (regex-only today)
-- No per-key BYOM isolation (config is currently user-scoped, not key-scoped)
-- No distributed rate limiting or alert cooldown (in-memory only — needs Redis for multi-instance)
+- No per-key BYOM isolation (config is currently per-user, not key-scoped)
+- No distributed rate limiting (in-memory only — needs Redis for multi-instance)
 - MCP server has no auth (fine for local use, not for network exposure)
-- `/v1/chat/completions` uses a fixed margin — doesn't read per-user threshold setting yet
 
 Not needed to call the current version complete — documented here for transparency.
 
 ---
 
-*Built by [Ishan](https://github.com/Ishan-5) · [LinkedIn](https://linkedin.com/in/devansh584)*
+*Built by [Devansh Kumar Pandey(Ishan)](https://github.com/Ishan-5) · [LinkedIn](https://linkedin.com/in/devansh584)*
