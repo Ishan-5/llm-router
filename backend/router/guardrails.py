@@ -34,6 +34,14 @@ _WEB_PATTERNS = [
 
 def needs_web_search(query: str) -> bool:
     q = query.lower()
+    # "current" in an electrical/engineering context is NOT a temporal signal —
+    # neutralize it so "design a current-limiting circuit" doesn't trigger web search.
+    q = re.sub(
+        r"current\s*(?:[-–—]\s*)?(?:limiting|carrying|flow|flowing|flowed|source|density|rating|draw|drain|through|sensor|sensing|voltage|resistor|circuit)",
+        "electrical",
+        q,
+    )
+    q = re.sub(r"(?:alternating|direct|electric|electrical|a[.]?c|d[.]?c)\s+current\b", "electrical", q)
     return any(re.search(p, q) for p in _WEB_PATTERNS)
 
 
