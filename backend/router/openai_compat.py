@@ -181,7 +181,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     def _load_threshold():
         session = SessionLocal()
         try:
-            s = session.query(UserSettings).filter(UserSettings.user_id == api_key.user_id).first()
+            s = session.query(UserSettings).filter(UserSettings.user_id == str(api_key.user_id)).first()
             return s.router_threshold if s else 1.0
         finally:
             session.close()

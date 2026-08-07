@@ -105,7 +105,7 @@ try:
 except Exception as e:
     log.warning("DB init failed (will retry on first request): %s", e)
 
-# Migration: add quality_score column if missing on existing tables
+
 try:
     from sqlalchemy import text
     with engine.connect() as conn:

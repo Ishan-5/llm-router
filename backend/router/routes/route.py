@@ -28,7 +28,7 @@ def load_user_threshold(user_id: str | None) -> float:
         return DEFAULT_THRESHOLD
     session = SessionLocal()
     try:
-        settings = session.query(UserSettings).filter(UserSettings.user_id == user_id).first()
+        settings = session.query(UserSettings).filter(UserSettings.user_id == str(user_id)).first()
         return settings.router_threshold if settings else DEFAULT_THRESHOLD
     finally:
         session.close()
