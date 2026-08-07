@@ -4,7 +4,7 @@
 
 [**Live demo**](https://llm-router-nine-eta.vercel.app/) · [**PyPI SDK**](https://pypi.org/project/routewise/) · [**GitHub**](https://github.com/Ishan-5/llm-router)
 
-![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-teal) ![React](https://img.shields.io/badge/React-frontend-61DAFB) ![Docker](https://img.shields.io/badge/Docker-containerized-2496ED) ![LightGBM](https://img.shields.io/badge/LightGBM-difficulty%20model-orange) ![Tests](https://img.shields.io/badge/tests-22%20passing-brightgreen)
+![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-teal) ![React](https://img.shields.io/badge/React-frontend-61DAFB) ![Docker](https://img.shields.io/badge/Docker-containerized-2496ED) ![LightGBM](https://img.shields.io/badge/LightGBM-difficulty%20model-orange) ![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen)
 
 ---
 
@@ -65,6 +65,10 @@ flowchart LR
 
 Thresholds are dynamic — `cheap_ceil` and `frontier_floor` shift with the sensitivity slider and are returned in every `/route` response so the frontend diagram can show live tick marks.
 
+Rendered end-to-end flow (request → guardrails → scoring → routing → failover → response):
+
+![End-to-end routing flow](./screenshots/flow_diagram.jpeg)
+
 ## Tech stack
 
 | Layer | Tools |
@@ -75,7 +79,7 @@ Thresholds are dynamic — `cheap_ceil` and `frontier_floor` shift with the sens
 | Load balancing | Round-robin across multiple API keys per tier, with per-key 429 cooldown |
 | Frontend | React, Vite, Tailwind, Recharts |
 | Deployment | Docker, Render (backend), Vercel (frontend), PyPI (SDK) |
-| Testing | pytest (22 tests), GitHub Actions CI |
+| Testing | pytest (38 tests) |
 
 ## Model tiers
 
