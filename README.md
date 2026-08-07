@@ -30,7 +30,7 @@ Pulled from `/stats`. **Note on this data:** it reflects test usage over several
 ## How it works
 
 1. **Guard** — every incoming query is checked for prompt-injection patterns and PII before anything else happens; flagged injection attempts are rejected with a 400, PII is sanitized before being logged.
-2. **Search or Score** — time-sensitive queries (regex-detected: "today," "latest," "current," etc.) are routed to a live web search instead of an LLM. Everything else gets a difficulty score from a LightGBM regressor, trained on 6,500 labeled queries, running locally in under 100ms with no API call required.
+2. **Search or Score** — time-sensitive queries (regex-detected: "today," "latest," "current," etc.) are routed to a live web search instead of an LLM. Everything else gets a difficulty score from a LightGBM regressor, trained on 7,488 labeled queries, running locally in under 100ms with no API call required.
 3. **Route** — the score maps to `cheap` / `mid` / `frontier` using two thresholds (`cheap_ceil` and `frontier_floor`) that both shift with a user-controlled sensitivity slider (economy → balanced → quality). Both boundaries move — economy raises the cheap ceiling and frontier floor (more cheap, less frontier); quality lowers both (less cheap, more frontier).
 4. **Respond** — a semantic cache checks for near-duplicate queries first. If the assigned tier's provider fails or rate-limits, the request steps down to the next tier automatically. If the *entire* tier chain fails (e.g. a full Groq outage), an independent second provider (Gemini) is tried as a last resort before giving up.
 
@@ -152,6 +152,7 @@ Supported out of the box: Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Pe
 ## Engineering decisions
 
 - **Continuous score, not fixed categories.** The difficulty model outputs a float (practical range ~1.5–5.8 due to training data compression) theoretical range 0-10. Routing thresholds can be retuned without relabeling any data.
+- **Training data mirrors real traffic.** The 7,488-query labeled set is right-skewed toward easy-to-moderate queries (mean difficulty 4.9/10, median 4, 47% of queries score ≥5, 25% ≥7). That's the distribution routing is actually built for — the sparse tail of expert-level queries (scores 9–10, ~12%) is exactly where the model's under-confidence shows up as the system-design weakness noted under [Known limitations](#known-limitations).
 - **Both tier boundaries move with the slider.** `cheap_ceil` and `frontier_floor` both shift together — economy mode raises both (more cheap), quality mode lowers both (more frontier). The slider maps 0–2 to a scaled margin so the defaults at `balanced=1.0` stay sensible.
 - **`score_to_tier` returns a tuple `(tier, cheap_ceil, frontier_floor)`.** The thresholds are returned alongside the tier so the `/route` response can include them and the frontend diagram can render live tick marks without a separate API call.
 - **Cache threshold is conservative (0.95 cosine similarity) on purpose.** Semantic similarity isn't correctness — *"convert 5 miles to km"* and *"convert 10 miles to km"* are ~95%+ similar in embedding space with different correct answers. Fewer cache hits beats a wrong cached answer.
@@ -250,7 +251,7 @@ Webhook payload:
 
 **What happens if Groq is down?** Requests fail over tier-to-tier automatically (frontier → mid → cheap), the circuit breaker trips for 60 s and skips the failing tier, and if *every* Groq/Ollama tier fails, an independent provider (Gemini) answers as a last resort rather than returning a 503.
 
-**How accurate is the difficulty classifier?** MAE 1.09, Spearman 0.79 on held-out data, trained on 6,500 labeled queries. Scoring runs locally in under 100 ms — no API call needed just to decide which model to use.
+**How accurate is the difficulty classifier?** MAE 1.09, Spearman 0.79 on held-out data, trained on 7,488 labeled queries. Scoring runs locally in under 100 ms — no API call needed just to decide which model to use.
 
 **Can I use my own models?** Yes — BYOM works per-request for any caller, or as a saved config for signed-in users, spanning Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama, and custom model IDs.
 
