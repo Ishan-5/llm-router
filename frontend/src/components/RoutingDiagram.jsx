@@ -105,7 +105,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const frontierFloor = loading ? null : (latestResult?.frontier_floor ?? defaultFrontierFloor)
 
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
-    ? Math.round((1 - (ticker.total_actual_cost - (ticker.cache_savings_usd || 0)) / ticker.total_hypothetical_cost) * 100)
+    ? Math.round((1 - ticker.total_actual_cost / ticker.total_hypothetical_cost) * 100)
     : null
 
   const isEmpty = messages.length === 0 && !loading
