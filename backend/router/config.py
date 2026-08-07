@@ -38,13 +38,13 @@ MODEL_CONFIG = {
     },
     "mid": {
         "model_id": "llama-3.3-70b-versatile",
-        "price_per_m_input": 0.29,
-        "price_per_m_output": 0.59,
+        "price_per_m_input": 0.59,
+        "price_per_m_output": 0.79,
     },
     "frontier": {
         "model_id": "openai/gpt-oss-120b",
-        "price_per_m_input": 0.59,
-        "price_per_m_output": 0.79,
+        "price_per_m_input": 0.15,
+        "price_per_m_output": 0.60,
     },
 }
 
