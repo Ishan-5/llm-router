@@ -4,12 +4,12 @@
 
 [**Live demo**](https://llm-router-nine-eta.vercel.app/) · [**PyPI SDK**](https://pypi.org/project/routewise/) · [**GitHub**](https://github.com/Ishan-5/llm-router)
 
-![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-teal) ![React](https://img.shields.io/badge/React-frontend-61DAFB) ![Docker](https://img.shields.io/badge/Docker-containerized-2496ED) ![LightGBM](https://img.shields.io/badge/LightGBM-difficulty%20model-orange) ![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen)
+![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-teal) ![React](https://img.shields.io/badge/React-frontend-61DAFB) ![Docker](https://img.shields.io/badge/Docker-containerized-2496ED) ![LightGBM](https://img.shields.io/badge/LightGBM-difficulty%20model-orange) ![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![PyPI](https://img.shields.io/pypi/v/routewise) ![CI](https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml) [![Backend](https://img.shields.io/website?url=https%3A%2F%2Fllm-router-d2b2.onrender.com%2Fhealth&label=backend&color=green)](https://llm-router-d2b2.onrender.com/health)
 
 ---
 
 ### Contents
-[The problem](#the-problem) · [Screenshots](#screenshots) · [How it works](#how-it-works) · [Architecture](#architecture) · [Tech stack](#tech-stack) · [Model tiers](#model-tiers) · [Security](#security) · [Engineering decisions](#engineering-decisions) · [Known limitations](#known-limitations) · [SDK](#sdk) · [MCP gateway](#mcp-gateway) · [Alerting](#alerting) · [Running it](#running-it-locally) · [Project structure](#project-structure) · [Roadmap](#roadmap)
+[The problem](#the-problem) · [Screenshots](#screenshots) · [How it works](#how-it-works) · [Architecture](#architecture) · [Tech stack](#tech-stack) · [Model tiers](#model-tiers) · [The cost math](#the-cost-math) · [Measured results](#measured-results) · [Bring your own model](#bring-your-own-model) · [Security](#security) · [Engineering decisions](#engineering-decisions) · [Known limitations](#known-limitations) · [SDK](#sdk) · [MCP gateway](#mcp-gateway) · [Alerting](#alerting) · [FAQ](#faq) · [Running it](#running-it-locally) · [Project structure](#project-structure) · [Roadmap](#roadmap)
 
 ---
 
@@ -79,20 +79,66 @@ Rendered end-to-end flow (request → guardrails → scoring → routing → fai
 | Load balancing | Round-robin across multiple API keys per tier, with per-key 429 cooldown |
 | Frontend | React, Vite, Tailwind, Recharts |
 | Deployment | Docker, Render (backend), Vercel (frontend), PyPI (SDK) |
-| Testing | pytest (38 tests) |
+| Testing | pytest (38 tests), GitHub Actions CI |
 
 ## Model tiers
 
-Default tiers if the caller doesn't configure their own (see [BYOM](#sdk)):
+Default tiers if the caller doesn't configure their own (see [BYOM](#bring-your-own-model)):
 
-| Tier | Model | Backend |
-|---|---|---|
-| Cheap | Groq `llama-3.1-8b-instant` | Falls back from Ollama (local) if running locally with Ollama enabled |
-| Mid | `llama-3.3-70b-versatile` | Groq |
-| Frontier | `openai/gpt-oss-120b` | Groq |
-| Web | live search results | Tavily, for time-sensitive queries only |
+| Tier | Model | $ / 1M input | $ / 1M output | Backend |
+|---|---|---|---|---|
+| Cheap | Groq `llama-3.1-8b-instant` | $0.05 | $0.08 | Groq (falls back to local Ollama if running) |
+| Mid | `openai/gpt-oss-20b` | $0.075 | $0.30 | Groq |
+| Frontier | `openai/gpt-oss-120b` | $0.15 | $0.60 | Groq |
+| Web | live search results | — | — | Tavily, for time-sensitive queries only |
 
 Last-resort fallback (all model tiers above failed): `gemini-1.5-flash` via Google — a genuinely independent provider, not just another Groq tier.
+
+## The cost math
+
+Three tiers, three price points — every query is sent to the cheapest tier whose difficulty score says it can handle it. Worked example at balanced sensitivity, assuming ~1,000 input + ~300 output tokens per query:
+
+| | Frontier-only baseline | Routed |
+|---|---|---|
+| Cheap share (~50% of queries) | — | 8B @ $0.05/$0.08 → **$0.000074** |
+| Mid share (~35%) | — | 20B @ $0.075/$0.30 → **$0.000165** |
+| Frontier share (~15%) | gpt-oss-120b → **$0.00033** | gpt-oss-120b → **$0.00033** |
+| **1,000 queries** | **$0.330** | **$0.144** |
+
+**≈ 56% cheaper** than sending everything to the frontier model. Near-duplicate queries that hit the semantic cache (~34% of measured traffic) add savings on top — cached answers cost $0 in tokens.
+
+## Measured results
+
+Snapshot from the live deployment (`GET /stats`) at time of writing — real routed traffic, not a synthetic benchmark:
+
+| Metric | Value |
+|---|---|
+| Requests routed | ~310 |
+| Tier split | 44% cheap · 26% mid · 19% frontier · 9% web · 2% failed |
+| Semantic cache hit rate | 34% |
+| Total cost of the traffic shown | ~$0.05 |
+
+The tier distribution shows the router doing what it's built for — the majority of real queries are easy enough for the cheap 8B model, and only the genuinely hard ones reach the frontier tier. (Data reflects test usage accumulated while building the system — disclosed in full under [Screenshots](#screenshots).)
+
+## Bring your own model (BYOM)
+
+Not locked into the defaults. Every tier can be pointed at any provider or model the caller already pays for — including custom model IDs no catalog could anticipate.
+
+Two ways to bring your own:
+
+- **Per request** — works for any caller, even plain curl. Pass `byom_config` (provider + model per tier) and `user_api_keys` in the `/route` body. The SDK does this automatically after one call:
+
+```python
+client.configure(
+    cheap={"provider": "groq", "model_id": "llama-3.1-8b-instant", "api_key": "gsk_..."},
+    frontier={"provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..."},
+)
+result = client.ask("Design a distributed rate limiter")  # keys attached automatically
+```
+
+- **Saved config** — signed-in users persist it once with `POST /config`. Keys are still never stored, only provider/model selections; `GET /config` returns the active config.
+
+Supported out of the box: Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama — plus a `custom` option for arbitrary model IDs. The dashboard populates its tier dropdowns directly from `/providers`.
 
 ## Security
 
@@ -197,6 +243,18 @@ Webhook payload:
   "message": "Daily spend $0.1430 exceeded threshold $0.1000"
 }
 ```
+
+## FAQ
+
+**Do I need an account to use the router?** No. A `rw_` API key — created in one command via `scripts/create_api_key.py` or through the dashboard — unlocks `/route`, logs, and stats. A signed-in account adds per-user settings, saved BYOM configs, and webhook alerts on top.
+
+**What happens if Groq is down?** Requests fail over tier-to-tier automatically (frontier → mid → cheap), the circuit breaker trips for 60 s and skips the failing tier, and if *every* Groq/Ollama tier fails, an independent provider (Gemini) answers as a last resort rather than returning a 503.
+
+**How accurate is the difficulty classifier?** MAE 1.09, Spearman 0.79 on held-out data, trained on 6,500 labeled queries. Scoring runs locally in under 100 ms — no API call needed just to decide which model to use.
+
+**Can I use my own models?** Yes — BYOM works per-request for any caller, or as a saved config for signed-in users, spanning Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama, and custom model IDs.
+
+**What happens to my queries and keys?** Queries are logged with PII scrubbed before writing; keys are never persisted — BYOM configs store only provider/model selections, and user-supplied keys are attached per request and dropped after.
 
 ## Running it locally
 
