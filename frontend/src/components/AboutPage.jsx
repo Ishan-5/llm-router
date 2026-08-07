@@ -53,7 +53,7 @@ export default function AboutPage() {
           {[
             {
               title: 'Scores difficulty in real time',
-              body: 'A regression model trained on 6,500 labeled queries predicts how hard a request is on a 0–10 scale, directly from the text — no API call needed, so it doesn\'t add meaningful latency of its own.',
+              body: 'A regression model trained on 7,488 labeled queries predicts how hard a request is on a 0–10 scale, directly from the text — no API call needed, so it doesn\'t add meaningful latency of its own.',
             },
             {
               title: 'Routes across four tiers',
