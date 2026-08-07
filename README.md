@@ -49,9 +49,9 @@ flowchart LR
     T -->|score <= cheap_ceil| Cheap[Cheap tier]
     T -->|cheap_ceil < score < frontier_floor| Mid[Mid tier]
     T -->|score >= frontier_floor| Frontier[Frontier tier]
-    Cheap -.fail.-> Mid
-    Mid -.fail.-> Cheap
     Frontier -.fail.-> Mid
+    Frontier -.fail.-> Cheap
+    Mid -.fail.-> Cheap
     Cheap -.all fail.-> Gemini[Gemini: last resort]
     Mid -.all fail.-> Gemini
     Frontier -.all fail.-> Gemini
@@ -121,7 +121,7 @@ Last-resort fallback (all model tiers above failed): `gemini-1.5-flash` via Goog
 - **Dashboard data is seeded** — see the disclosure under [Screenshots](#screenshots).
 - **BYOM configuration is scoped per user, not per-API-key.** Config is loaded per user (`get_active_config(user_id)`), so each signed-in user's model choices are isolated from others — but two API keys belonging to the same user share that user's config, and script-created keys without a `user_id` share the default/global config. A fully per-key version would scope this at the `api_keys` row level.
 - **The difficulty model is weaker on system-design/architecture queries** — the training data has very few real examples of that category.
-- **Training labels have some noise.** Auto-labeled by an LLM, validated against a 210-row hand-labeled gold set, not fully human-audited. Current model: MAE 1.09, Spearman 0.74 on held-out data.
+- **Training labels have some noise.** Auto-labeled by an LLM, validated against a 210-row hand-labeled gold set, not fully human-audited. Current model: MAE 1.09, Spearman 0.79 on held-out data.
 - **Injection/PII detection is regex-based**, not a trained classifier — catches known patterns, not a guarantee against novel attacks.
 - **Rate limiting is in-memory** — correct for a single server instance, would need Redis for a distributed deployment.
 - **Alert cooldown is DB-backed, but the check loop runs per-process.** `last_fired_at` is read from and written back to the DB on every loop iteration, so a fired alert won't re-fire for an hour even across instances — except for a small race window if two processes check the same rule before either commits. Not a concern for a single instance.
@@ -276,7 +276,11 @@ llm-router/
 │   │   └── test_openai_compat.py
 │   ├── scripts/
 │   │   ├── create_api_key.py
+│   │   ├── seed_requests.py
 │   │   └── seed_pricing.sql
+│   ├── seed_cache.py
+│   ├── migrate_add_response_column.py
+│   ├── migrate_add_user_id.py
 │   └── eval/                     # training datasets
 │
 ├── frontend/
@@ -289,9 +293,9 @@ llm-router/
 │   └── vite.config.js
 │
 ├── sdk/
-│   └── routewise/                # PyPI package
+│   ├── routewise/                # PyPI package
+│   └── setup.py
 │
-├── .github/workflows/ci.yml
 ├── docker-compose.yml
 ├── Dockerfile
 └── requirements.txt
