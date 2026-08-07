@@ -33,10 +33,13 @@ client.configure(
     # mid not set -- uses default
 )
 
-# api keys are stored in memory and sent automatically with every ask()
+# config is stored in memory and sent with every ask() as a per-request
+# BYOM override -- your API keys never touch the router's database.
 result = client.ask("Design a distributed rate limiter")
 print(result["response"])
 ```
+
+`configure()` applies the config client-side on every request (works with a plain `rw_` API key — no sign-in needed). `reset()` clears it.
 
 ## All methods
 

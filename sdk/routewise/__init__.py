@@ -54,10 +54,28 @@ class RouteWiseClient:
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
-        self._user_api_keys: dict = {}
+        self._byom_config: dict = {}
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self.api_key}"}
+
+    def _apply_byom(self, payload: dict, user_api_keys: dict | None = None):
+        """Merge in-memory BYOM config (set via configure()) into a request payload.
+        byom_config carries provider + model per tier; user_api_keys carries the keys."""
+        if self._byom_config:
+            payload["byom_config"] = {
+                tier: {"provider": cfg["provider"], "model_id": cfg["model_id"]}
+                for tier, cfg in self._byom_config.items()
+                if cfg.get("provider") and cfg.get("model_id")
+            }
+        keys = {
+            tier: cfg["api_key"]
+            for tier, cfg in self._byom_config.items()
+            if cfg.get("api_key")
+        }
+        keys = {**keys, **(user_api_keys or {})}
+        if keys:
+            payload["user_api_keys"] = keys
 
     def ask(
         self,
@@ -82,10 +100,7 @@ class RouteWiseClient:
         if bypass_cache:
             payload["bypass_cache"] = True
 
-        # merge instance-level keys with per-call overrides
-        keys = {**self._user_api_keys, **(user_api_keys or {})}
-        if keys:
-            payload["user_api_keys"] = keys
+        self._apply_byom(payload, user_api_keys)
 
         response = requests.post(
             f"{self.base_url}/route",
@@ -120,9 +135,7 @@ class RouteWiseClient:
         if bypass_cache:
             payload["bypass_cache"] = True
 
-        keys = {**self._user_api_keys, **(user_api_keys or {})}
-        if keys:
-            payload["user_api_keys"] = keys
+        self._apply_byom(payload, user_api_keys)
 
         response = requests.post(
             f"{self.base_url}/route/stream",
@@ -226,64 +239,56 @@ class RouteWiseClient:
         frontier: Optional[dict] = None,
     ) -> dict:
         """
-        Set custom provider/model/api_key for any tier.
+        Set custom provider/model/api_key for any tier (Bring Your Own Model).
         Omit a tier to leave it at its current config.
 
         Each tier dict: { "provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..." }
 
-        Also stores the api_keys in memory so they're sent automatically
-        with every subsequent ask() call -- keys are never sent to the DB.
+        Config is stored in memory on the client and applied to every
+        subsequent ask()/ask_stream() call via the per-request BYOM fields.
+        API keys never touch the server's database.
 
         Example:
             client.configure(
                 frontier={"provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..."}
             )
         """
-        payload = {}
-        if cheap:
-            payload["cheap"] = cheap
-        if mid:
-            payload["mid"] = mid
-        if frontier:
-            payload["frontier"] = frontier
-
-        response = requests.post(
-            f"{self.base_url}/config",
-            headers=self._headers(),
-            json=payload,
-            timeout=self.timeout,
-        )
-        _raise_for_status(response)
-
-        # store keys in memory for automatic use in ask()
+        saved = {}
         for tier, cfg in {"cheap": cheap, "mid": mid, "frontier": frontier}.items():
-            if cfg and cfg.get("api_key"):
-                self._user_api_keys[tier] = cfg["api_key"]
-
-        return response.json()
+            if cfg is None:
+                continue
+            if not isinstance(cfg, dict) or not cfg.get("api_key"):
+                raise ValidationError(f"[400] {tier} config requires an 'api_key'")
+            self._byom_config[tier] = {
+                "provider": cfg.get("provider"),
+                "model_id": cfg.get("model_id"),
+                "api_key": cfg["api_key"],
+            }
+            saved[tier] = {"provider": cfg.get("provider"), "model_id": cfg.get("model_id")}
+        return {"saved": saved}
 
     def get_config(self) -> dict:
         """
         Returns the currently active model config for all tiers
-        (user overrides merged with defaults). API keys are never returned.
+        (user overrides merged with defaults, plus any config set via
+        configure()). API keys are never returned.
         """
         response = requests.get(f"{self.base_url}/config", headers=self._headers(), timeout=self.timeout)
         _raise_for_status(response)
-        return response.json()
+        config = response.json()
+        for tier, cfg in self._byom_config.items():
+            if tier in config:
+                config[tier]["provider"] = cfg.get("provider") or config[tier].get("provider")
+                config[tier]["model_id"] = cfg.get("model_id") or config[tier].get("model_id")
+        return config
 
     def reset(self) -> dict:
         """
-        Resets all tiers back to the default models.
-        Also clears any in-memory api keys stored by configure().
+        Clears any in-memory BYOM config and api keys set by configure(),
+        reverting all tiers back to the default models.
         """
-        response = requests.delete(
-            f"{self.base_url}/config",
-            headers=self._headers(),
-            timeout=self.timeout,
-        )
-        _raise_for_status(response)
-        self._user_api_keys.clear()
-        return response.json()
+        self._byom_config.clear()
+        return {"reset": True}
 
     def get_providers(self) -> dict:
         """
