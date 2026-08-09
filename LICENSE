@@ -1,74 +1,168 @@
-LLM ROUTER — PROPRIETARY SOFTWARE LICENSE
-Version 1.0, 9 August 2026
-Copyright © 2026 Routewise. All rights reserved.
-Owner: Devansh Kumar Pandey.
+# LLM ROUTER — PROPRIETARY SOFTWARE LICENSE
 
-This Software is licensed, not sold. By accessing, viewing, or using this
-Software (the "Software"), you agree to be bound by the terms of this
-License. If you do not agree, do not access or use the Software.
+**Version 1.0 — 9 August 2026**
+**Copyright © 2026 Routewise. All rights reserved.**
+**Copyright Owner: Devansh Kumar Pandey**
 
-1. GRANT OF LICENSE
-   The copyright owner grants you a limited, revocable, non-exclusive,
-   non-transferable, and non-sublicensable license to VIEW the source code
-   and documentation of the Software for evaluation and learning purposes
-   only. This license does not grant you any other rights.
+## 1. LICENSE AND ACCEPTANCE
 
-2. PROHIBITED USES
-   You may NOT, and may NOT permit any third party to:
-     a. Copy, reproduce, duplicate, download, or store the Software, or any
-        portion of it, beyond what is strictly necessary to view it;
-     b. Use, run, execute, deploy, or operate the Software, or any portion
-        of it, in whole or in part, for any commercial or non-commercial
-        purpose;
-     c. Modify, adapt, translate, port, or create derivative works based on
-        the Software, or any portion of it;
-     d. Merge the Software, or any portion of it, into any other project,
-        product, or codebase, whether private, public, or open source;
-     e. Distribute, publish, sublicense, sell, rent, lease, or otherwise
-        transfer the Software, or any portion of it, to any person or entity;
-     f. Remove, alter, or obscure any copyright, trademark, or proprietary
-        notices contained in the Software;
-     g. Use the Software to build, train, or improve any machine-learning or
-        artificial-intelligence model or service;
-     h. Attempt to reverse engineer, decompile, or disassemble any compiled
-        portion of the Software.
+This Software is **licensed, not sold**.
 
-3. SUGGESTIONS AND IMPROVEMENTS
-   You are welcome to review the Software and provide suggestions,
-   bug reports, feature ideas, or proposed improvements. Such suggestions
-   are received without any obligation on the part of the copyright owner.
-   Unless the copyright owner expressly agrees in writing, you are NOT
-   granted any right or license to incorporate your suggestions into the
-   Software or into any derivative of it. The copyright owner retains all
-   rights to decide whether, how, and when any suggestion is used.
+By accessing, viewing, downloading, cloning, or otherwise interacting with the Software, you acknowledge that you have read, understood, and agreed to be bound by this License.
 
-4. NO ASSIGNMENT
-   This license is personal to you and may not be assigned, transferred,
-   or sublicensed without the prior written consent of the copyright owner.
+If you do not agree to the terms of this License, you must not access, use, copy, download, clone, modify, distribute, or otherwise interact with the Software, except to the limited extent necessary to determine whether you wish to accept this License.
 
-5. TERMINATION
-   This license terminates automatically if you breach any term of this
-   License. Upon termination, you must immediately cease all access to and
-   viewing of the Software and destroy any copies in your possession.
+This License does not grant you ownership of, or any intellectual property rights in, the Software.
 
-6. NO WARRANTY
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-   THE ENTIRE RISK ARISING OUT OF THE USE, PERFORMANCE, OR INABILITY TO USE
-   THE SOFTWARE REMAINS WITH YOU. IN NO EVENT SHALL THE COPYRIGHT OWNER BE
-   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-   CONSEQUENTIAL DAMAGES ARISING OUT OF THIS LICENSE OR THE USE OF THE
-   SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+## 2. LIMITED VIEWING LICENSE
 
-7. OWNERSHIP
-   The Software, including all source code, documentation, design, and
-   related intellectual property, is the exclusive property of the
-   copyright owner and is protected by copyright and other intellectual
-   property laws. Nothing in this License transfers ownership of any
-   intellectual property to you.
+Subject to your compliance with this License, the copyright owner grants you a limited, revocable, non-exclusive, non-transferable, non-sublicensable license to **view and inspect the publicly available source code and documentation** solely for personal evaluation, educational review, and learning.
 
-8. GOVERNING LAW
-   This License shall be governed by and construed in accordance with the
-   laws of the jurisdiction of the copyright owner, without regard to its
-   conflict-of-law provisions.
+No other rights are granted.
+
+In particular, the right to view the Software does **not** grant any right to use, execute, modify, reproduce, distribute, or create derivative works from the Software.
+
+## 3. PROHIBITED USES
+
+Except with the prior written permission of the copyright owner, you may not, and may not permit any third party to:
+
+### a. Reproduce or Copy
+
+Copy, reproduce, duplicate, mirror, archive, scrape, download, or otherwise reproduce the Software or any substantial portion of it, except for temporary technical copies automatically created through ordinary web browsing or copies expressly authorized in writing by the copyright owner.
+
+### b. Execute or Use
+
+Run, execute, deploy, host, install, integrate, test in a production or development environment, or otherwise operate the Software or any portion of it for any purpose, whether commercial or non-commercial.
+
+### c. Modify or Create Derivative Works
+
+Modify, adapt, translate, port, refactor, reverse-engineer, or create derivative works based on the Software or any portion of it.
+
+### d. Integrate Into Other Software
+
+Incorporate, embed, merge, link, or otherwise integrate the Software or any portion of it into another project, application, product, service, codebase, model, system, or infrastructure.
+
+### e. Redistribute or Transfer
+
+Publish, distribute, sublicense, sell, rent, lease, lend, transfer, disclose, or otherwise make the Software or any portion of it available to another person or entity.
+
+### f. Remove Proprietary Notices
+
+Remove, alter, conceal, or obscure any copyright, trademark, attribution, license, or other proprietary notices contained in or accompanying the Software.
+
+### g. Artificial Intelligence and Machine Learning
+
+Use the Software, its source code, documentation, architecture, implementation, datasets, prompts, configurations, outputs, or any substantial portion thereof to train, fine-tune, evaluate, benchmark, improve, distill, or otherwise develop any artificial-intelligence or machine-learning model, system, or service.
+
+### h. Circumvention
+
+Attempt to circumvent, disable, defeat, or otherwise interfere with any technical, access-control, licensing, or security mechanism associated with the Software.
+
+### i. Commercial Exploitation
+
+Use the Software or any portion of it to provide, support, operate, or develop a commercial product, service, platform, API, SaaS offering, hosted service, consulting service, or other revenue-generating activity.
+
+## 4. PUBLIC REPOSITORIES AND PLATFORM ACCESS
+
+The Software may be made available through public repositories or code-hosting platforms.
+
+The availability of the Software through such a platform does **not** constitute a grant of open-source rights or any permission beyond the rights expressly granted by this License.
+
+Platform functionality that technically permits viewing, cloning, caching, or downloading the Software does not expand the rights granted under this License.
+
+Any use of the Software beyond the limited rights expressly granted herein requires prior written permission from the copyright owner.
+
+## 5. SUGGESTIONS AND FEEDBACK
+
+You may voluntarily provide suggestions, bug reports, feature requests, or other feedback regarding the Software.
+
+You acknowledge that the copyright owner has no obligation to implement or respond to such feedback.
+
+Unless otherwise agreed in writing, providing feedback does not grant you any ownership interest, license, or other right in the Software or in any improvement, modification, or derivative work incorporating such feedback.
+
+The copyright owner retains sole discretion over whether and how any feedback is used.
+
+## 6. NO ASSIGNMENT OR SUBLICENSING
+
+The rights granted under this License are personal to the licensee.
+
+You may not assign, transfer, sublicense, delegate, or otherwise convey any rights or obligations under this License without the prior written consent of the copyright owner.
+
+Any attempted assignment or transfer in violation of this provision is void.
+
+## 7. TERMINATION
+
+This License is effective until terminated.
+
+The License will terminate automatically and immediately upon any material breach of its terms.
+
+Upon termination, you must immediately:
+
+1. cease all access to and use of the Software;
+2. cease all copying, reproduction, distribution, and other activities involving the Software;
+3. delete or destroy all copies of the Software in your possession or control; and
+4. cease using any portion of the Software incorporated into any unauthorized work.
+
+Termination does not limit any other rights or remedies available to the copyright owner under applicable law.
+
+## 8. OWNERSHIP AND INTELLECTUAL PROPERTY
+
+The Software, including but not limited to its source code, object code, architecture, algorithms, designs, documentation, interfaces, configurations, prompts, branding, and related materials, is and remains the exclusive property of the copyright owner, except for third-party materials that are subject to their respective licenses.
+
+No ownership, copyright, patent, trademark, trade secret, or other intellectual property right is transferred or granted to you except for the limited viewing rights expressly stated in this License.
+
+Nothing in this License shall be interpreted as a waiver of any intellectual property rights held by the copyright owner.
+
+## 9. THIRD-PARTY COMPONENTS
+
+The Software may contain or depend upon third-party libraries, frameworks, models, datasets, APIs, or other materials that are subject to separate licenses.
+
+Those third-party materials remain governed by their respective licenses.
+
+This License applies only to materials owned or controlled by the copyright owner and does not supersede any applicable third-party license.
+
+## 10. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED **"AS IS" AND "AS AVAILABLE,"** WITHOUT WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE.
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT OWNER DISCLAIMS ALL WARRANTIES, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, NON-INFRINGEMENT, ACCURACY, RELIABILITY, AND AVAILABILITY.
+
+YOU ASSUME ALL RISK ARISING FROM ACCESS TO THE SOFTWARE.
+
+## 11. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT OWNER SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, OR FOR ANY LOSS OF PROFITS, DATA, BUSINESS, REVENUE, OR GOODWILL, ARISING OUT OF OR RELATING TO THIS LICENSE OR THE SOFTWARE, WHETHER BASED ON CONTRACT, TORT, NEGLIGENCE, STRICT LIABILITY, OR ANY OTHER LEGAL THEORY.
+
+## 12. GOVERNING LAW AND JURISDICTION
+
+This License shall be governed by and construed in accordance with the laws of **India**, without regard to conflict-of-law principles.
+
+Subject to applicable law, courts having jurisdiction in **[Kanpur, Uttar Pradesh, India]** shall have jurisdiction over disputes arising out of or relating to this License.
+
+## 13. SEVERABILITY
+
+If any provision of this License is determined to be invalid, illegal, or unenforceable, that provision shall be enforced to the maximum extent permitted by law, and the remaining provisions shall remain in full force and effect.
+
+## 14. ENTIRE AGREEMENT
+
+This License constitutes the entire agreement between you and the copyright owner concerning the Software and supersedes all prior or contemporaneous agreements, representations, or understandings concerning the Software.
+
+Any amendment, waiver, or additional permission must be made in writing and authorized by the copyright owner.
+
+## 15. PERMISSION FOR OTHERWISE PROHIBITED USE
+
+The copyright owner may, at their sole discretion, grant written permission for uses otherwise prohibited by this License.
+
+Such permission must be explicit and may be subject to additional terms, conditions, fees, or restrictions.
+
+## 16. COPYRIGHT OWNER
+
+**Project:** RouteWise / LLM Router
+**Copyright Owner:** Devansh Kumar Pandey
+**Copyright:** © 2026 Devansh Kumar Pandey. All rights reserved.
+
+For licensing inquiries or permission requests, contact the copyright owner through the official contact information associated with the project repository.
+
+---
+
+**© 2026 Devansh Kumar Pandey. All rights reserved.**
