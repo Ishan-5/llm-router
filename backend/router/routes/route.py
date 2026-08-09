@@ -9,7 +9,7 @@ from pydantic import BaseModel, field_validator
 from router.classifier import get_tier
 from router.rate_limiter import call_with_failover, AllTiersFailedError
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, ApiKey, UserSettings, compute_quality_score
+from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings, compute_quality_score
 from router.auth import require_api_key, check_budget
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
@@ -92,7 +92,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             log.debug("Web search failed, falling through to normal routing: %s", e)
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
-            log_request({
+            log_id = log_request({
                 "api_key_id": api_key.id, "user_id": api_key.user_id,
                 "query": sanitize_pii(req.query), "response": answer,
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
@@ -100,7 +100,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
                 "model_id": "tavily/search", "input_tokens": 0, "output_tokens": 0,
                 "cost_usd": 0.0, "latency_ms": latency_ms, "quality_score": 1.0,
             })
-            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "quality_score": 1.0}
+            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "quality_score": 1.0, "log_id": log_id}
 
     async def _maybe_check_cache():
         if req.bypass_cache:
@@ -119,7 +119,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             (cached["input_tokens"] / 1_000_000 * price_in)
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
         quality_score = compute_quality_score(cache_hit=True, cache_similarity=cached["similarity"], fallback_used=False)
-        log_request({
+        log_id = log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
             "query": sanitize_pii(req.query), "response": cached["response"],
             "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
@@ -128,7 +128,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             "cost_usd": 0.0, "latency_ms": latency_ms, "tokens_saved_usd": tokens_saved_usd,
             "quality_score": quality_score,
         })
-        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "quality_score": quality_score}
+        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "quality_score": quality_score, "log_id": log_id}
 
     routing_tier = req.override_tier if req.override_tier else tier
     over_budget = not check_budget(api_key)
@@ -189,7 +189,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "predicted_tier": "web", "override_used": False, "budget_capped": False,
             "fallback_used": False, "cache_hit": False, "difficulty_score": None,
             "cost_usd": 0.0, "latency_ms": pre["latency_ms"],
-            "model_id": "tavily/search",
+            "model_id": "tavily/search", "request_log_id": pre["log_id"],
         }
 
     if pre["type"] == "cache":
@@ -200,6 +200,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "cost_usd": 0.0, "tokens_saved_usd": pre["tokens_saved_usd"],
             "latency_ms": pre["latency_ms"], "model_id": cached["model_id"],
             "route_reason": f"cache hit (similarity {cached['similarity']:.2f})",
+            "request_log_id": pre["log_id"],
         }
 
     routing_tier = pre["tier"]
@@ -224,7 +225,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
 
     latency_ms = round((time.time() - start) * 1000, 2)
     quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=result["fallback_used"])
-    log_request({
+    log_id = log_request({
         "api_key_id": api_key.id, "user_id": api_key.user_id,
         "query": sanitize_pii(req.query), "response": result["text"],
         "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
@@ -246,6 +247,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "cheap_ceil": pre["cheap_ceil"], "frontier_floor": pre["frontier_floor"],
         "model_id": result["model_id"],
         "route_reason": pre["route_reason"] if not result["fallback_used"] else f"{pre['route_reason']} (fallback to {result['tier']})",
+        "request_log_id": log_id,
     }
 
 
@@ -260,8 +262,9 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
     if pre["type"] == "web":
         answer = pre["answer"]
         latency_ms = pre["latency_ms"]
+        log_id = pre.get("log_id")
         async def _web_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms, 'model_id': 'tavily/search'})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms, 'model_id': 'tavily/search', 'request_log_id': log_id})}\n\n"
             yield f"data: {json.dumps({'type': 'chunk', 'text': answer})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return StreamingResponse(_web_stream(), media_type="text/event-stream")
@@ -270,8 +273,9 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         cached = pre["cached"]
         tokens_saved_usd = pre["tokens_saved_usd"]
         latency_ms = pre["latency_ms"]
+        log_id = pre.get("log_id")
         async def _cache_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms, 'model_id': cached['model_id']})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms, 'model_id': cached['model_id'], 'request_log_id': log_id})}\n\n"
             yield f"data: {json.dumps({'type': 'chunk', 'text': cached['response']})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return StreamingResponse(_cache_stream(), media_type="text/event-stream")
@@ -319,7 +323,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         full_response = "".join(full_text)
         quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=False)
 
-        log_request({
+        log_id = log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
             "query": sanitize_pii(req.query), "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
@@ -332,6 +336,49 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             meta["tier"], meta["model_id"], meta["cost_usd"],
             meta["input_tokens"], meta["output_tokens"])
 
-        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id']})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id'], 'request_log_id': log_id})}\n\n"
 
     return StreamingResponse(_live_stream(), media_type="text/event-stream")
+
+
+class FeedbackRequest(BaseModel):
+    request_log_id: int
+    feedback: str  # 'up' | 'down'
+    reason: str | None = None
+
+    @field_validator("feedback")
+    @classmethod
+    def validate_feedback(cls, v):
+        if v not in ("up", "down"):
+            raise ValueError("feedback must be 'up' or 'down'")
+        return v
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) > 1000:
+                raise ValueError("reason cannot exceed 1000 characters")
+        return v
+
+
+@router.post("/route/feedback")
+async def submit_feedback(req: FeedbackRequest, api_key: ApiKey = Depends(require_api_key)):
+    session = SessionLocal()
+    try:
+        entry = session.query(RequestLog).filter(RequestLog.id == req.request_log_id).first()
+        if entry is None:
+            raise HTTPException(status_code=404, detail="Request log entry not found")
+        entry.feedback = req.feedback
+        entry.feedback_reason = req.reason or None
+        session.commit()
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        log.error("submit_feedback failed: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save feedback")
+    finally:
+        session.close()
+    return {"ok": True, "request_log_id": req.request_log_id, "feedback": req.feedback}
