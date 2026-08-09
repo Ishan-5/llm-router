@@ -99,8 +99,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const score = loading ? null : latestResult?.difficulty_score
 
   const scaled = threshold * 0.3
-  const defaultCheapCeil = +(3.4 - (scaled - 0.3) * 0.25).toFixed(3)
-  const defaultFrontierFloor = +(4.9 - scaled).toFixed(3)
+  const defaultCheapCeil = +(4.0 - (scaled - 0.3) * 0.25).toFixed(3)
+  const defaultFrontierFloor = +(6.3 - scaled).toFixed(3)
   const cheapCeil = loading ? null : (latestResult?.cheap_ceil ?? defaultCheapCeil)
   const frontierFloor = loading ? null : (latestResult?.frontier_floor ?? defaultFrontierFloor)
 

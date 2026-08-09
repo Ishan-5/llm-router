@@ -47,18 +47,19 @@ def predict_difficulty(query: str) -> float:
     return float(np.clip(score, 0, 10))
 
 
-# score_to_tier thresholds are calibrated to this model's actual output range (~1.5-5.8).
-# Training data compression means hard queries (label 7-10) score ~4.8-5.8.
-# We bias toward over-routing rather than under-routing — a frontier model on an easy
-# query wastes money; a cheap model on a hard query gives a wrong answer.
+# score_to_tier thresholds are calibrated to this model's actual output range (0-7.9).
+# Frontier-gold queries (label 8-10) predict ~6.0, so the frontier floor is set lower
+# than 8 to keep the frontier tier reachable. We bias toward over-routing rather than
+# under-routing — a frontier model on an easy query wastes money; a cheap model on a
+# hard query gives a wrong answer.
 def score_to_tier(score: float, margin: float = 0.3) -> tuple[str, float, float]:
     # Both boundaries shift with margin.
     # Economy (low margin) raises cheap ceiling + raises frontier floor → more cheap, less frontier.
     # Quality (high margin) lowers cheap ceiling + lowers frontier floor → less cheap, more frontier.
     # Slider range is 0-2. Scale margin down so balanced (1.0) keeps sensible defaults.
     scaled = margin * 0.3          # 0.0→0.0, 1.0→0.3, 2.0→0.6
-    cheap_ceil = 3.4 - (scaled - 0.3) * 0.25   # economy=3.475, balanced=3.4, quality=3.325
-    frontier_floor = 4.9 - scaled               # economy=4.9, balanced=4.6, quality=4.3
+    cheap_ceil = 4.0 - (scaled - 0.3) * 0.25   # economy=4.075, balanced=4.0, quality=3.925
+    frontier_floor = 6.3 - scaled               # economy=6.3, balanced=6.0, quality=5.7
     if score >= frontier_floor:
         tier = "frontier"
     elif score <= cheap_ceil:

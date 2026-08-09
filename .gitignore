@@ -21,3 +21,4 @@ seed_cache.py
 backend/models/minilm/tf_model.h5
 
 ARCHITECTURE.md
+production_upgrade_needed.md
