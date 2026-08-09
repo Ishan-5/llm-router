@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { sendFeedback } from '../api'
 
 export function UserBubble({ text }) {
   return (
@@ -12,8 +13,12 @@ export function UserBubble({ text }) {
   )
 }
 
-export function AssistantBubble({ result }) {
+export function AssistantBubble({ result, logId, onRegenerate, regenerating }) {
   const [copied, setCopied] = useState(false)
+  const [feedback, setFeedback] = useState(null)
+  const [feedbackSaving, setFeedbackSaving] = useState(false)
+  const [showReason, setShowReason] = useState(false)
+  const [reason, setReason] = useState('')
   const copyTimer = useRef(null)
 
   function handleCopy() {
@@ -22,6 +27,38 @@ export function AssistantBubble({ result }) {
       clearTimeout(copyTimer.current)
       copyTimer.current = setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  async function handleFeedback(vote) {
+    if (!logId) return
+    setFeedbackSaving(true)
+    try {
+      if (vote === 'down') {
+        setFeedback('down')
+        setShowReason(true)
+      } else {
+        setFeedback('up')
+        setShowReason(false)
+        await sendFeedback(logId, 'up')
+      }
+    } catch {
+      setFeedback(null)
+    } finally {
+      setFeedbackSaving(false)
+    }
+  }
+
+  async function handleSubmitReason() {
+    if (!logId || !reason.trim()) return
+    setFeedbackSaving(true)
+    try {
+      await sendFeedback(logId, 'down', reason)
+      setShowReason(false)
+    } catch {
+      setFeedback('down')
+    } finally {
+      setFeedbackSaving(false)
+    }
   }
 
   if (!result) return null
@@ -102,7 +139,69 @@ export function AssistantBubble({ result }) {
           >
             {copied ? 'copied ✓' : 'copy'}
           </button>
+          {logId && (
+            <>
+              <span className="w-px h-3 bg-line self-center" />
+              <button
+                onClick={() => handleFeedback('up')}
+                disabled={feedbackSaving}
+                className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md transition-colors disabled:opacity-50 ${
+                  feedback === 'up'
+                    ? 'text-signal bg-signal/10 border border-signal/30'
+                    : 'text-muted hover:text-primary hover:bg-base border border-transparent'
+                }`}
+                title="Good answer"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => handleFeedback('down')}
+                disabled={feedbackSaving}
+                className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md transition-colors disabled:opacity-50 ${
+                  feedback === 'down'
+                    ? 'text-danger bg-danger/10 border border-danger/30'
+                    : 'text-muted hover:text-danger hover:bg-base border border-transparent'
+                }`}
+                title="Bad answer"
+              >
+                ↓
+              </button>
+              {onRegenerate && (
+                <button
+                  onClick={() => onRegenerate(logId)}
+                  disabled={regenerating}
+                  className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-1.5 py-0.5 rounded-md hover:bg-base disabled:opacity-50"
+                  title="Regenerate this answer"
+                >
+                  {regenerating ? '…' : 'regenerate'}
+                </button>
+              )}
+            </>
+          )}
         </div>
+
+        {showReason && (
+          <div className="flex items-center gap-2 mt-1.5 px-1">
+            <input
+              autoFocus
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSubmitReason()
+                if (e.key === 'Escape') { setFeedback(null); setShowReason(false) }
+              }}
+              placeholder="What was wrong? (optional)"
+              className="flex-1 bg-base border border-line rounded-md px-2 py-1 text-xs text-primary placeholder:text-muted focus:outline-none focus:border-signal"
+            />
+            <button
+              onClick={handleSubmitReason}
+              disabled={feedbackSaving || !reason.trim()}
+              className="font-mono text-[10px] text-primary border border-line rounded-md px-2 py-1 hover:border-signal disabled:opacity-50"
+            >
+              send
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

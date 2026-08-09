@@ -52,6 +52,8 @@ class RequestLog(Base):
     latency_ms = Column(Float)
     tokens_saved_usd = Column(Float, nullable=True)
     quality_score = Column(Float, nullable=True)
+    feedback = Column(String, nullable=True, index=True)  # up | down | None
+    feedback_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
@@ -114,6 +116,22 @@ try:
 except Exception:
     pass
 
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN feedback VARCHAR"))
+        conn.commit()
+except Exception:
+    pass
+
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN feedback_reason TEXT"))
+        conn.commit()
+except Exception:
+    pass
+
 
 def compute_quality_score(cache_hit: bool, cache_similarity: float | None, fallback_used: bool) -> float:
     if cache_hit and cache_similarity is not None:
@@ -129,6 +147,7 @@ def log_request(data: dict):
         entry = RequestLog(**data)
         session.add(entry)
         session.commit()
+        return entry.id
     except Exception as e:
         log.error("log_request failed: %s | data=%s", e, {k: v for k, v in data.items() if k != 'response'})
         session.rollback()
@@ -138,8 +157,10 @@ def log_request(data: dict):
             entry = RequestLog(**data)
             session.add(entry)
             session.commit()
+            return entry.id
         except Exception as e2:
             log.error("log_request retry also failed: %s", e2)
             session.rollback()
+            return None
     finally:
         session.close()

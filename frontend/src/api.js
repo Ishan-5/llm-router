@@ -111,6 +111,19 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
   return res.json()
 }
 
+export async function sendFeedback(requestLogId, feedback, reason = '') {
+  const res = await fetch(`${API_BASE}/route/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    body: JSON.stringify({ request_log_id: requestLogId, feedback, reason }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Feedback failed' }))
+    throw new Error(err.detail || 'Feedback failed')
+  }
+  return res.json()
+}
+
 export async function fetchStats(key) {
   const headers = key
     ? { 'Authorization': `Bearer ${key}` }

@@ -9,6 +9,7 @@ import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
 export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
+  const [regeneratingIndex, setRegeneratingIndex] = useState(null)
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
@@ -41,29 +42,29 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     return { key, label: defaults.label, sub, y: defaults.y }
   })
 
-  async function handleSubmit(query, override, bypassCache) {
+  async function sendQuery(query, override, bypassCache, historyBase, replaceIndex = null) {
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
 
     // build conversation history for multi-turn
-    const history = messages.flatMap((m) =>
+    const history = historyBase.flatMap((m) =>
       m.role === 'user'
         ? [{ role: 'user', content: m.text }]
         : m.result?.response ? [{ role: 'assistant', content: m.result.response }] : []
     )
     const conversationMessages = [...history, { role: 'user', content: query }]
 
-    // save to localStorage history
-    try {
-      const prev = JSON.parse(localStorage.getItem('rw_query_history') || '[]')
-      const updated = [query, ...prev.filter((q) => q !== query)].slice(0, 50)
-      localStorage.setItem('rw_query_history', JSON.stringify(updated))
-    } catch {}
-
-    setMessages((prev) => [...prev, { role: 'user', text: query }])
     setLoading(true)
     setError(null)
+
+    const applyResult = (result) => {
+      if (replaceIndex != null) {
+        setMessages((prev) => prev.map((m, i) => (i === replaceIndex ? { role: 'assistant', result } : m)))
+      } else {
+        setMessages((prev) => [...prev, { role: 'assistant', result }])
+      }
+    }
 
     try {
       const { routeQuery } = await import('../api')
@@ -75,17 +76,41 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         threshold,
         conversationMessages,
       )
-      setMessages((prev) => [...prev, { role: 'assistant', result: data }])
+      applyResult(data)
       fetchStats().then(setTicker).catch(() => {})
       fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
       if (err.name !== 'AbortError') {
         setError(err.message)
-        setMessages((prev) => [...prev, { role: 'assistant', result: { response: `Error: ${err.message}`, routed_to: 'error', cost_usd: 0, latency_ms: 0 } }])
+        applyResult({ response: `Error: ${err.message}`, routed_to: 'error', cost_usd: 0, latency_ms: 0 })
       }
     } finally {
       setLoading(false)
+      setRegeneratingIndex(null)
     }
+  }
+
+  async function handleSubmit(query, override, bypassCache) {
+    // save to localStorage history
+    try {
+      const prev = JSON.parse(localStorage.getItem('rw_query_history') || '[]')
+      const updated = [query, ...prev.filter((q) => q !== query)].slice(0, 50)
+      localStorage.setItem('rw_query_history', JSON.stringify(updated))
+    } catch {}
+
+    setMessages((prev) => [...prev, { role: 'user', text: query }])
+    sendQuery(query, override, bypassCache, [...messages, { role: 'user', text: query }])
+  }
+
+  function handleRegenerate(index) {
+    let userIndex = -1
+    for (let i = index - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { userIndex = i; break }
+    }
+    if (userIndex === -1) return
+    const query = messages[userIndex].text
+    setRegeneratingIndex(index)
+    sendQuery(query, 'auto', true, messages.slice(0, userIndex + 1), index)
   }
 
   function handleExitChat() {
@@ -188,7 +213,15 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 {messages.map((msg, i) =>
                   msg.role === 'user'
                     ? <UserBubble key={i} text={msg.text} />
-                    : <AssistantBubble key={i} result={msg.result} />
+                    : (
+                        <AssistantBubble
+                          key={i}
+                          result={msg.result}
+                          logId={msg.result?.request_log_id}
+                          onRegenerate={() => handleRegenerate(i)}
+                          regenerating={regeneratingIndex === i}
+                        />
+                      )
                 )}
                 {loading && <TypingIndicator />}
               </div>
