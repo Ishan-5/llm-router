@@ -6,192 +6,167 @@ PROPRIETARY SOFTWARE LICENSE
 Version 1.0
 Effective Date: 9 August 2026
 
-Copyright © 2026 Devansh Kumar Pandey.
-All rights reserved.
+Copyright (c) 2026 Devansh Kumar Pandey.
+All Rights Reserved.
 
 Project: RouteWise
-Owner and Copyright Holder: Devansh Kumar Pandey
+Owner and Copyright Holder: Devansh Kumar Pandey.
+
 
 1. DEFINITIONS
 
-For purposes of this License:
-
 "Software" means RouteWise and all source code, object code, binaries,
-scripts, configurations, routing logic, algorithms, models, model-selection
-logic, prompts, templates, datasets created specifically for the Software,
-documentation, interfaces, APIs, utilities, infrastructure definitions,
-deployment configurations, dashboards, designs, and other materials
-distributed as part of or specifically created for RouteWise.
+scripts, configurations, routing logic, algorithms, model-selection logic,
+prompts, templates, original datasets, documentation, interfaces, APIs,
+utilities, deployment configurations, dashboards, designs, and other
+materials distributed as part of or specifically created for RouteWise.
 
 "Copyright Owner" means Devansh Kumar Pandey, the owner of the intellectual
-property rights in the Software, except where third-party materials are
-identified as being owned by others.
+property rights in the Software, except for Third-Party Components.
 
 "User" means any individual or legal entity that accesses, views, obtains,
 or interacts with the Software.
 
 "Third-Party Components" means libraries, frameworks, models, datasets,
 APIs, services, tools, or other materials that are not owned by the
-Copyright Owner and are distributed with, referenced by, or required by
-the Software.
+Copyright Owner.
 
-2. SOFTWARE LICENSE
+
+2. LICENSE GRANT
 
 The Software is licensed, not sold.
 
 Subject to the terms of this License, the Copyright Owner grants the User
-a limited, revocable, non-exclusive, non-transferable, non-sublicensable
+a limited, revocable, non-exclusive, non-transferable, and non-sublicensable
 license to view and inspect the publicly available source code and
-documentation of the Software solely for personal evaluation, educational
-review, and learning purposes.
+documentation solely for personal evaluation, educational review, and
+learning purposes.
 
 No other rights are granted.
 
 Any right not expressly granted by this License is expressly reserved by
 the Copyright Owner.
 
-3. PROPRIETARY STATUS
+
+3. PROPRIETARY SOFTWARE
 
 RouteWise is proprietary software.
 
-The public availability of the Software through GitHub, a website,
-repository, package registry, documentation site, or any other platform
-does not make the Software open-source software and does not grant any
-open-source license.
+Public availability of the Software through GitHub, a website, repository,
+package registry, documentation site, or any other platform does not make
+the Software open-source software and does not grant any open-source rights.
 
 The Software may be publicly viewable while remaining subject to all
 restrictions contained in this License.
+
 
 4. RESTRICTIONS
 
 Except with prior written permission from the Copyright Owner, the User
 may NOT, directly or indirectly:
 
-4.1 COPY AND REPRODUCE
+a. COPY AND REPRODUCE
 
 Copy, reproduce, duplicate, mirror, archive, scrape, republish, or
 otherwise reproduce the Software or any substantial portion of it.
 
-Temporary technical copies automatically created by ordinary operation of
-a web browser or hosting platform are not considered authorized copies
-for purposes of granting additional rights under this License.
-
-4.2 DOWNLOAD AND STORE
+b. DOWNLOAD AND STORE
 
 Download, clone, archive, store, or retain the Software or any substantial
 portion of it for purposes other than the limited viewing and evaluation
 rights expressly permitted by this License.
 
-4.3 USE OR EXECUTE
+c. USE OR EXECUTE
 
 Run, execute, install, deploy, host, operate, or otherwise use the Software
 or any portion of it, whether for commercial or non-commercial purposes.
 
-This restriction includes local execution, private deployment, cloud
-deployment, server deployment, containerized execution, hosted execution,
-and execution through any API or service.
+This includes local execution, private deployment, cloud deployment,
+server deployment, containerized execution, hosted execution, and
+execution through any API or service.
 
-4.4 MODIFY
+d. MODIFY
 
 Modify, adapt, translate, port, refactor, rewrite, optimize, patch,
 transform, or otherwise alter the Software or any portion of it.
 
-4.5 CREATE DERIVATIVE WORKS
+e. CREATE DERIVATIVE WORKS
 
 Create derivative works, substantially similar implementations, modified
 versions, ports, adaptations, forks, or other works based upon the
 Software or any substantial portion of it.
 
-4.6 INTEGRATE
+f. INTEGRATE
 
 Incorporate, embed, merge, link, import, integrate, or otherwise combine
 the Software or any substantial portion of it with another project,
 application, product, service, platform, codebase, infrastructure, or
 system.
 
-4.7 DISTRIBUTE
+g. DISTRIBUTE
 
 Publish, distribute, redistribute, transmit, disclose, sublicense, sell,
 rent, lease, lend, transfer, or otherwise make the Software or any
 substantial portion of it available to another person or entity.
 
-4.8 COMMERCIAL USE
+h. COMMERCIAL USE
 
 Use the Software or any substantial portion of it for commercial purposes,
-including but not limited to:
+including commercial products, SaaS platforms, hosted services, APIs,
+consulting services, enterprise deployments, paid applications, internal
+commercial infrastructure, or any other revenue-generating activity.
 
-* commercial products;
-* SaaS platforms;
-* hosted services;
-* APIs;
-* consulting services;
-* internal commercial infrastructure;
-* enterprise deployments;
-* paid applications;
-* paid research or development;
-* revenue-generating services; or
-* any other activity intended to generate revenue or commercial benefit.
-
-4.9 COMPETING PRODUCTS
+i. COMPETING PRODUCTS
 
 Use the Software or any substantial portion of it to develop, operate,
 benchmark, support, or improve a competing LLM routing, model-routing,
 model-selection, AI gateway, AI orchestration, or substantially similar
 system or service.
 
-4.10 ARTIFICIAL INTELLIGENCE AND MACHINE LEARNING
+j. ARTIFICIAL INTELLIGENCE AND MACHINE LEARNING
 
-Use the Software, its source code, architecture, algorithms, routing logic,
-prompts, configurations, documentation, datasets created specifically for
-the Software, outputs, or any substantial portion thereof to:
+Use the Software, source code, architecture, algorithms, routing logic,
+prompts, configurations, documentation, original datasets, outputs, or
+any substantial portion thereof to train, fine-tune, distill, benchmark,
+evaluate, improve, or develop any artificial-intelligence or
+machine-learning model, system, or service.
 
-* train an artificial-intelligence or machine-learning model;
-* fine-tune an AI or ML model;
-* distill an AI or ML model;
-* evaluate or benchmark an AI or ML model for the purpose of improving it;
-* generate training data;
-* improve another AI or ML system;
-* reproduce the functionality of RouteWise through automated extraction;
-  or
-* develop an AI or ML service substantially based on the Software.
-
-4.11 REMOVE NOTICES
+k. REMOVE NOTICES
 
 Remove, alter, conceal, or obscure any copyright, trademark, attribution,
 license, proprietary, or other legal notices contained in or accompanying
 the Software.
 
-4.12 REVERSE ENGINEERING
+l. REVERSE ENGINEERING
 
 Reverse engineer, decompile, disassemble, decode, decrypt, or otherwise
 attempt to derive the source code or underlying structure of any compiled
-or executable portion of the Software, except to the limited extent such
-activity cannot legally be restricted under applicable law.
+or executable portion of the Software, except to the extent such activity
+cannot legally be restricted under applicable law.
 
-4.13 CIRCUMVENTION
+m. CIRCUMVENTION
 
 Circumvent, disable, bypass, defeat, interfere with, or attempt to defeat
 any technical protection, authentication mechanism, access control,
 licensing mechanism, or security feature associated with the Software.
 
-5. GITHUB AND CODE-HOSTING PLATFORMS
+
+5. GITHUB AND PUBLIC REPOSITORIES
 
 The Software may be hosted on GitHub or another public code-hosting
 platform.
 
-The Copyright Owner acknowledges that such platforms may technically
-provide functionality such as viewing, cloning, caching, forking,
-downloading, indexing, or otherwise accessing repository contents.
+The technical ability of such platforms to provide viewing, cloning,
+forking, downloading, caching, indexing, or other access to repository
+contents does not constitute additional permission under this License.
 
-Such technical functionality does not constitute additional permission
-under this License.
+Public availability of the Software does not grant any right to use,
+modify, execute, distribute, commercialize, or create derivative works
+from the Software.
 
-To the maximum extent permitted by the applicable platform's terms and
-applicable law, any access to or possession of the Software does not grant
-the User permission to exercise rights that are prohibited by this License.
+Any GitHub fork, clone, mirror, archive, or copy remains subject to this
+License to the maximum extent permitted by applicable law.
 
-A GitHub fork, clone, mirror, archive, or copy of the repository remains
-subject to this License to the extent permitted by applicable law.
 
 6. OWNERSHIP AND INTELLECTUAL PROPERTY
 
@@ -200,25 +175,24 @@ the property of the Copyright Owner, except for Third-Party Components.
 
 This includes, without limitation:
 
-* source code;
-* object code;
-* algorithms;
-* routing logic;
-* model-selection logic;
-* system architecture;
-* software architecture;
-* prompts and prompt structures;
-* configurations;
-* original datasets;
-* documentation;
-* technical designs;
-* user interfaces;
-* dashboards;
-* APIs;
-* scripts;
-* deployment configurations;
-* original graphics and assets; and
-* other original materials created specifically for RouteWise.
+- source code;
+- object code;
+- algorithms;
+- routing logic;
+- model-selection logic;
+- system architecture;
+- prompts and prompt structures;
+- configurations;
+- original datasets;
+- documentation;
+- technical designs;
+- user interfaces;
+- dashboards;
+- APIs;
+- scripts;
+- deployment configurations;
+- original graphics and assets; and
+- other original materials created specifically for RouteWise.
 
 Nothing in this License transfers ownership of any copyright, patent,
 trademark, trade secret, design right, database right, or other
@@ -226,18 +200,20 @@ intellectual property right to the User.
 
 All rights not expressly granted are reserved.
 
+
 7. TRADEMARKS AND BRANDING
 
-"RouteWise", the RouteWise name, logo, branding, visual identity, and other
-project-specific marks are not licensed under this License unless
+"RouteWise", the RouteWise name, logo, branding, visual identity, and
+other project-specific marks are not licensed under this License unless
 expressly stated otherwise.
 
-Nothing in this License grants permission to use the RouteWise name,
-logo, branding, or other marks in a manner that suggests sponsorship,
+Nothing in this License grants permission to use the RouteWise name, logo,
+branding, or other marks in a manner that suggests sponsorship,
 endorsement, affiliation, ownership, or authorization by the Copyright
 Owner.
 
 Third-party trademarks remain the property of their respective owners.
+
 
 8. THIRD-PARTY COMPONENTS
 
@@ -248,29 +224,25 @@ Third-Party Components are not necessarily owned by the Copyright Owner
 and may be governed by separate licenses.
 
 Nothing in this License is intended to override, replace, restrict, or
-otherwise interfere with rights that users receive directly under a
-valid third-party license.
+otherwise interfere with rights granted directly under a valid
+third-party license.
 
 Where a Third-Party Component has its own license, that license governs
 the use of that component.
 
-The User is responsible for identifying and complying with applicable
-third-party licenses before using any Third-Party Component.
 
 9. EXTERNAL SERVICES AND MODELS
 
 RouteWise may interact with third-party APIs, LLM providers, databases,
 cloud services, model providers, or other external services.
 
-Use of such external services may be subject to separate terms,
-conditions, licenses, usage restrictions, and fees imposed by their
-respective providers.
+Use of such services may be subject to separate terms, conditions,
+licenses, usage restrictions, and fees imposed by their respective
+providers.
 
 This License does not grant permission to use any third-party service,
 model, API, dataset, or platform.
 
-The Copyright Owner is not responsible for the availability, pricing,
-accuracy, security, reliability, or terms of any third-party service.
 
 10. FEEDBACK AND SUGGESTIONS
 
@@ -280,46 +252,38 @@ ideas, improvements, or other feedback concerning the Software.
 Submission of feedback does not transfer ownership of the feedback or
 grant the User any ownership interest in the Software.
 
-Unless otherwise agreed in writing, the Copyright Owner may, at their
-discretion, use, modify, incorporate, or decline to use such feedback
-without obligation to compensate or credit the User.
+Unless otherwise agreed in writing, the Copyright Owner may use, modify,
+incorporate, or decline to use such feedback at their sole discretion.
 
-The User receives no additional license or rights merely by submitting
-feedback.
 
-11. PERMITTED EDUCATIONAL REVIEW
+11. EDUCATIONAL REVIEW
 
-The limited viewing license permits users to inspect the publicly available
-source code and documentation for the purpose of understanding, evaluating,
-studying, or learning from the Software.
+The limited viewing license permits users to inspect the publicly
+available source code and documentation for understanding, evaluation,
+study, and learning.
 
 Educational review does not include:
 
-* executing the Software;
-* deploying the Software;
-* modifying the Software;
-* creating derivative works;
-* incorporating the Software into another project;
-* redistributing the Software; or
-* using the Software to create a competing system.
+- executing the Software;
+- deploying the Software;
+- modifying the Software;
+- creating derivative works;
+- incorporating the Software into another project;
+- redistributing the Software; or
+- using the Software to create a competing system.
 
-Educational or academic interest does not by itself create an exemption
-from the restrictions of this License.
 
 12. WRITTEN PERMISSION
 
-The Copyright Owner may, at their sole discretion, grant written permission
-for activities otherwise prohibited by this License.
+The Copyright Owner may, at their sole discretion, grant written
+permission for activities otherwise prohibited by this License.
 
 Such permission must be explicit and must identify the permitted activity
-and, where applicable, its duration, scope, and conditions.
-
-Verbal statements, informal discussions, repository comments, or public
-statements do not constitute a license unless expressly confirmed in
-writing by the Copyright Owner.
+and, where applicable, its scope, duration, and conditions.
 
 The Copyright Owner may impose additional conditions, fees, attribution
-requirements, or other restrictions when granting such permission.
+requirements, or restrictions when granting permission.
+
 
 13. TERMINATION
 
@@ -333,11 +297,12 @@ a. cease accessing and using the Software;
 b. cease executing, deploying, modifying, or distributing the Software;
 c. delete or destroy unauthorized copies in their possession or control;
 d. cease using derivative works or unauthorized implementations based on
-the Software; and
+   the Software; and
 e. comply with any additional obligations required by applicable law.
 
-Termination does not limit or waive any other rights or remedies available
-to the Copyright Owner.
+Termination does not limit any other rights or remedies available to the
+Copyright Owner.
+
 
 14. NO WARRANTY
 
@@ -352,36 +317,29 @@ AVAILABILITY, AND PERFORMANCE.
 
 THE USER ASSUMES ALL RISK ARISING FROM ACCESS TO OR USE OF THE SOFTWARE.
 
+
 15. LIMITATION OF LIABILITY
 
 TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE COPYRIGHT OWNER
 SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
 CONSEQUENTIAL, EXEMPLARY, PUNITIVE, OR OTHER DAMAGES ARISING OUT OF OR
-RELATING TO:
+RELATING TO THIS LICENSE OR THE SOFTWARE.
 
-a. this License;
-b. the Software;
-c. access to or inability to access the Software;
-d. use or inability to use the Software;
-e. errors or defects in the Software;
-f. loss of data;
-g. loss of profits;
-h. loss of business;
-i. service interruption; or
-j. any unauthorized use of the Software.
+THIS INCLUDES, WITHOUT LIMITATION, DAMAGES ARISING FROM LOSS OF DATA,
+LOSS OF PROFITS, LOSS OF BUSINESS, SERVICE INTERRUPTION, OR UNAUTHORIZED
+USE OF THE SOFTWARE.
 
-This limitation applies regardless of the legal theory on which the claim
-is based, to the maximum extent permitted by applicable law.
 
 16. INDEMNIFICATION
 
-To the maximum extent permitted by applicable law, a User who violates
-this License shall be responsible for losses, claims, damages, liabilities,
-costs, and reasonable expenses arising from or relating to their
-unauthorized use, distribution, modification, deployment, or exploitation
-of the Software.
+To the maximum extent permitted by applicable law, any User who violates
+this License shall be responsible for losses, claims, damages,
+liabilities, costs, and reasonable expenses arising from or relating to
+their unauthorized use, distribution, modification, deployment, or
+exploitation of the Software.
 
 Nothing in this section limits rights that cannot legally be limited.
+
 
 17. NO ASSIGNMENT
 
@@ -394,6 +352,7 @@ permission from the Copyright Owner.
 Any attempted transfer in violation of this section is void to the extent
 permitted by applicable law.
 
+
 18. SEVERABILITY
 
 If any provision of this License is found to be invalid, unlawful, or
@@ -403,6 +362,7 @@ minimum extent necessary to make it enforceable.
 If such interpretation is not possible, the provision shall be severed,
 and the remaining provisions shall continue in full force and effect.
 
+
 19. NO WAIVER
 
 Failure by the Copyright Owner to enforce any provision of this License
@@ -410,6 +370,7 @@ shall not constitute a waiver of that provision or of the right to enforce
 it later.
 
 Any waiver must be expressly provided in writing by the Copyright Owner.
+
 
 20. ENTIRE AGREEMENT
 
@@ -421,36 +382,42 @@ communications concerning the licensing of the Software.
 Any amendment to this License must be made in writing by the Copyright
 Owner.
 
-21. GOVERNING LAW
+
+21. GOVERNING LAW AND JURISDICTION
 
 This License shall be governed by and construed in accordance with the
-laws of India, without regard to its conflict-of-law principles.
+laws of India, without regard to conflict-of-law principles.
 
-Subject to applicable law, courts having jurisdiction in Kanpur, Uttar
-Pradesh, India shall have jurisdiction over disputes arising out of or
-relating to this License or the Software.
+Subject to applicable law, courts having jurisdiction in Kanpur,
+Uttar Pradesh, India shall have jurisdiction over disputes arising out
+of or relating to this License or the Software.
 
-22. COPYRIGHT AND RIGHTS RESERVED
 
-ROUTEWISE
+22. COPYRIGHT OWNER
+
+Project:
+RouteWise
 Cost-Aware Intelligent LLM Router
 
-Copyright © 2026 Devansh Kumar Pandey.
-All rights reserved.
+Copyright Owner:
+Devansh Kumar Pandey
 
-No rights are granted except those expressly stated in this License.
+Copyright:
+Copyright (c) 2026 Devansh Kumar Pandey.
+All Rights Reserved.
 
-23. CONTACT AND LICENSING REQUESTS
+
+23. LICENSING REQUESTS
 
 Requests for commercial use, deployment, modification, redistribution,
 integration, derivative works, or any other use not expressly permitted
 by this License must be directed to the Copyright Owner through the
 official contact information provided in the RouteWise repository.
 
-Any permission granted by the Copyright Owner should be retained as
-written evidence of the authorization.
+Any permission granted by the Copyright Owner must be provided in writing.
+
 
 END OF LICENSE
 
-Copyright © 2026 Devansh Kumar Pandey.
-All rights reserved.
+Copyright (c) 2026 Devansh Kumar Pandey.
+All Rights Reserved.
