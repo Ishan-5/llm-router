@@ -9,7 +9,7 @@
 ---
 
 ### Contents
-[The problem](#the-problem) · [Screenshots](#screenshots) · [How it works](#how-it-works) · [Architecture](#architecture) · [Tech stack](#tech-stack) · [Model tiers](#model-tiers) · [The cost math](#the-cost-math) · [Measured results](#measured-results) · [Bring your own model](#bring-your-own-model) · [Security](#security) · [Engineering decisions](#engineering-decisions) · [Known limitations](#known-limitations) · [SDK](#sdk) · [MCP gateway](#mcp-gateway) · [Alerting](#alerting) · [FAQ](#faq) · [Running it](#running-it-locally) · [Project structure](#project-structure) · [Roadmap](#roadmap)
+[The problem](#the-problem) · [Screenshots](#screenshots) · [How it works](#how-it-works) · [Architecture](#architecture) · [Tech stack](#tech-stack) · [Model tiers](#model-tiers) · [The cost math](#the-cost-math) · [Measured results](#measured-results) · [Model accuracy](#model-accuracy) · [Bring your own model](#bring-your-own-model) · [Security](#security) · [Engineering decisions](#engineering-decisions) · [Known limitations](#known-limitations) · [SDK](#sdk) · [MCP gateway](#mcp-gateway) · [Alerting](#alerting) · [FAQ](#faq) · [Running it](#running-it-locally) · [Project structure](#project-structure) · [Roadmap](#roadmap)
 
 ---
 
@@ -120,6 +120,25 @@ Snapshot from the live deployment (`GET /stats`) at time of writing — real rou
 
 The tier distribution shows the router doing what it's built for — the majority of real queries are easy enough for the cheap 8B model, and only the genuinely hard ones reach the frontier tier. (Data reflects test usage accumulated while building the system — disclosed in full under [Screenshots](#screenshots).)
 
+## Model accuracy
+
+Head-to-head on the same 783 held-out Claude-gold rows (queries neither model ever trained on), each model at its balanced slider thresholds:
+
+| Metric | v15 (previous) | v20 (deployed) |
+|---|---|---|
+| MAE | 1.069 | 1.018 |
+| Spearman rank correlation | 0.850 | 0.861 |
+| Exact-tier accuracy | 70.6% | 77.5% |
+| Cheap recall | 88% | 94% |
+| Mid recall | 68% | 40% |
+| Frontier recall | 41% | 58% |
+| Under-routed frontier queries (of 261 gold) | 154 | 110 |
+| Gold training labels | 1,703 | 8,200 |
+| Balanced thresholds | 4.0 / 6.0 | 4.5 / 6.0 |
+| Per-call scoring latency | ~12 ms | ~16.5 ms |
+
+The 5× jump in Claude-verified training labels (1,703 → 8,200) bought a deliberate shift — the model is now more decisive at both boundaries. It catches far more under-routed hard queries (frontier recall 41% → 58%, under-routed cut from 154 → 110 — the failure mode that actually costs money when a hard query lands on the cheap 8B model) and sends easy queries to the cheap tier more reliably (cheap recall 88% → 94%). The tradeoff is a thinner mid band (mid recall 68% → 40%): a gold-mid query is now more likely to be pushed up to frontier or down to cheap than called mid. Overall exact-tier accuracy still improves 70.6% → 77.5%.
+
 ## Bring your own model (BYOM)
 
 Not locked into the defaults. Every tier can be pointed at any provider or model the caller already pays for — including custom model IDs no catalog could anticipate.
@@ -167,7 +186,7 @@ Supported out of the box: Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Pe
 - **Ollama doesn't run in the cloud deployment.** Render has no local GPU, so every cheap-tier request there hits Ollama, fails, and falls back to Groq. Local demos are the only place the local-model path actually runs.
 - **Dashboard data is seeded** — see the disclosure under [Screenshots](#screenshots).
 - **BYOM configuration is scoped per user, not per-API-key.** Config is loaded per user (`get_active_config(user_id)`), so each signed-in user's model choices are isolated from others — but two API keys belonging to the same user share that user's config, and script-created keys without a `user_id` share the default/global config. A fully per-key version would scope this at the `api_keys` row level.
-- **The difficulty model is weaker on system-design/architecture queries** — the training data has very few real examples of that category.
+- **The difficulty model is weakest on short, jargon-heavy math/physics one-liners** — the training pool has relatively few of those, so the model leans on sparse lexical cues. System-design/architecture error is now mid-pack after the 300-query frontier expansion.
 - **Training labels are Claude-verified, not human-audited.** Every label in the 7,488-query pool was re-scored by Claude (replacing 8B auto-labels, which over-scored by ~1.4 on average), with a 300-query frontier expansion and 8,783 total gold rows. Current model: MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy on held-out data.
 - **Injection/PII detection is regex-based**, not a trained classifier — catches known patterns, not a guarantee against novel attacks.
 - **Rate limiting is in-memory** — correct for a single server instance, would need Redis for a distributed deployment.
@@ -251,7 +270,7 @@ Webhook payload:
 
 **What happens if Groq is down?** Requests fail over tier-to-tier automatically (frontier → mid → cheap), the circuit breaker trips for 60 s and skips the failing tier, and if *every* Groq/Ollama tier fails, an independent provider (Gemini) answers as a last resort rather than returning a 503.
 
-**How accurate is the difficulty classifier?** MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy at balanced thresholds on held-out data. Trained on a 7,488-query pool where every label is now Claude-gold (replacing the 8B auto-labels), plus 712 gold-only extras — an 8,200-row training set drawn from an 8,783-row Claude-verified gold dataset. Scoring runs locally in under 20 ms — no API call needed just to decide which model to use.
+**How accurate is the difficulty classifier?** MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy at balanced thresholds on held-out data. Trained on a 7,488-query pool where every label is now Claude-gold (replacing the 8B auto-labels), plus 712 gold-only extras — an 8,200-row training set drawn from an 8,783-row Claude-verified gold dataset. Scoring runs locally in under 20 ms — no API call needed just to decide which model to use. Full v15 → v20 comparison: [Model accuracy](#model-accuracy).
 
 **Can I use my own models?** Yes — BYOM works per-request for any caller, or as a saved config for signed-in users, spanning Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama, and custom model IDs.
 
