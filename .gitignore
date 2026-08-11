@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 *.egg-info/
 node_modules/
+*.bak_*
 
 
 .env
