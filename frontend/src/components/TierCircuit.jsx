@@ -48,8 +48,8 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
   const GX = 75, GW = 250, GY = 120
   const gx = (s) => GX + (Math.min(10, Math.max(0, s)) / 10) * GW
   // use actual thresholds from last response, fall back to balanced defaults
-  const cheapTick = cheapCeil ?? 3.4
-  const frontierTick = frontierFloor ?? 4.6
+  const cheapTick = cheapCeil ?? 4.5
+  const frontierTick = frontierFloor ?? 6.0
 
   return (
     <svg viewBox="0 0 400 400" className="w-full h-auto">

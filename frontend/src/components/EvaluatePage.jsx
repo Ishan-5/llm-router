@@ -96,26 +96,26 @@ export default function EvaluatePage() {
         <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">How routing works</p>
         <div className="grid grid-cols-3 gap-3 font-mono text-[10px]">
           <div className="text-center">
-            <span className="text-cool font-semibold">Score ≤ 3</span>
+            <span className="text-cool font-semibold">Score ≤ cheap ceil</span>
             <span className="text-muted"> → Cheap</span>
           </div>
           <div className="text-center">
-            <span className="text-signal font-semibold">Score 3–threshold</span>
+            <span className="text-signal font-semibold">cheap ceil &lt; score &lt; floor</span>
             <span className="text-muted"> → Mid</span>
           </div>
           <div className="text-center">
-            <span className="text-danger font-semibold">Score ≥ threshold</span>
+            <span className="text-danger font-semibold">Score ≥ frontier floor</span>
             <span className="text-muted"> → Frontier</span>
           </div>
         </div>
         <div className="flex justify-between mt-2 font-mono text-[9px] text-muted">
-          <span>Economy: frontier ≥ 6.3</span>
-          <span>Balanced: frontier ≥ 6.0</span>
-          <span>Quality: frontier ≥ 5.7</span>
+          <span>Economy: cheap ≤ 5.25 · frontier ≥ 6.75</span>
+          <span>Balanced: cheap ≤ 4.5 · frontier ≥ 6.0</span>
+          <span>Quality: cheap ≤ 3.75 · frontier ≥ 5.25</span>
         </div>
         <p className="font-mono text-[9px] text-muted/60 mt-2">
-          The slider shifts the frontier threshold. Scores ≤ 4.0 always route to Cheap.
-          Scores 4.0–5.7 always route to Mid. Scores ≥ 5.7 change tier with the slider.
+          The slider shifts both boundaries continuously. Economy routes more to Cheap and
+          fewer to Frontier; Quality does the reverse. The mid band widens as you slide toward Economy.
         </p>
       </div>
 
@@ -202,10 +202,10 @@ export default function EvaluatePage() {
                       <p className="font-mono text-xs text-primary truncate">{r.query}</p>
                       <span className={`font-mono text-[9px] ${changes ? 'text-signal' : 'text-muted'}`}>
                         score: {r.difficulty_score.toFixed(2)}
-                        {r.difficulty_score <= 4.0 && ' (always cheap)'}
-                        {r.difficulty_score > 4.0 && r.difficulty_score < 5.7 && ' (always mid)'}
-                        {r.difficulty_score >= 5.7 && r.difficulty_score < 6.3 && ' (changes with slider)'}
-                        {r.difficulty_score >= 6.3 && ' (always frontier)'}
+                        {r.difficulty_score <= 3.75 && ' (always cheap)'}
+                        {r.difficulty_score > 3.75 && r.difficulty_score < 5.25 && ' (changes: cheap ↔ mid)'}
+                        {r.difficulty_score >= 5.25 && r.difficulty_score < 6.75 && ' (changes: mid ↔ frontier)'}
+                        {r.difficulty_score >= 6.75 && ' (always frontier)'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

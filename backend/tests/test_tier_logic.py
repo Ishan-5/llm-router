@@ -20,16 +20,16 @@ def test_margin_bumps_borderline_score_to_frontier():
 
 def test_margin_zero_uses_hard_cutoff():
     assert score_to_tier(6.0, margin=0.0)[0] == "mid"
-    assert score_to_tier(6.4, margin=0.0)[0] == "frontier"
+    assert score_to_tier(6.8, margin=0.0)[0] == "frontier"
 
 
 def test_cheap_boundary_moves_with_margin():
     assert score_to_tier(4.0, margin=0.0)[0] == "cheap"
     assert score_to_tier(4.0, margin=1.0)[0] == "cheap"
-    assert score_to_tier(4.1, margin=1.0)[0] == "mid"
+    assert score_to_tier(4.6, margin=1.0)[0] == "mid"
 
 
 def test_score_to_tier_returns_thresholds():
     tier, cheap_ceil, frontier_floor = score_to_tier(5.0, margin=1.0)
-    assert cheap_ceil == 4.0
+    assert cheap_ceil == 4.5
     assert frontier_floor == 6.0

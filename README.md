@@ -1,10 +1,10 @@
 # routewise
 
-**Cost-aware LLM request router.** Scores every query for difficulty, routes it to the cheapest model tier that can handle it, checks live web results for time-sensitive queries, caches near-duplicates, fails over across providers when one errors or rate-limits, screens for injection/PII before anything else runs, lets callers bring their own model keys, fires webhook alerts on cost/error/latency thresholds, and exposes an MCP gateway for agent tool use.
+**Cost-aware LLM request router.** Scores every query for difficulty, routes it to the cheapest model tier that can handle it, checks live web results for time-sensitive queries, caches near-duplicates, fails over across providers when one errors or rate-limits, screens for injection/PII before anything else runs, lets callers bring their own model keys, fires webhook alerts on cost/error/latency thresholds, exposes an MCP gateway for agent tool use, and records thumbs-up/down feedback on every answer to continuously improve routing quality.
 
 [**Live demo**](https://llm-router-nine-eta.vercel.app/) · [**PyPI SDK**](https://pypi.org/project/routewise/) · [**GitHub**](https://github.com/Ishan-5/llm-router)
 
-![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-teal) ![React](https://img.shields.io/badge/React-frontend-61DAFB) ![Docker](https://img.shields.io/badge/Docker-containerized-2496ED) ![LightGBM](https://img.shields.io/badge/LightGBM-difficulty%20model-orange) ![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![PyPI](https://img.shields.io/pypi/v/routewise) ![CI](https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml) [![Backend](https://img.shields.io/website?url=https%3A%2F%2Fllm-router-d2b2.onrender.com%2Fhealth&label=backend&color=green)](https://llm-router-d2b2.onrender.com/health)
+![Python](https://img.shields.io/badge/Python-3.11-blue) ![FastAPI](https://img.shields.io/badge/FastAPI-backend-teal) ![React](https://img.shields.io/badge/React-frontend-61DAFB) ![Docker](https://img.shields.io/badge/Docker-containerized-2496ED) ![LightGBM](https://img.shields.io/badge/LightGBM-difficulty%20model-orange) ![Tests](https://img.shields.io/badge/tests-38%20passing-brightgreen) ![License](https://img.shields.io/badge/license-Proprietary-red) ![PyPI](https://img.shields.io/pypi/v/routewise) ![CI](https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml) [![Backend](https://img.shields.io/website?url=https%3A%2F%2Fllm-router-d2b2.onrender.com%2Fhealth&label=backend&color=green)](https://llm-router-d2b2.onrender.com/health)
 
 ---
 
@@ -30,7 +30,7 @@ Pulled from `/stats`. **Note on this data:** it reflects test usage over several
 ## How it works
 
 1. **Guard** — every incoming query is checked for prompt-injection patterns and PII before anything else happens; flagged injection attempts are rejected with a 400, PII is sanitized before being logged.
-2. **Search or Score** — time-sensitive queries (regex-detected: "today," "latest," "current," etc.) are routed to a live web search instead of an LLM. Everything else gets a difficulty score from a LightGBM regressor, trained on 7,488 labeled queries, running locally in under 100ms with no API call required.
+2. **Search or Score** — time-sensitive queries (regex-detected: "today," "latest," "current," etc.) are routed to a live web search instead of an LLM. Everything else gets a difficulty score from a LightGBM regressor, trained on a 1,700+ human-verified gold set distilled from a 7,488-query labeled pool, running locally in under 100ms with no API call required.
 3. **Route** — the score maps to `cheap` / `mid` / `frontier` using two thresholds (`cheap_ceil` and `frontier_floor`) that both shift with a user-controlled sensitivity slider (economy → balanced → quality). Both boundaries move — economy raises the cheap ceiling and frontier floor (more cheap, less frontier); quality lowers both (less cheap, more frontier).
 4. **Respond** — a semantic cache checks for near-duplicate queries first. If the assigned tier's provider fails or rate-limits, the request steps down to the next tier automatically. If the *entire* tier chain fails (e.g. a full Groq outage), an independent second provider (Gemini) is tried as a last resort before giving up.
 
@@ -151,9 +151,9 @@ Supported out of the box: Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Pe
 
 ## Engineering decisions
 
-- **Continuous score, not fixed categories.** The difficulty model outputs a float (practical range ~1.5–5.8 due to training data compression) theoretical range 0-10. Routing thresholds can be retuned without relabeling any data.
-- **Training data mirrors real traffic.** The 7,488-query labeled set is right-skewed toward easy-to-moderate queries (mean difficulty 4.9/10, median 4, 47% of queries score ≥5, 25% ≥7). That's the distribution routing is actually built for — the sparse tail of expert-level queries (scores 9–10, ~12%) is exactly where the model's under-confidence shows up as the system-design weakness noted under [Known limitations](#known-limitations).
-- **Both tier boundaries move with the slider.** `cheap_ceil` and `frontier_floor` both shift together — economy mode raises both (more cheap), quality mode lowers both (more frontier). The slider maps 0–2 to a scaled margin so the defaults at `balanced=1.0` stay sensible.
+- **Continuous score, not fixed categories.** The difficulty model outputs a float (practical range ~0–9 in the current model; theoretical range 0-10). Routing thresholds can be retuned without relabeling any data.
+- **Training data mirrors real traffic.** The 7,488-query labeled pool is right-skewed toward easy-to-moderate queries (mean difficulty 3.5/10, median 3, 27% of queries score ≥5, 15% ≥7). That's the distribution routing is actually built for — the sparse tail of expert-level queries (scores 8–10, ~14%) is exactly where the model's under-confidence shows up as the system-design weakness noted under [Known limitations](#known-limitations).
+- **Both tier boundaries move with the slider.** `cheap_ceil` and `frontier_floor` both shift together — economy mode raises both (more cheap), quality mode lowers both (more frontier). At `balanced=1.0` they sit at cheap ≤ 4.5 and frontier ≥ 6.0, and slide ±0.75 per slider step (economy: 5.25/6.75, quality: 3.75/5.25).
 - **`score_to_tier` returns a tuple `(tier, cheap_ceil, frontier_floor)`.** The thresholds are returned alongside the tier so the `/route` response can include them and the frontend diagram can render live tick marks without a separate API call.
 - **Cache threshold is conservative (0.95 cosine similarity) on purpose.** Semantic similarity isn't correctness — *"convert 5 miles to km"* and *"convert 10 miles to km"* are ~95%+ similar in embedding space with different correct answers. Fewer cache hits beats a wrong cached answer.
 - **Cheap-tier fallback lives inside the provider call, not the tier chain.** If Ollama fails, Groq serves the request instead — transparently, still logged as tier `cheap`.
@@ -168,7 +168,7 @@ Supported out of the box: Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Pe
 - **Dashboard data is seeded** — see the disclosure under [Screenshots](#screenshots).
 - **BYOM configuration is scoped per user, not per-API-key.** Config is loaded per user (`get_active_config(user_id)`), so each signed-in user's model choices are isolated from others — but two API keys belonging to the same user share that user's config, and script-created keys without a `user_id` share the default/global config. A fully per-key version would scope this at the `api_keys` row level.
 - **The difficulty model is weaker on system-design/architecture queries** — the training data has very few real examples of that category.
-- **Training labels have some noise.** Auto-labeled by an LLM, validated against a 210-row hand-labeled gold set, not fully human-audited. Current model: MAE 1.09, Spearman 0.79 on held-out data.
+- **Training labels are Claude-verified, not human-audited.** Every label in the 7,488-query pool was re-scored by Claude (replacing 8B auto-labels, which over-scored by ~1.4 on average), with a 300-query frontier expansion and 8,783 total gold rows. Current model: MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy on held-out data.
 - **Injection/PII detection is regex-based**, not a trained classifier — catches known patterns, not a guarantee against novel attacks.
 - **Rate limiting is in-memory** — correct for a single server instance, would need Redis for a distributed deployment.
 - **Alert cooldown is DB-backed, but the check loop runs per-process.** `last_fired_at` is read from and written back to the DB on every loop iteration, so a fired alert won't re-fire for an hour even across instances — except for a small race window if two processes check the same rule before either commits. Not a concern for a single instance.
@@ -251,7 +251,7 @@ Webhook payload:
 
 **What happens if Groq is down?** Requests fail over tier-to-tier automatically (frontier → mid → cheap), the circuit breaker trips for 60 s and skips the failing tier, and if *every* Groq/Ollama tier fails, an independent provider (Gemini) answers as a last resort rather than returning a 503.
 
-**How accurate is the difficulty classifier?** MAE 1.09, Spearman 0.79 on held-out data, trained on 7,488 labeled queries. Scoring runs locally in under 100 ms — no API call needed just to decide which model to use.
+**How accurate is the difficulty classifier?** MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy at balanced thresholds on held-out data. Trained on a 7,488-query pool where every label is now Claude-gold (replacing the 8B auto-labels), plus 712 gold-only extras — an 8,200-row training set drawn from an 8,783-row Claude-verified gold dataset. Scoring runs locally in under 20 ms — no API call needed just to decide which model to use.
 
 **Can I use my own models?** Yes — BYOM works per-request for any caller, or as a saved config for signed-in users, spanning Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama, and custom model IDs.
 
@@ -298,7 +298,7 @@ llm-router/
 │   ├── router/
 │   │   ├── main.py               # FastAPI app, mounts all routers, alert loop, /health, /metrics
 │   │   ├── routes/
-│   │   │   ├── route.py          # /route, /route/stream
+│   │   │   ├── route.py          # /route, /route/stream, /route/feedback
 │   │   │   ├── keys.py           # /keys CRUD
 │   │   │   ├── config.py         # /config, /pricing, /providers
 │   │   │   ├── stats.py          # /stats, /logs, /analytics, /calibrate, /compare, /evaluate
