@@ -11,7 +11,7 @@ const STEPS = [
     n: '02',
     title: 'Score',
     short: 'Classify difficulty',
-    body: 'A LightGBM model trained on 7,488 queries predicts a 0–10 difficulty score directly from the text — sub-100ms, no API call.',
+    body: 'A LightGBM ensemble trained on 8,200 Claude-gold labels predicts a 0–10 difficulty score directly from the text — ~20ms, no API call.',
   },
   {
     n: '03',

@@ -165,7 +165,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 Most queries<br />don't need your<br /><span className="text-signal">most expensive</span> model.
               </h1>
               <p className="text-muted text-base leading-relaxed max-w-md mb-6">
-                A regression model trained on 7,488 labeled queries predicts how hard each
+                A regression model trained on 8,200 Claude-gold labels predicts how hard each
                 request actually is, then routes it to the cheapest tier that can handle it.
               </p>
               {savedPct !== null && (
