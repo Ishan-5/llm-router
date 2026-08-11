@@ -9,6 +9,18 @@ _MINILM_LOCAL = os.path.join(os.path.dirname(__file__), "..", "models", "minilm"
 _EMBEDDER_NAME = _MINILM_LOCAL if os.path.isdir(_MINILM_LOCAL) else "sentence-transformers/all-MiniLM-L6-v2"
 
 
+class EnsembleRegressor:
+    """Deployed difficulty model = average of two LightGBM regressors (v18 + v19).
+    Defined in this module so joblib.load() can always resolve it."""
+
+    def __init__(self, models):
+        self.models = models
+
+    def predict(self, X):
+        preds = [np.clip(m.predict(X), 0, 10) for m in self.models]
+        return np.clip(np.mean(preds, axis=0), 0, 10)
+
+
 _bundle = None
 _embedder = None
 
@@ -47,19 +59,21 @@ def predict_difficulty(query: str) -> float:
     return float(np.clip(score, 0, 10))
 
 
-# score_to_tier thresholds are calibrated to this model's actual output range (0-7.9).
+# score_to_tier thresholds are calibrated to the v20 ensemble's output range (0-9).
 # Frontier-gold queries (label 8-10) predict ~6.0, so the frontier floor is set lower
 # than 8 to keep the frontier tier reachable. We bias toward over-routing rather than
 # under-routing — a frontier model on an easy query wastes money; a cheap model on a
 # hard query gives a wrong answer.
+#
+# Both boundaries slide continuously with margin:
+#   economy (0.0): cheap<=5.25, frontier>=6.75  -> cheapest routing, fewest frontier calls
+#   balanced (1.0): cheap<=4.5, frontier>=6.0   -> default, wide mid band
+#   quality (2.0): cheap<=3.75, frontier>=5.25  -> strongest models for more queries
 def score_to_tier(score: float, margin: float = 0.3) -> tuple[str, float, float]:
-    # Both boundaries shift with margin.
-    # Economy (low margin) raises cheap ceiling + raises frontier floor → more cheap, less frontier.
-    # Quality (high margin) lowers cheap ceiling + lowers frontier floor → less cheap, more frontier.
-    # Slider range is 0-2. Scale margin down so balanced (1.0) keeps sensible defaults.
     scaled = margin * 0.3          # 0.0→0.0, 1.0→0.3, 2.0→0.6
-    cheap_ceil = 4.0 - (scaled - 0.3) * 0.25   # economy=4.075, balanced=4.0, quality=3.925
-    frontier_floor = 6.3 - scaled               # economy=6.3, balanced=6.0, quality=5.7
+    t = (scaled - 0.3) / 0.3       # -1.0 (economy) -> 0.0 (balanced) -> +1.0 (quality)
+    cheap_ceil = 4.5 - t * 0.75    # economy=5.25, balanced=4.5, quality=3.75
+    frontier_floor = 6.0 - t * 0.75  # economy=6.75, balanced=6.0, quality=5.25
     if score >= frontier_floor:
         tier = "frontier"
     elif score <= cheap_ceil:
