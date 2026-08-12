@@ -12,7 +12,6 @@ function createSupabaseStub() {
       signInWithPassword: async () => ({ error: { message: 'Supabase not configured' } }),
       signInWithOAuth: async () => ({ error: { message: 'Supabase not configured' } }),
       resetPasswordForEmail: async () => ({ error: { message: 'Supabase not configured' } }),
-      getSettings: async () => ({ data: { settings: { external: {} } } }),
       signOut: async () => {},
     },
   }
@@ -21,3 +20,15 @@ function createSupabaseStub() {
 export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : createSupabaseStub()
+
+export async function fetchEnabledProviders() {
+  if (!SUPABASE_URL) return {}
+  try {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`)
+    if (!res.ok) return {}
+    const json = await res.json()
+    return json.external || {}
+  } catch {
+    return {}
+  }
+}

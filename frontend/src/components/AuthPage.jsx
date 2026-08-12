@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../supabase'
+import { supabase, fetchEnabledProviders } from '../supabase'
 
 const inputClass =
   'w-full bg-base border border-line rounded-lg pl-10 pr-4 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/40 focus:border-signal transition-colors'
@@ -79,10 +79,8 @@ export default function AuthPage() {
 
   useEffect(() => {
     let active = true
-    supabase.auth
-      .getSettings()
-      .then(({ data }) => {
-        const external = data?.settings?.external || {}
+    fetchEnabledProviders()
+      .then((external) => {
         if (active) setEnabledProviders(external)
       })
       .catch(() => {})
