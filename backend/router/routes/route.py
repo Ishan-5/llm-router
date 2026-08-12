@@ -15,6 +15,7 @@ from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.model_config_loader import get_active_config, get_pricing_for_model
 from router.providers import stream_model
+from router.quality_judge import update_quality_score
 
 router = APIRouter()
 log = logging.getLogger("routewise")
@@ -237,6 +238,8 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "quality_score": quality_score,
     })
     loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"])
+    if log_id is not None:
+        loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), result["text"], result["tier"], result["model_id"])
     return {
         "response": result["text"], "routed_to": result["tier"],
         "intended_tier": result["intended_tier"], "predicted_tier": pre["predicted_tier"],
@@ -335,6 +338,8 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         loop.run_in_executor(executor, add_to_cache, req.query, full_response,
             meta["tier"], meta["model_id"], meta["cost_usd"],
             meta["input_tokens"], meta["output_tokens"])
+        if log_id is not None:
+            loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), full_response, meta["tier"], meta["model_id"])
 
         yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id'], 'request_log_id': log_id})}\n\n"
 
