@@ -19,7 +19,7 @@ const ApiPlayground = lazy(() => import('./components/ApiPlayground'))
 const GuidePage = lazy(() => import('./components/GuidePage'))
 const AdminPage = lazy(() => import('./components/AdminPage'))
 const EvaluatePage = lazy(() => import('./components/EvaluatePage'))
-const GetStartedPage = lazy(() => import('./components/GetStartedPage'))
+const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'))
 const Features = lazy(() => import('./components/Features'))
 
 const TITLES = {
@@ -280,7 +280,7 @@ export default function App() {
             } />
             <Route path="/guide" element={<GuidePage />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
-            <Route path="/get-started" element={<GetStartedPage />} />
+            <Route path="/get-started" element={<OnboardingWizard />} />
             <Route path="/admin" element={<AdminPage user={user} />} />
             <Route path="*" element={
               <div className="max-w-3xl mx-auto px-6 py-32 text-center">
