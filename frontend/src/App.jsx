@@ -58,14 +58,37 @@ function PageSkeleton({ type }) {
   }
   if (type === 'auth') {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center px-6">
-        <div className="w-full max-w-sm flex flex-col gap-4">
-          <div className="h-5 w-32 bg-line rounded animate-pulse" />
-          <div className="h-8 w-40 bg-line rounded animate-pulse" />
-          <div className="h-4 w-56 bg-line rounded animate-pulse" />
-          <div className="h-12 w-full bg-line rounded animate-pulse" />
-          <div className="h-12 w-full bg-line rounded animate-pulse" />
-          <div className="h-10 w-full bg-signal/30 rounded-lg animate-pulse" />
+      <div className="min-h-screen flex bg-base">
+        <div className="hidden lg:flex flex-col justify-between w-[46%] max-w-xl px-12 py-14"
+          style={{ background: 'linear-gradient(160deg, #131820 0%, #1A202C 55%, #2A1708 100%)' }}>
+          <div className="flex items-center gap-2">
+            <div className="h-2.5 w-2.5 rounded-full bg-signal/50 animate-pulse" />
+            <div className="h-5 w-32 bg-white/20 rounded animate-pulse" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-9 w-72 bg-white/15 rounded animate-pulse" />
+            <div className="h-9 w-56 bg-white/15 rounded animate-pulse" />
+            <div className="h-4 w-80 bg-white/10 rounded animate-pulse mt-4" />
+            <div className="h-4 w-64 bg-white/10 rounded animate-pulse" />
+          </div>
+          <div className="grid grid-cols-3 gap-4 border-t border-white/10 pt-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i}>
+                <div className="h-7 w-16 bg-white/15 rounded animate-pulse mb-2" />
+                <div className="h-3 w-20 bg-white/10 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center px-6 py-16">
+          <div className="w-full max-w-md flex flex-col gap-4">
+            <div className="h-10 w-full bg-line rounded-lg animate-pulse" />
+            <div className="h-5 w-40 bg-line rounded animate-pulse mt-2" />
+            <div className="h-4 w-56 bg-line rounded animate-pulse" />
+            <div className="h-12 w-full bg-line rounded animate-pulse" />
+            <div className="h-12 w-full bg-line rounded animate-pulse" />
+            <div className="h-10 w-full bg-signal/30 rounded-lg animate-pulse" />
+          </div>
         </div>
       </div>
     )
@@ -229,13 +252,15 @@ export default function App() {
       {toast && (
         <span className="fixed top-4 right-4 z-50 bg-surface border border-line text-primary text-xs font-mono px-4 py-2 rounded-full shadow-lg">{toast}</span>
       )}
-      <Header
-        isDark={isDark}
-        toggleTheme={toggle}
-        onOpenSettings={() => setShowSettings(true)}
-        byomActive={byomActive}
-        user={user}
-      />
+      {location.pathname !== '/auth' && (
+        <Header
+          isDark={isDark}
+          toggleTheme={toggle}
+          onOpenSettings={() => setShowSettings(true)}
+          byomActive={byomActive}
+          user={user}
+        />
+      )}
       <div key={location.pathname} className="animate-[page-fade-in_0.25s_ease-out]">
         <Suspense fallback={<PageSkeleton type={PAGE_SKELETONS[location.pathname]} />}>
           <Routes location={location}>
@@ -268,7 +293,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </div>
-      <Footer />
+      {location.pathname !== '/auth' && <Footer />}
       <CommandPalette
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
