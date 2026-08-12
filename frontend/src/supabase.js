@@ -12,6 +12,7 @@ function createSupabaseStub() {
       signInWithPassword: async () => ({ error: { message: 'Supabase not configured' } }),
       signInWithOAuth: async () => ({ error: { message: 'Supabase not configured' } }),
       resetPasswordForEmail: async () => ({ error: { message: 'Supabase not configured' } }),
+      getSettings: async () => ({ data: { settings: { external: {} } } }),
       signOut: async () => {},
     },
   }
