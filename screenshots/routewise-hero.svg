@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 380" font-family="Segoe UI, system-ui, Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B1220"/>
+      <stop offset="1" stop-color="#0F1B33"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#A78BFA"/>
+      <stop offset="0.5" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+    <linearGradient id="arcGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#34D399"/>
+      <stop offset="0.6" stop-color="#60A5FA"/>
+      <stop offset="1" stop-color="#F472B6"/>
+    </linearGradient>
+    <pattern id="dots" width="26" height="26" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="1.2" fill="#1E293B"/>
+    </pattern>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="380" rx="24" fill="url(#bg)"/>
+  <rect width="1200" height="380" rx="24" fill="url(#dots)"/>
+
+  <!-- Title -->
+  <text x="70" y="82" font-size="50" font-weight="700" fill="url(#titleGrad)">RouteWise</text>
+  <text x="72" y="120" font-size="20" fill="#94A3B8" letter-spacing="2">COST-AWARE LLM REQUEST ROUTING</text>
+
+  <!-- Chips -->
+  <g font-size="15" fill="#CBD5E1">
+    <rect x="70" y="142" width="200" height="34" rx="17" fill="#1E293B" stroke="#334155"/>
+    <text x="90" y="164">Difficulty scoring</text>
+    <rect x="282" y="142" width="168" height="34" rx="17" fill="#1E293B" stroke="#334155"/>
+    <text x="302" y="164">Auto failover</text>
+    <rect x="462" y="142" width="150" height="34" rx="17" fill="#1E293B" stroke="#334155"/>
+    <text x="482" y="164">9+ providers</text>
+  </g>
+
+  <!-- Query box -->
+  <rect x="40" y="200" width="250" height="128" rx="16" fill="#0F172A" stroke="#334155" stroke-width="1.5"/>
+  <text x="60" y="226" font-size="11" fill="#64748B" letter-spacing="2">USER QUERY</text>
+  <text x="60" y="252" font-size="16" fill="#E2E8F0">Design a distributed</text>
+  <text x="60" y="274" font-size="16" fill="#E2E8F0">rate limiter in detail</text>
+  <text x="60" y="300" font-size="13" fill="#38BDF8">difficulty? <tspan fill="#64748B">awaiting score</tspan></text>
+  <circle cx="236" cy="299" r="2.2" fill="#38BDF8">
+    <animate attributeName="opacity" values="1;0;1" dur="1s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Arrow query -> gauge -->
+  <line x1="292" y1="264" x2="372" y2="264" stroke="#334155" stroke-width="2" stroke-dasharray="6 5">
+    <animate attributeName="stroke-dashoffset" values="0;22" dur="1s" repeatCount="indefinite"/>
+  </line>
+  <polygon points="372,258 388,264 372,270" fill="#334155"/>
+
+  <!-- Gauge -->
+  <circle cx="500" cy="260" r="110" fill="none" stroke="#1E293B" stroke-width="16"/>
+  <path d="M390 260 A110 110 0 0 1 610 260" fill="none" stroke="url(#arcGrad)" stroke-width="16" stroke-linecap="round" stroke-dasharray="346" stroke-dashoffset="346" filter="url(#glow)">
+    <animate attributeName="stroke-dashoffset" values="346;346;70;70;346" keyTimes="0;0.12;0.45;0.6;1" dur="8s" repeatCount="indefinite"/>
+  </path>
+  <g stroke="#475569" stroke-width="2">
+    <line x1="500" y1="150" x2="500" y2="164"/>
+    <line x1="422" y1="182" x2="432" y2="190"/>
+    <line x1="578" y1="182" x2="568" y2="190"/>
+    <line x1="390" y1="260" x2="401" y2="260"/>
+    <line x1="610" y1="260" x2="599" y2="260"/>
+  </g>
+  <text x="378" y="290" font-size="12" fill="#64748B">0</text>
+  <text x="596" y="290" font-size="12" fill="#64748B">10</text>
+
+  <!-- Needle -->
+  <g>
+    <animateTransform attributeName="transform" type="rotate" values="95 500 260;95 500 260;-90 500 260;-90 500 260;95 500 260" keyTimes="0;0.12;0.4;0.6;1" dur="8s" repeatCount="indefinite"/>
+    <line x1="500" y1="260" x2="500" y2="180" stroke="#E2E8F0" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="500" cy="260" r="9" fill="#0F172A" stroke="#E2E8F0" stroke-width="3"/>
+  </g>
+  <text x="468" y="318" font-size="14" fill="#A78BFA">score 7.2 / 10</text>
+
+  <!-- Arrow gauge -> frontier -->
+  <line x1="614" y1="246" x2="906" y2="198" stroke="#334155" stroke-width="2" stroke-dasharray="6 5">
+    <animate attributeName="stroke-dashoffset" values="0;-22" dur="1s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- Moving packets -->
+  <circle r="6" fill="#38BDF8" filter="url(#glow)">
+    <animateMotion dur="8s" repeatCount="indefinite" path="M 290 264 L 490 264"/>
+  </circle>
+  <circle r="6" fill="#A78BFA" filter="url(#glow)">
+    <animateMotion dur="8s" repeatCount="indefinite" begin="2.6s" path="M 615 240 L 890 200"/>
+  </circle>
+
+  <!-- Tiers -->
+  <rect x="920" y="120" width="250" height="62" rx="14" fill="#0F172A" stroke="#34D399"/>
+  <text x="940" y="145" font-size="15" fill="#34D399" font-weight="600">Cheap</text>
+  <text x="940" y="167" font-size="13" fill="#94A3B8">llama-3.1-8b-instant</text>
+  <rect x="920" y="196" width="250" height="62" rx="14" fill="#0F172A" stroke="#FBBF24"/>
+  <text x="940" y="221" font-size="15" fill="#FBBF24" font-weight="600">Mid</text>
+  <text x="940" y="243" font-size="13" fill="#94A3B8">gpt-oss-20b</text>
+  <rect x="920" y="272" width="250" height="62" rx="14" fill="#0F172A" stroke="#F472B6" filter="url(#glow)"/>
+  <text x="940" y="297" font-size="15" fill="#F472B6" font-weight="600">Frontier</text>
+  <text x="940" y="319" font-size="13" fill="#94A3B8">gpt-oss-120b</text>
+  <circle cx="1160" cy="303" r="6" fill="#F472B6" filter="url(#glow)">
+    <animate attributeName="r" values="4;9;4" dur="1.6s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.4;1" dur="1.6s" repeatCount="indefinite"/>
+  </circle>
+  <text x="920" y="362" font-size="12" fill="#64748B">routed to the cheapest tier that can answer it</text>
+</svg>
