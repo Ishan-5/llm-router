@@ -10,6 +10,8 @@ function createSupabaseStub() {
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
       signUp: async () => ({ error: { message: 'Supabase not configured' } }),
       signInWithPassword: async () => ({ error: { message: 'Supabase not configured' } }),
+      signInWithOAuth: async () => ({ error: { message: 'Supabase not configured' } }),
+      resetPasswordForEmail: async () => ({ error: { message: 'Supabase not configured' } }),
       signOut: async () => {},
     },
   }
