@@ -34,6 +34,12 @@
 
 </div>
 
+<img src="./screenshots/routewise-hero.svg" alt="Animated: a query is scored on a live 0-10 difficulty gauge, then a packet flies across to the Frontier tier" />
+
+> [!TIP]
+> This banner is **live** — watch the gauge needle sweep, the packet fly, and the frontier
+> node pulse. Repo READMEs support animated SVGs like this; see `screenshots/routewise-hero.svg`.
+
 ---
 
 ## 🚀 Quick start
@@ -123,6 +129,8 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | 🪙 Economy | ≤ 5.25 | ≥ 6.75 | Max cheap, min frontier spend |
 | ⚖️ Balanced | ≤ 4.5 | ≥ 6.0 | Default |
 | 💎 Quality | ≤ 3.75 | ≥ 5.25 | Max frontier quality |
+
+<img src="./screenshots/tier-slider.svg" alt="Animated: the cheap and frontier boundary knobs slide together between economy, balanced, and quality" />
 
 ---
 
