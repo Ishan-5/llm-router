@@ -52,6 +52,7 @@ class RequestLog(Base):
     latency_ms = Column(Float)
     tokens_saved_usd = Column(Float, nullable=True)
     quality_score = Column(Float, nullable=True)
+    quality_judged = Column(Boolean, nullable=True, default=False)
     feedback = Column(String, nullable=True, index=True)  # up | down | None
     feedback_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
@@ -128,6 +129,14 @@ try:
     from sqlalchemy import text
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE request_logs ADD COLUMN feedback_reason TEXT"))
+        conn.commit()
+except Exception:
+    pass
+
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN quality_judged BOOLEAN DEFAULT FALSE"))
         conn.commit()
 except Exception:
     pass

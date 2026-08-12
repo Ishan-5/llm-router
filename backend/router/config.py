@@ -9,6 +9,7 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+GROQ_JUDGE_API_KEY = os.getenv("GROQ_JUDGE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID", "")
@@ -73,3 +74,6 @@ GEMINI_FALLBACK_CONFIG = {
     "price_per_m_input": 0.075,
     "price_per_m_output": 0.30,
 }
+
+# LLM-as-judge: scores answer quality in the background. Uses its own Groq key.
+GROQ_JUDGE_MODEL = "llama-3.3-70b-versatile"

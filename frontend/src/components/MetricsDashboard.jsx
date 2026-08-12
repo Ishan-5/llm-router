@@ -136,9 +136,9 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
                   {savedPct}% saved
                 </span>
               )}
-              {stats.average_quality != null && stats.average_quality > 0 && (
+              {stats.judged_quality_avg != null && stats.judged_quality_avg > 0 && (
                 <span className="font-mono text-sm font-semibold text-cool bg-cool/10 border border-cool/20 rounded-full px-3 py-1">
-                  {(stats.average_quality * 100).toFixed(0)}% quality
+                  {(stats.judged_quality_avg * 100).toFixed(0)}% quality
                 </span>
               )}
             </div>
@@ -189,12 +189,76 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
           sub={`${stats.fallback_count || 0} fallbacks triggered`}
         />
         <StatBox
-          label="Quality retained"
-          value={stats.average_quality != null && stats.average_quality > 0 ? `${(stats.average_quality * 100).toFixed(0)}%` : '—'}
+          label="Answer quality"
+          value={stats.judged_quality_avg != null && stats.judged_quality_avg > 0 ? `${(stats.judged_quality_avg * 100).toFixed(0)}%` : '—'}
           icon={<StarIcon />}
-          color={stats.average_quality >= 0.97 ? 'cool' : stats.average_quality >= 0.90 ? 'signal' : 'danger'}
-          sub={stats.average_quality > 0 ? 'avg across all requests' : 'will appear after first request'}
+          color={stats.judged_quality_avg >= 0.97 ? 'cool' : stats.judged_quality_avg >= 0.90 ? 'signal' : 'danger'}
+          sub={stats.quality_judged_count > 0 ? `judge-scored ${stats.quality_judged_count} responses` : 'will appear after first response'}
         />
+      </div>
+
+      {/* Quality + feedback */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        <div className="bg-panel border border-line rounded-xl p-5">
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Judge-measured quality</h3>
+          <p className="font-mono text-[10px] text-muted mb-4">
+            Every live response is scored 0–100 by an LLM judge in the background — zero added latency
+          </p>
+          <div className="flex items-baseline gap-2 mb-3">
+            <span className={`font-display text-4xl font-bold ${stats.judged_quality_avg >= 0.9 ? 'text-cool' : stats.judged_quality_avg >= 0.75 ? 'text-signal' : 'text-danger'}`}>
+              {stats.quality_judged_count > 0 ? `${(stats.judged_quality_avg * 100).toFixed(0)}%` : '—'}
+            </span>
+            <span className="font-mono text-[10px] text-muted">
+              {stats.quality_judged_count > 0 ? `avg of ${stats.quality_judged_count} judge-scored responses` : 'awaiting first scored response'}
+            </span>
+          </div>
+          {stats.quality_judged_count > 0 && (
+            <div className="h-2 rounded-full bg-surface border border-line overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.round(stats.judged_quality_avg * 100))}%`, background: stats.judged_quality_avg >= 0.9 ? 'var(--color-cool)' : stats.judged_quality_avg >= 0.75 ? 'var(--color-signal)' : 'var(--color-danger)' }} />
+            </div>
+          )}
+          <p className="font-mono text-[10px] text-muted mt-4">
+            Scored by llama-3.3-70b on Groq — penalizes refusals, hallucinations, and missing answers.
+          </p>
+        </div>
+
+        <div className="bg-panel border border-line rounded-xl p-5">
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-4">User feedback</h3>
+          {stats.feedback_total > 0 ? (
+            <>
+              <div className="flex items-center gap-6 mb-4">
+                <div>
+                  <p className="font-display text-4xl font-bold text-cool">
+                    {Math.round(((stats.feedback_counts?.up || 0) / stats.feedback_total) * 100)}%
+                  </p>
+                  <p className="font-mono text-[10px] text-muted mt-1">{stats.feedback_total} ratings given</p>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-[10px] text-muted">▲ up</span>
+                    <span className="font-mono text-xs text-primary font-medium">{stats.feedback_counts?.up || 0}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface border border-line overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${Math.round(((stats.feedback_counts?.up || 0) / stats.feedback_total) * 100)}%`, background: 'var(--color-cool)' }} />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-2">
+                    <span className="font-mono text-[10px] text-muted">▼ down</span>
+                    <span className="font-mono text-xs text-primary font-medium">{stats.feedback_counts?.down || 0}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface border border-line overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${Math.round(((stats.feedback_counts?.down || 0) / stats.feedback_total) * 100)}%`, background: 'var(--color-danger)' }} />
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="h-24 border border-dashed border-line rounded-lg flex items-center justify-center">
+              <p className="font-mono text-xs text-muted text-center px-6">
+                No feedback yet — rate any response with the thumbs up/down on the results page.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Charts row 1: Cost comparison + Tier pie */}

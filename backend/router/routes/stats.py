@@ -109,6 +109,10 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
         routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
         total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
         average_quality = float(session.query(func.avg(RequestLog.quality_score)).filter(*base_filter, RequestLog.quality_score.isnot(None)).scalar() or 0.0)
+        quality_judged_count = session.query(func.count(RequestLog.id)).filter(*base_filter, RequestLog.quality_judged == True).scalar() or 0
+        judged_quality_avg = float(session.query(func.avg(RequestLog.quality_score)).filter(*base_filter, RequestLog.quality_judged == True).scalar() or 0.0)
+        feedback_counts = dict(session.query(RequestLog.feedback, func.count(RequestLog.id)).filter(*base_filter, RequestLog.feedback.in_(("up", "down"))).group_by(RequestLog.feedback).all())
+        feedback_total = int(feedback_counts.get("up", 0) + feedback_counts.get("down", 0))
 
         return {
             "total_requests": total_requests, "tier_counts": tier_counts, "tier_costs": tier_costs,
@@ -117,6 +121,9 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "avg_latency_by_tier": avg_latency_by_tier, "daily_costs": daily_costs,
             "cache_savings_usd": cache_savings_usd, "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd, "average_quality": round(average_quality, 4),
+            "quality_judged_count": quality_judged_count, "judged_quality_avg": round(judged_quality_avg, 4),
+            "feedback_counts": {"up": int(feedback_counts.get("up", 0)), "down": int(feedback_counts.get("down", 0))},
+            "feedback_total": feedback_total,
             "is_global": is_admin,
         }
     finally:
