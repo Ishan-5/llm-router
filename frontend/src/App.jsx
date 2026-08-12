@@ -213,9 +213,22 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
-      if (event === 'SIGNED_IN') { showToast('Signed in'); handleNavigate('/get-started') }
+      if (event === 'SIGNED_IN') {
+        showToast('Signed in')
+        let hasKeys = false
+        if (session?.access_token) {
+          try {
+            const res = await fetch(`${import.meta.env.VITE_API_BASE}/keys`, {
+              headers: { 'Authorization': `Bearer ${session.access_token}` },
+            })
+            const keys = res.ok ? await res.json() : []
+            hasKeys = Array.isArray(keys) && keys.length > 0
+          } catch {}
+        }
+        handleNavigate(hasKeys ? '/dashboard' : '/get-started')
+      }
       if (event === 'SIGNED_OUT') { showToast('Signed out'); handleNavigate('/') }
     })
     return () => subscription.unsubscribe()

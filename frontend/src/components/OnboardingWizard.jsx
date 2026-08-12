@@ -80,16 +80,18 @@ export default function OnboardingWizard() {
         if (!res.ok) throw new Error('Failed to load keys')
         const keys = await res.json()
 
-        let key = keys[0]?.key
-        if (!key) {
-          const createRes = await fetch(`${API_BASE}/keys`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ name: 'My first key' }),
-          })
-          if (!createRes.ok) throw new Error('Failed to create key')
-          key = (await createRes.json()).key
+        if (keys.length > 0) {
+          navigate('/dashboard', { replace: true })
+          return
         }
+
+        const createRes = await fetch(`${API_BASE}/keys`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ name: 'My first key' }),
+        })
+        if (!createRes.ok) throw new Error('Failed to create key')
+        const key = (await createRes.json()).key
         sessionStorage.setItem('rw_onboarding_key', key)
         setApiKey(key)
         setPhase('ready')
