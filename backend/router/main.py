@@ -82,9 +82,10 @@ def _check_and_fire_alerts():
     finally:
         session.close()
 
-
+# ThreadPoolExecutor for running blocking tasks in the background
 executor = ThreadPoolExecutor()
 
+# Lifespan event to preload ML models and start alert loop
 
 @asynccontextmanager
 async def lifespan(app):
