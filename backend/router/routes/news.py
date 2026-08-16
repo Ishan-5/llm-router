@@ -7,6 +7,9 @@ router = APIRouter()
 log = logging.getLogger("routewise.news")
 
 
+
+#Fetch live headlines from Tavily so the frontend suggestion chip stays realtime.
+
 @router.get("/news/headlines")
 async def news_headlines():
     """Fetch live headlines from Tavily so the frontend suggestion chip stays realtime."""
