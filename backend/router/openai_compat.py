@@ -53,7 +53,7 @@ def _resolve_tier(model: str) -> tuple[str | None, str]:
         return None, "auto"
     if model_lower in ("cheap", "mid", "frontier"):
         return model_lower, "force"
-    # Unrecognized string — treat as auto (ML routing is the product)
+    # Default to auto-routing if the model parameter is unrecognized.
     return None, "auto"
 
 

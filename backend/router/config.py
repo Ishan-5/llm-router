@@ -52,8 +52,7 @@ MODEL_CONFIG = {
 
 TIER_MARGIN = 1.0
 
-#just the backend the "cheap" tier falls back to
-# if the local Ollama call fails (not running, model missing, etc.)
+# Fallback configuration for the 'cheap' tier in case the local Ollama instance fails.
 OLLAMA_FALLBACK_CONFIG = {
     "model_id": "llama-3.1-8b-instant",
     "price_per_m_input": 0.05,

@@ -38,7 +38,7 @@ def preload_models():
     return True
 
 def get_embedder():
-    # shared embedder — cache.py reuses this instead of loading MiniLM twice
+    # Shared embedder instance to prevent redundant model loading across modules.
     _load()
     return _embedder
 
@@ -59,16 +59,13 @@ def predict_difficulty(query: str) -> float:
     return float(np.clip(score, 0, 10))
 
 
-# score_to_tier thresholds are calibrated to the v20 ensemble's output range (0-9).
-# Frontier-gold queries (label 8-10) predict ~6.0, so the frontier floor is set lower
-# than 8 to keep the frontier tier reachable. We bias toward over-routing rather than
-# under-routing — a frontier model on an easy query wastes money; a cheap model on a
-# hard query gives a wrong answer.
-#
-# Both boundaries slide continuously with margin:
-#   economy (0.0): cheap<=5.25, frontier>=6.75  -> cheapest routing, fewest frontier calls
-#   balanced (1.0): cheap<=4.5, frontier>=6.0   -> default, wide mid band
-#   quality (2.0): cheap<=3.75, frontier>=5.25  -> strongest models for more queries
+# Thresholds are calibrated to the ensemble model output range (0-9).
+# The frontier threshold is set conservatively to ensure complex queries are routed
+# to the appropriate high-capacity model (prioritizing correctness over routing cost).
+# Threshold boundaries adjust based on the sensitivity margin:
+#   - Economy (0.0): cheap <= 5.25, frontier >= 6.75
+#   - Balanced (1.0): cheap <= 4.50, frontier >= 6.00
+#   - Quality (2.0): cheap <= 3.75, frontier >= 5.25
 def score_to_tier(score: float, margin: float = 0.3) -> tuple[str, float, float]:
     scaled = margin * 0.3          # 0.0→0.0, 1.0→0.3, 2.0→0.6
     t = (scaled - 0.3) / 0.3       # -1.0 (economy) -> 0.0 (balanced) -> +1.0 (quality)
