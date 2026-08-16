@@ -1,6 +1,5 @@
-# Forces an isolated SQLite DB for tests so they never touch the real Supabase/Postgres.
-# Unconditional override (not setdefault) -- if DATABASE_URL is already set in the environment,
-# setdefault would silently do nothing and tests would run against the real DB.
+# Configure isolated SQLite database for testing environment.
+# Override DATABASE_URL unconditionally to ensure tests do not interact with the production database.
 import os
 import sys
 import tempfile

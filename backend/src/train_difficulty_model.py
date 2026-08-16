@@ -23,7 +23,7 @@ from scipy.stats import spearmanr
 _BASE = os.path.dirname(__file__)
 DATA_PATH = os.path.join(_BASE, "..", "dataset_pipeline", "datasets", "labeled_dataset", "labeled_queries_full_v2.csv")
 MODEL_OUT = os.path.join(_BASE, "..", "models", "difficulty_regressor.joblib")
-EMBEDDER_NAME = "all-MiniLM-L6-v2"  # small, fast, 384-dim, no GPU needed
+EMBEDDER_NAME = "all-MiniLM-L6-v2"  # 384-dimensional embeddings, optimized for CPU execution
 
 
 def load_data():
@@ -39,7 +39,7 @@ def embed_queries(embedder, queries):
 
 
 def add_handcrafted_features(df, X_embed):
-    # cheap extra signals that complement semantic embeddings
+    # Auxiliary handcrafted features to complement semantic embeddings
     word_count = df["query"].astype(str).str.split().str.len().values.reshape(-1, 1)
     has_code = df["query"].astype(str).str.contains(
         r"(?:def |function|class |import |SELECT |for\(|while\()"

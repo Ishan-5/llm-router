@@ -1,7 +1,7 @@
 import sys
 import os
 
-# adjust this if your src/ folder lives elsewhere relative to router/
+# Append src/ directory to system path to import predict_difficulty
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from predict_difficulty import predict_difficulty, score_to_tier
