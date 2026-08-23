@@ -2,20 +2,20 @@
   "_comment": "Example config for POST /config. All tiers are optional -- omit any tier to use the default model for that tier.",
 
   "cheap": {
-    "provider": "groq",
-    "model_id": "llama-3.1-8b-instant",
-    "api_key": "your-groq-api-key"
+    "provider": "openrouter",
+    "model_id": "deepseek/deepseek-v4-flash",
+    "api_key": "sk-or-v1-..."
   },
 
   "mid": {
-    "provider": "openai",
-    "model_id": "gpt-4o-mini",
-    "api_key": "your-openai-api-key"
+    "provider": "groq",
+    "model_id": "openai/gpt-oss-20b",
+    "api_key": "gsk_..."
   },
 
   "frontier": {
     "provider": "anthropic",
-    "model_id": "claude-3-5-sonnet-20241022",
+    "model_id": "claude-sonnet-4-5",
     "api_key": "your-anthropic-api-key"
   }
 }

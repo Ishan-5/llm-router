@@ -18,17 +18,23 @@ CREATE TABLE IF NOT EXISTS model_pricing (
 CREATE INDEX IF NOT EXISTS idx_model_pricing_provider_model ON model_pricing(provider, model_id);
 
 -- ─── Groq ────────────────────────────────────────────────────────────────────
+-- NOTE: llama-3.1-8b-instant / llama-3.3-70b-versatile were shut down by Groq on 2026-08-16.
+-- Retire them in existing DBs: UPDATE model_pricing SET is_active=false WHERE provider='groq' AND model_id LIKE 'llama-%';
 INSERT INTO model_pricing (provider, model_id, display_name, price_per_m_input, price_per_m_output, notes) VALUES
-('groq', 'llama-3.1-8b-instant',                     'LLaMA 3.1 8B Instant',          0.05,  0.08,  '128k context · 840 TPS'),
-('groq', 'llama-3.3-70b-versatile',                  'LLaMA 3.3 70B Versatile',       0.59,  0.79,  '128k context · 394 TPS'),
-('groq', 'llama-3.3-70b-specdec',                    'LLaMA 3.3 70B SpecDec',         0.59,  0.99,  'Speculative decoding'),
-('groq', 'qwen/qwen3-32b',                           'Qwen3 32B',                     0.29,  0.59,  '131k context · 662 TPS'),
 ('groq', 'qwen/qwen3.6-27b',                         'Qwen 3.6 27B',                  0.60,  3.00,  '131k context · 500 TPS'),
-('groq', 'meta-llama/llama-4-scout-17b-16e-instruct','LLaMA 4 Scout 17Bx16E',         0.11,  0.34,  '128k context · 594 TPS'),
 ('groq', 'openai/gpt-oss-120b',                      'GPT OSS 120B',                  0.15,  0.60,  '128k context · 500 TPS'),
-('groq', 'openai/gpt-oss-20b',                       'GPT OSS 20B',                   0.075, 0.30,  '128k context · 1000 TPS'),
-('groq', 'mixtral-8x7b-32768',                       'Mixtral 8x7B',                  0.24,  0.24,  '32k context'),
-('groq', 'gemma2-9b-it',                             'Gemma2 9B',                     0.20,  0.20,  NULL);
+('groq', 'openai/gpt-oss-20b',                       'GPT OSS 20B',                   0.075, 0.30,  '128k context · 1000 TPS');
+
+-- ─── OpenRouter ──────────────────────────────────────────────────────────────
+INSERT INTO model_pricing (provider, model_id, display_name, price_per_m_input, price_per_m_output, notes) VALUES
+('openrouter', 'deepseek/deepseek-v4-flash',         'DeepSeek V4 Flash (OpenRouter)',        0.049, 0.098, 'Default cheap tier · routed via OpenRouter'),
+('openrouter', 'deepseek/deepseek-v4-flash-0731',    'DeepSeek V4 Flash 0731 (OpenRouter)',   0.04,  0.13,  'GA snapshot · 1.3M context'),
+('openrouter', 'deepseek/deepseek-v4-pro-0813',      'DeepSeek V4 Pro 0813 (OpenRouter)',     0.66,  1.98,  NULL),
+('openrouter', 'google/gemini-3.7-flash',            'Gemini 3.7 Flash (OpenRouter)',         0.375, 1.875, '75% promo pricing — verify before relying on it'),
+('openrouter', 'google/gemini-3.6-flash',            'Gemini 3.6 Flash (OpenRouter)',         0.75,  3.75,  NULL),
+('openrouter', 'google/gemini-3.1-flash-lite',       'Gemini 3.1 Flash Lite (OpenRouter)',    0.125, 0.75,  NULL),
+('openrouter', 'openai/gpt-oss-120b',                'GPT OSS 120B (OpenRouter)',             0.15,  0.60,  NULL),
+('openrouter', 'openai/gpt-oss-20b',                 'GPT OSS 20B (OpenRouter)',              0.075, 0.30,  NULL);
 
 -- ─── OpenAI ──────────────────────────────────────────────────────────────────
 INSERT INTO model_pricing (provider, model_id, display_name, price_per_m_input, price_per_m_output, notes) VALUES

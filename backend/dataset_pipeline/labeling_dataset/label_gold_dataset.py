@@ -44,7 +44,7 @@ Query: {query}
 
 Score:"""
 
-MODEL = "llama-3.1-8b-instant"
+MODEL = "openai/gpt-oss-20b"
 
 
 def parse_score(raw: str):
