@@ -7,19 +7,19 @@ assert "groq" in PROVIDERS_REGISTRY
 
 PROVIDER_DEFAULTS = {
     "cheap": {
-        "provider": "groq",
+        "provider": MODEL_CONFIG["cheap"]["provider"],
         "model_id": MODEL_CONFIG["cheap"]["model_id"],
         "price_per_m_input": MODEL_CONFIG["cheap"]["price_per_m_input"],
         "price_per_m_output": MODEL_CONFIG["cheap"]["price_per_m_output"],
     },
     "mid": {
-        "provider": "groq",
+        "provider": MODEL_CONFIG["mid"]["provider"],
         "model_id": MODEL_CONFIG["mid"]["model_id"],
         "price_per_m_input": MODEL_CONFIG["mid"]["price_per_m_input"],
         "price_per_m_output": MODEL_CONFIG["mid"]["price_per_m_output"],
     },
     "frontier": {
-        "provider": "groq",
+        "provider": MODEL_CONFIG["frontier"]["provider"],
         "model_id": MODEL_CONFIG["frontier"]["model_id"],
         "price_per_m_input": MODEL_CONFIG["frontier"]["price_per_m_input"],
         "price_per_m_output": MODEL_CONFIG["frontier"]["price_per_m_output"],
