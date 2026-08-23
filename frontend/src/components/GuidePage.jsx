@@ -274,9 +274,9 @@ client = RouteWiseClient(api_key="rw_your_key")
 
 # Set custom models for any tier
 client.configure(
-    cheap={"provider": "groq", "model_id": "llama-3.1-8b-instant", "api_key": "gsk_..."},
+    cheap={"provider": "openrouter", "model_id": "deepseek/deepseek-v4-flash", "api_key": "sk-or-v1-..."},
     mid={"provider": "openai", "model_id": "gpt-4o-mini", "api_key": "sk-..."},
-    frontier={"provider": "anthropic", "model_id": "claude-sonnet-4-20250514", "api_key": "sk-ant-..."},
+    frontier={"provider": "anthropic", "model_id": "claude-sonnet-4-5", "api_key": "sk-ant-..."},
 )
 
 # Now every ask() uses your custom models
@@ -400,13 +400,13 @@ VITE_API_KEY=${API_KEY || 'rw_your_key_here'}`,
         label: 'Supported providers',
         code: `# Run this to see all available providers and models:
 providers = client.get_providers()
-# → groq, openai, anthropic, gemini, deepseek, perplexity, mistral, xai, ollama
+# → groq, openrouter, openai, anthropic, gemini, deepseek, perplexity, mistral, xai, ollama
 
 # Each tier config:
 {
-  "provider": "groq",           # provider name
-  "model_id": "llama-3.1-8b-instant",  # model identifier
-  "api_key": "gsk_..."         # your API key for this provider
+  "provider": "openrouter",            # provider name
+  "model_id": "deepseek/deepseek-v4-flash",  # model identifier
+  "api_key": "sk-or-v1-..."            # your API key for this provider
 }`,
         lang: 'python',
       },

@@ -33,7 +33,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
   const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {
     const defaults = {
-      cheap: { label: 'Cheap', sub: 'llama-3.1-8b-instant · groq (default)', y: 60 },
+      cheap: { label: 'Cheap', sub: 'deepseek/deepseek-v4-flash · openrouter (default)', y: 60 },
       mid: { label: 'Mid', sub: 'openai/gpt-oss-20b · groq', y: 160 },
       frontier: { label: 'Frontier', sub: 'openai/gpt-oss-120b · groq', y: 260 },
     }[key]

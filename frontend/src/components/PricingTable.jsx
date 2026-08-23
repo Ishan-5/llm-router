@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchPricing } from '../api'
 import TopModels from './TopModels'
 
-const PROVIDER_ORDER = ['groq', 'openai', 'anthropic', 'gemini', 'deepseek', 'mistral', 'perplexity', 'xai', 'ollama']
+const PROVIDER_ORDER = ['groq', 'openrouter', 'openai', 'anthropic', 'gemini', 'deepseek', 'mistral', 'perplexity', 'xai', 'ollama']
 const PROVIDER_LABELS = {
   groq: 'Groq', openai: 'OpenAI', anthropic: 'Anthropic', gemini: 'Google Gemini',
   deepseek: 'DeepSeek', mistral: 'Mistral', perplexity: 'Perplexity', xai: 'xAI', ollama: 'Ollama (local)',

@@ -218,7 +218,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
             </div>
           )}
           <p className="font-mono text-[10px] text-muted mt-4">
-            Scored by llama-3.3-70b on Groq — penalizes refusals, hallucinations, and missing answers.
+            Scored by openai/gpt-oss-120b on Groq — penalizes refusals, hallucinations, and missing answers.
           </p>
         </div>
 
