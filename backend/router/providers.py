@@ -1,7 +1,7 @@
 import logging
 from groq import Groq
 from openai import OpenAI
-from router.config import GROQ_API_KEY, GEMINI_API_KEY, MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG, GEMINI_FALLBACK_CONFIG, DISABLE_OLLAMA
+from router.config import GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG, GEMINI_FALLBACK_CONFIG, DISABLE_OLLAMA
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.ollama_client import call_ollama
 from router.load_balancer import get_key_for_tier, report_rate_limit_from_error
@@ -26,6 +26,17 @@ def _get_groq_key(tier: str) -> str:
     if key:
         return key
     return GROQ_API_KEY
+
+
+def _resolve_key(provider: str, tier: str) -> str:
+    """Resolve an API key for a provider from env/load balancer. Returns '' if none configured."""
+    if provider == "groq":
+        return _get_groq_key(tier)
+    if provider == "openrouter":
+        return OPENROUTER_API_KEY or ""
+    if provider == "gemini":
+        return GEMINI_API_KEY or ""
+    return ""
 
 
 def _call_openai_compatible(
@@ -183,10 +194,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
         price_out = user_config.get("price_per_m_output", 0.0)
 
         if not api_key:
-            if provider == "groq":
-                api_key = _get_groq_key(tier)
-            elif provider == "gemini":
-                api_key = GEMINI_API_KEY
+            api_key = _resolve_key(provider, tier)
 
         if provider == "ollama":
             try:
@@ -206,30 +214,25 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
         effective_max = max_tokens or 1000
         return call_provider(provider, model_id, query, tier, api_key, price_in, price_out, effective_max, messages)
 
-    if tier == "cheap":
-        if not DISABLE_OLLAMA:
-            try:
-                return call_ollama(query)
-            except Exception as e:
-                log.warning("ollama local call failed (%s), falling back to Groq cheap model", e)
-        cfg = OLLAMA_FALLBACK_CONFIG
-        result = _call_openai_compatible(
-            cfg["model_id"], query, "cheap",
-            cfg["price_per_m_input"], cfg["price_per_m_output"],
-            _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
-            messages=messages, max_tokens=max_tokens or 1000, temperature=temperature,
-        )
-        result["ollama_fallback"] = not DISABLE_OLLAMA
-        return result
+    ollama_fallback = False
+    if tier == "cheap" and not DISABLE_OLLAMA:
+        try:
+            return call_ollama(query)
+        except Exception as e:
+            log.warning("ollama local call failed (%s), falling back to %s", e, MODEL_CONFIG["cheap"]["model_id"])
+            ollama_fallback = True
 
     cfg = MODEL_CONFIG[tier]
-    effective_max = max_tokens or 1000
-    return _call_openai_compatible(
+    result = _call_openai_compatible(
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
-        _get_groq_key(tier), PROVIDERS_REGISTRY["groq"]["base_url"],
-        messages=messages, max_tokens=effective_max, temperature=temperature,
+        _resolve_key(cfg["provider"], tier),
+        PROVIDERS_REGISTRY[cfg["provider"]]["base_url"],
+        messages=messages, max_tokens=max_tokens or 1000, temperature=temperature,
     )
+    if ollama_fallback:
+        result["ollama_fallback"] = True
+    return result
 
 
 def call_gemini(query: str) -> dict:
@@ -276,29 +279,21 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
 
     # default path
     effective_max = max_tokens or 1000
-    if tier == "cheap":
-        if not DISABLE_OLLAMA:
-            try:
-                result = call_ollama(query)
-                yield result["text"]
-                yield {"tier": "cheap", "model_id": result["model_id"], "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
-                return
-            except Exception as e:
-                log.warning("ollama local call failed (%s), falling back to Groq cheap model", e)
-        cfg = OLLAMA_FALLBACK_CONFIG
-        yield from _stream_openai_compatible(
-            cfg["model_id"], query, "cheap",
-            cfg["price_per_m_input"], cfg["price_per_m_output"],
-            _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
-            messages=messages, max_tokens=effective_max, temperature=temperature,
-        )
-        return
+    if tier == "cheap" and not DISABLE_OLLAMA:
+        try:
+            result = call_ollama(query)
+            yield result["text"]
+            yield {"tier": "cheap", "model_id": result["model_id"], "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
+            return
+        except Exception as e:
+            log.warning("ollama local call failed (%s), falling back to %s", e, MODEL_CONFIG["cheap"]["model_id"])
 
     cfg = MODEL_CONFIG[tier]
     yield from _stream_openai_compatible(
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
-        _get_groq_key(tier), PROVIDERS_REGISTRY["groq"]["base_url"],
+        _resolve_key(cfg["provider"], tier),
+        PROVIDERS_REGISTRY[cfg["provider"]]["base_url"],
         messages=messages, max_tokens=effective_max, temperature=temperature,
     )
 
