@@ -188,12 +188,12 @@ and are returned in every `/route` response so the frontend diagram can show liv
 
 | Tier | Model | $ / 1M input | $ / 1M output | Backend |
 |---|---|---|---|---|
-| 🪙 Cheap | Groq `llama-3.1-8b-instant` | $0.05 | $0.08 | Groq (falls back to local Ollama) |
+| 🪙 Cheap | OpenRouter `deepseek/deepseek-v4-flash` | $0.049 | $0.098 | OpenRouter (falls back to local Ollama) |
 | ⚖️ Mid | `openai/gpt-oss-20b` | $0.075 | $0.30 | Groq |
 | 💎 Frontier | `openai/gpt-oss-120b` | $0.15 | $0.60 | Groq |
 | 🔎 Web | live search results | — | — | Tavily (time-sensitive only) |
 
-**Last-resort fallback:** `gemini-1.5-flash` via Google — a genuinely independent provider, not
+**Last-resort fallback:** `gemini-2.0-flash` via Google — a genuinely independent provider, not
 just another Groq tier.
 
 ---
@@ -272,7 +272,7 @@ pay for** — including custom model IDs no catalog could anticipate.
 
 ```python
 client.configure(
-    cheap={"provider": "groq", "model_id": "llama-3.1-8b-instant", "api_key": "gsk_..."},
+    cheap={"provider": "openrouter", "model_id": "deepseek/deepseek-v4-flash", "api_key": "sk-or-v1-..."},
     frontier={"provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..."},
 )
 result = client.ask("Design a distributed rate limiter")  # keys attached automatically

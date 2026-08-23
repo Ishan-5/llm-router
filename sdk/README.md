@@ -28,7 +28,7 @@ Override any tier with your own provider and model. Unset tiers fall back to def
 ```python
 # set custom models for any combination of tiers
 client.configure(
-    cheap={"provider": "groq", "model_id": "llama-3.1-8b-instant", "api_key": "your-groq-key"},
+    cheap={"provider": "openrouter", "model_id": "deepseek/deepseek-v4-flash", "api_key": "sk-or-v1-..."},
     frontier={"provider": "openai", "model_id": "gpt-4o", "api_key": "your-openai-key"},
     # mid not set -- uses default
 )
