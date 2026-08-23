@@ -12,6 +12,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_JUDGE_API_KEY = os.getenv("GROQ_JUDGE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 ADMIN_USER_ID = os.getenv("ADMIN_USER_ID", "")
 DISABLE_OLLAMA = os.getenv("DISABLE_OLLAMA", "false").lower() == "true"
 ALLOWED_ORIGINS = os.getenv(
@@ -33,16 +34,19 @@ DEFAULT_PROVIDER = "groq"
 
 MODEL_CONFIG = {
     "cheap": {
-        "model_id": "llama-3.1-8b-instant",
-        "price_per_m_input": 0.05,
-        "price_per_m_output": 0.08,
+        "provider": "openrouter",
+        "model_id": "deepseek/deepseek-v4-flash",
+        "price_per_m_input": 0.049,
+        "price_per_m_output": 0.098,
     },
     "mid": {
+        "provider": "groq",
         "model_id": "openai/gpt-oss-20b",
         "price_per_m_input": 0.075,
         "price_per_m_output": 0.30,
     },
     "frontier": {
+        "provider": "groq",
         "model_id": "openai/gpt-oss-120b",
         "price_per_m_input": 0.15,
         "price_per_m_output": 0.60,
@@ -54,9 +58,9 @@ TIER_MARGIN = 1.0
 
 # Fallback configuration for the 'cheap' tier in case the local Ollama instance fails.
 OLLAMA_FALLBACK_CONFIG = {
-    "model_id": "llama-3.1-8b-instant",
-    "price_per_m_input": 0.05,
-    "price_per_m_output": 0.08,
+    "model_id": "openai/gpt-oss-20b",
+    "price_per_m_input": 0.075,
+    "price_per_m_output": 0.30,
 }
 
 
@@ -69,10 +73,10 @@ FALLBACK_CHAIN = {
 
 # Last-resort fallback if the entire Groq/Ollama chain fails.
 GEMINI_FALLBACK_CONFIG = {
-    "model_id": "gemini-1.5-flash",
-    "price_per_m_input": 0.075,
-    "price_per_m_output": 0.30,
+    "model_id": "gemini-2.0-flash",
+    "price_per_m_input": 0.10,
+    "price_per_m_output": 0.40,
 }
 
 # LLM-as-judge: scores answer quality in the background. Uses its own Groq key.
-GROQ_JUDGE_MODEL = "llama-3.3-70b-versatile"
+GROQ_JUDGE_MODEL = "openai/gpt-oss-120b"
