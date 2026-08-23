@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-MODEL = "llama-3.1-8b-instant" 
+MODEL = "openai/gpt-oss-20b" 
 
 LABEL_PROMPT = """You are scoring queries for an LLM cost-routing system. Score how difficult this query is for an AI model to answer well, on a 0-10 scale.
 
