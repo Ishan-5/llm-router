@@ -176,7 +176,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 |---|---|
 | 🧠 Difficulty model | LightGBM · sentence-transformers (MiniLM-L6-v2) |
 | ⚙️ Backend | FastAPI · SQLAlchemy · Supabase Postgres · MCP gateway |
-| 🔌 Providers | Groq · Gemini · Ollama · Tavily · Anthropic · OpenAI · DeepSeek · Mistral · Perplexity · xAI |
+| 🔌 Providers | Groq · OpenRouter · Gemini · Ollama · Tavily · Anthropic · OpenAI · DeepSeek · Mistral · Perplexity · xAI |
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
@@ -188,7 +188,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 
 | Tier | Model | $ / 1M input | $ / 1M output | Backend |
 |---|---|---|---|---|
-| 🪙 Cheap | OpenRouter `deepseek/deepseek-v4-flash` | $0.049 | $0.098 | OpenRouter (falls back to local Ollama) |
+| 🪙 Cheap | OpenRouter `deepseek/deepseek-v4-flash` | $0.049 | $0.098 | OpenRouter · tries local Ollama first when enabled |
 | ⚖️ Mid | `openai/gpt-oss-20b` | $0.075 | $0.30 | Groq |
 | 💎 Frontier | `openai/gpt-oss-120b` | $0.15 | $0.60 | Groq |
 | 🔎 Web | live search results | — | — | Tavily (time-sensitive only) |
@@ -204,10 +204,10 @@ just another Groq tier.
 
 | | Frontier-only baseline | RouteWise routed |
 |---|---|---|
-| Cheap share (~50%) | — | 8B @ $0.05/$0.08 → **$0.000074** |
+| Cheap share (~50%) | — | `deepseek-v4-flash` @ $0.049/$0.098 → **$0.000078** |
 | Mid share (~35%) | — | 20B @ $0.075/$0.30 → **$0.000165** |
 | Frontier share (~15%) | gpt-oss-120b → **$0.00033** | gpt-oss-120b → **$0.00033** |
-| **1,000 queries** | **$0.330** | **$0.144** |
+| **1,000 queries** | **$0.330** | **$0.146** |
 
 > [!NOTE]
 > **≈ 56% cheaper** than sending everything to the frontier model. Semantic-cache hits (~34% of
@@ -228,7 +228,7 @@ benchmark:
 | Total cost of the traffic shown | ~$0.05 |
 
 The tier distribution shows the router doing what it's built for — the majority of real queries
-are easy enough for the cheap 8B model, and only the genuinely hard ones reach the frontier
+are easy enough for the cheap model, and only the genuinely hard ones reach the frontier
 tier. *(Data reflects test usage accumulated while building the system — disclosed in full
 under [Screenshots](#screenshots).)*
 
@@ -255,7 +255,7 @@ on), each model at its balanced slider thresholds:
 The 5× jump in Claude-verified training labels (1,703 → 8,200) bought a deliberate shift — the
 model is now more decisive at both boundaries. It catches far more under-routed hard queries
 (frontier recall 41% → 58%, under-routed cut from 154 → 110 — the failure mode that actually
-costs money when a hard query lands on the cheap 8B model) and sends easy queries to the cheap
+costs money when a hard query lands on the cheap model) and sends easy queries to the cheap
 tier more reliably (cheap recall 88% → 94%). The tradeoff is a thinner mid band (mid recall 68%
 → 40%): a gold-mid query is now more likely to be pushed up to frontier or down to cheap than
 called mid. Overall exact-tier accuracy still improves 70.6% → 77.5%.
@@ -286,8 +286,9 @@ result = client.ask("Design a distributed rate limiter")  # keys attached automa
 | Provider | In the box |
 |---|---|
 | **Groq** · **OpenAI** · **Anthropic** | ✅ ✅ ✅ |
-| **Gemini** · **DeepSeek** · **Mistral** | ✅ ✅ ✅ |
-| **Perplexity** · **xAI** · **Ollama** | ✅ ✅ ✅ |
+| **OpenRouter** · **Gemini** · **DeepSeek** | ✅ ✅ ✅ |
+| **Mistral** · **Perplexity** · **xAI** | ✅ ✅ ✅ |
+| **Ollama** | ✅ |
 | **Custom model IDs** | ✅ |
 
 The dashboard populates its tier dropdowns directly from `/providers`.
@@ -324,8 +325,8 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 - **Cache threshold is conservative (0.95 cosine similarity) on purpose.** *"convert 5 miles to
   km"* and *"convert 10 miles to km"* are ~95%+ similar in embedding space with different
   answers. Fewer cache hits beats a wrong cached answer.
-- **Cheap-tier fallback lives inside the provider call, not the tier chain.** If Ollama fails,
-  Groq serves the request — transparently, still logged as tier `cheap`.
+- **Cheap-tier fallback lives inside the provider call, not the tier chain.** If local Ollama
+  fails, the OpenRouter cheap model serves the request — transparently, still logged as tier `cheap`.
 - **Gemini is a last resort, not a routing tier** — genuinely different infrastructure, so a
   Groq-wide outage doesn't take the router down.
 - **Cache similarity search is vectorized** — one matrix operation, not N per-row loops.
@@ -339,7 +340,8 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 ## ⚠️ Known limitations
 
 - 🖥️ **Ollama doesn't run in the cloud deployment.** Render has no local GPU — cheap-tier
-  requests there fall back to Groq. Local demos are the only place the local-model path runs.
+  requests there go straight to OpenRouter. Local demos are the only place the local-model path
+  runs.
 - 📊 **Dashboard data is seeded** — see the disclosure under [Screenshots](#screenshots).
 - 🔐 **BYOM is scoped per user, not per-API-key.** Config loads per user
   (`get_active_config(user_id)`), so two keys of the same user share config; script-created
@@ -489,8 +491,8 @@ locally in <20 ms — no API call just to decide routing. Full comparison: [Mode
 <summary><b>Can I use my own models?</b></summary>
 
 Yes — BYOM works per-request for any caller, or as a saved config for signed-in users, spanning
-Groq, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama, and custom model
-IDs.
+Groq, OpenRouter, OpenAI, Anthropic, Gemini, DeepSeek, Mistral, Perplexity, xAI, Ollama, and
+custom model IDs.
 
 </details>
 
@@ -520,9 +522,9 @@ npm install
 npm run dev
 ```
 
-Needs a `.env` with `GROQ_API_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`
-(Supabase Postgres), `SUPABASE_URL`, and `SUPABASE_SERVICE_KEY`. Ollama is optional — if it's
-not running, the cheap tier falls back to Groq automatically.
+Needs a `.env` with `OPENROUTER_API_KEY`, `GROQ_API_KEY`, `GEMINI_API_KEY`, `TAVILY_API_KEY`,
+`DATABASE_URL` (Supabase Postgres), `SUPABASE_URL`, and `SUPABASE_SERVICE_KEY`. Ollama is
+optional — if it's not running, the cheap tier uses OpenRouter automatically.
 
 Optional multi-key load balancing:
 
