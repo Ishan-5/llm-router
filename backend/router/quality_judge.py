@@ -60,7 +60,7 @@ def judge_quality(query: str, response: str, tier: str, model_id: str | None) ->
         )
         resp = _get_client().chat.completions.create(
             model=GROQ_JUDGE_MODEL,
-            max_tokens=16,
+            max_completion_tokens=256,
             temperature=0,
             messages=[
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
