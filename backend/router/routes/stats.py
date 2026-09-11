@@ -34,6 +34,7 @@ def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
                 "output_tokens": r.output_tokens, "cost_usd": r.cost_usd, "latency_ms": r.latency_ms,
                 "cache_hit": r.cache_hit, "cache_similarity": r.cache_similarity,
                 "fallback_used": r.fallback_used, "tokens_saved_usd": r.tokens_saved_usd,
+                "llm_difficulty_score": r.llm_difficulty_score, "llm_predicted_tier": r.llm_predicted_tier,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
             for r in rows
@@ -56,6 +57,7 @@ def get_log_detail(log_id: int, api_key: ApiKey = Depends(require_api_key)):
             "output_tokens": r.output_tokens, "cost_usd": r.cost_usd, "latency_ms": r.latency_ms,
             "cache_hit": r.cache_hit, "cache_similarity": r.cache_similarity,
             "fallback_used": r.fallback_used, "tokens_saved_usd": r.tokens_saved_usd,
+            "llm_difficulty_score": r.llm_difficulty_score, "llm_predicted_tier": r.llm_predicted_tier,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         }
     finally:
@@ -114,6 +116,35 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
         feedback_counts = dict(session.query(RequestLog.feedback, func.count(RequestLog.id)).filter(*base_filter, RequestLog.feedback.in_(("up", "down"))).group_by(RequestLog.feedback).all())
         feedback_total = int(feedback_counts.get("up", 0) + feedback_counts.get("down", 0))
 
+        label_rows = session.query(RequestLog.difficulty_score, RequestLog.llm_difficulty_score).filter(
+            *base_filter, RequestLog.llm_difficulty_score.isnot(None),
+            RequestLog.difficulty_score.isnot(None),
+            RequestLog.cache_hit == False, RequestLog.tier != "web",
+        ).all()
+        tier_rank = {"cheap": 0, "mid": 1, "frontier": 2}
+        labeled_count = len(label_rows)
+        agree = under_routed = over_routed = 0
+        score_diffs = []
+        for ml_score, llm_score in label_rows:
+            ml_tier = score_to_tier(ml_score, margin=1.0)[0]
+            llm_tier = score_to_tier(llm_score, margin=1.0)[0]
+            score_diffs.append(abs(ml_score - llm_score))
+            if ml_tier == llm_tier:
+                agree += 1
+            elif tier_rank.get(ml_tier, 1) < tier_rank.get(llm_tier, 1):
+                under_routed += 1  # ML routed cheaper than the LLM says it should have
+            else:
+                over_routed += 1  # ML routed more expensively than needed
+        labeling = {
+            "labeled_count": labeled_count,
+            "agreement_pct": round(agree / labeled_count * 100, 1) if labeled_count else None,
+            "under_routed": under_routed,
+            "over_routed": over_routed,
+            "under_routed_pct": round(under_routed / labeled_count * 100, 1) if labeled_count else None,
+            "over_routed_pct": round(over_routed / labeled_count * 100, 1) if labeled_count else None,
+            "mae": round(sum(score_diffs) / len(score_diffs), 4) if score_diffs else None,
+        }
+
         return {
             "total_requests": total_requests, "tier_counts": tier_counts, "tier_costs": tier_costs,
             "total_actual_cost": total_actual_cost, "total_hypothetical_cost": total_hypothetical_cost,
@@ -124,6 +155,7 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "quality_judged_count": quality_judged_count, "judged_quality_avg": round(judged_quality_avg, 4),
             "feedback_counts": {"up": int(feedback_counts.get("up", 0)), "down": int(feedback_counts.get("down", 0))},
             "feedback_total": feedback_total,
+            "labeling": labeling,
             "is_global": is_admin,
         }
     finally:

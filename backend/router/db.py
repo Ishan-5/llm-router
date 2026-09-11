@@ -53,6 +53,9 @@ class RequestLog(Base):
     tokens_saved_usd = Column(Float, nullable=True)
     quality_score = Column(Float, nullable=True)
     quality_judged = Column(Boolean, nullable=True, default=False)
+    llm_difficulty_score = Column(Float, nullable=True)  # LLM-as-labeler ground-truth difficulty (0-10)
+    llm_predicted_tier = Column(String, nullable=True)   # tier the router would pick from the LLM label
+    label_judged = Column(Boolean, nullable=True, default=False)
     feedback = Column(String, nullable=True, index=True)  # up | down | None
     feedback_reason = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
@@ -137,6 +140,30 @@ try:
     from sqlalchemy import text
     with engine.connect() as conn:
         conn.execute(text("ALTER TABLE request_logs ADD COLUMN quality_judged BOOLEAN DEFAULT FALSE"))
+        conn.commit()
+except Exception:
+    pass
+
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN llm_difficulty_score FLOAT"))
+        conn.commit()
+except Exception:
+    pass
+
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN llm_predicted_tier VARCHAR"))
+        conn.commit()
+except Exception:
+    pass
+
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN label_judged BOOLEAN DEFAULT FALSE"))
         conn.commit()
 except Exception:
     pass

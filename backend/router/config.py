@@ -80,3 +80,8 @@ GEMINI_FALLBACK_CONFIG = {
 
 # LLM-as-judge: scores answer quality in the background. Uses its own Groq key.
 GROQ_JUDGE_MODEL = "openai/gpt-oss-120b"
+
+# LLM-as-labeler: scores query difficulty (0-10) in the background as ground-truth
+# labels for the ML difficulty classifier. Falls back to the quality-judge key/model.
+GROQ_LABEL_API_KEY = os.getenv("GROQ_LABEL_API_KEY") or GROQ_JUDGE_API_KEY
+GROQ_LABEL_MODEL = os.getenv("GROQ_LABEL_MODEL", "openai/gpt-oss-120b")
