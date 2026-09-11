@@ -85,7 +85,7 @@ def label_difficulty(query: str) -> float | None:
     try:
         resp = _get_client().chat.completions.create(
             model=GROQ_LABEL_MODEL,
-            max_tokens=5,
+            max_completion_tokens=256,
             temperature=0,
             messages=[{"role": "user", "content": LABEL_PROMPT.format(query=str(query)[:1000])}],
         )
