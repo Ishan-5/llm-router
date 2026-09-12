@@ -32,7 +32,7 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
   const tierClass = TIER_STYLES[log.tier] || 'text-muted bg-panel border-line'
 
   return (
-    <div className="border border-line rounded-lg overflow-hidden mb-2 transition-all duration-200 hover:border-signal/30">
+    <div className="border border-line rounded-xl overflow-hidden mb-2 shadow-card transition-all duration-200 hover:border-signal/30 hover:shadow-card-hover">
       {/* Summary row */}
       <button
         onClick={onToggle}
@@ -152,7 +152,7 @@ export default function RequestLogs({ apiKey }) {
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}
-            className="bg-panel border border-line rounded px-2 py-1 text-xs text-primary font-mono"
+            className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono shadow-card"
           >
             <option value={10}>10</option>
             <option value={30}>30</option>

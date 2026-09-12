@@ -159,6 +159,49 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         </div>
       </div>
 
+      {/* Router vs LLM-judged difficulty — differentiator */}
+      {stats.labeling && stats.labeling.labeled_count > 0 && (
+        <div className="bg-panel border border-line rounded-xl p-5 md:p-6 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide">Router vs LLM-judged difficulty</h3>
+            <span className="font-mono text-[10px] text-muted hidden sm:inline">
+              {stats.labeling.labeled_count} labeled queries · openai/gpt-oss-120b
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-[1.2fr_1fr] gap-6 items-center">
+            <div>
+              <div className="flex items-baseline gap-3 mb-2">
+                <span className="font-display text-4xl font-bold text-cool">{stats.labeling.agreement_pct ?? '—'}%</span>
+                <span className="font-mono text-[10px] text-muted">
+                  of routing decisions matched an independent LLM judge on difficulty
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-surface border border-line overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, stats.labeling.agreement_pct ?? 0)}%`, background: 'var(--color-cool)' }} />
+              </div>
+              <p className="font-mono text-[10px] text-muted mt-3">
+                Mean absolute error in difficulty score: {stats.labeling.mae ?? '—'}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <MiniStat
+                label="Over-routed"
+                value={`${stats.labeling.over_routed} · ${stats.labeling.over_routed_pct}%`}
+                note="spent more than needed"
+                accent="text-signal"
+              />
+              <MiniStat
+                label="Under-routed"
+                value={`${stats.labeling.under_routed} · ${stats.labeling.under_routed_pct}%`}
+                note="riskier than ideal"
+                accent="text-danger"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-10">
         <StatBox
@@ -428,21 +471,33 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
 
 function StatBox({ label, value, icon, color, sub }) {
   const colors = {
-    primary: 'text-primary border-primary/20',
-    cool: 'text-cool border-cool/20',
-    signal: 'text-signal border-signal/20',
-    danger: 'text-danger border-danger/20',
+    primary: { text: 'text-primary', bar: 'bg-line' },
+    cool: { text: 'text-cool', bar: 'bg-cool' },
+    signal: { text: 'text-signal', bar: 'bg-signal' },
+    danger: { text: 'text-danger', bar: 'bg-danger' },
   }
+  const c = colors[color] || colors.primary
   return (
-    <div className="bg-panel border border-line rounded-xl p-4 hover:border-signal/20 transition-colors">
+    <div className="bg-panel border border-line rounded-xl p-4 hover:border-signal/30 hover:-translate-y-0.5 transition-all relative overflow-hidden">
+      <div className={`absolute inset-x-0 top-0 h-0.5 ${c.bar} opacity-60`} />
       <div className="flex items-center gap-2 mb-3">
-        <div className={`w-7 h-7 rounded-md bg-surface border border-line flex items-center justify-center ${colors[color]?.split(' ')[0] || 'text-muted'}`}>
+        <div className={`w-7 h-7 rounded-md bg-surface border border-line flex items-center justify-center ${c.text}`}>
           {icon}
         </div>
-        <p className="font-mono text-[10px] text-muted uppercase tracking-wide">{label}</p>
+        <p className="font-mono text-[10px] text-muted uppercase tracking-wide truncate">{label}</p>
       </div>
-      <p className={`font-display text-2xl font-bold ${colors[color]?.split(' ')[0] || 'text-primary'}`}>{value}</p>
+      <p className={`font-display text-2xl font-bold ${c.text}`}>{value}</p>
       {sub && <p className="font-mono text-[10px] text-muted mt-1">{sub}</p>}
+    </div>
+  )
+}
+
+function MiniStat({ label, value, note, accent }) {
+  return (
+    <div className="bg-surface border border-line rounded-lg p-3">
+      <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">{label}</p>
+      <p className={`font-display text-xl font-bold ${accent}`}>{value}</p>
+      <p className="font-mono text-[10px] text-muted mt-0.5">{note}</p>
     </div>
   )
 }

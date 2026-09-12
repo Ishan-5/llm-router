@@ -79,7 +79,7 @@ function AlertsTab() {
         Works with Slack, Discord, or any HTTP endpoint.
       </p>
 
-      <form onSubmit={handleCreate} className="border border-line rounded-lg p-5 mb-8 flex flex-col gap-4">
+      <form onSubmit={handleCreate} className="bg-surface border border-line rounded-xl shadow-card p-5 mb-8 flex flex-col gap-4">
         <p className="font-mono text-[10px] text-muted uppercase tracking-wide">New alert rule</p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -88,7 +88,7 @@ function AlertsTab() {
             <select
               value={alertType}
               onChange={(e) => setAlertType(e.target.value)}
-              className="bg-panel border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+              className="bg-surface border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
             >
               {ALERT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
@@ -105,7 +105,7 @@ function AlertsTab() {
               placeholder={selectedType?.placeholder}
               min="0"
               step="any"
-              className="bg-panel border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
+              className="bg-surface border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
             />
           </div>
 
@@ -116,7 +116,7 @@ function AlertsTab() {
               value={webhookUrl}
               onChange={(e) => setWebhookUrl(e.target.value)}
               placeholder="https://hooks.slack.com/..."
-              className="bg-panel border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
+              className="bg-surface border border-line rounded-lg px-3 py-2.5 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
             />
           </div>
         </div>
@@ -137,10 +137,10 @@ function AlertsTab() {
         </button>
       </form>
 
-      <div className="border-t border-line">
+      <div className="space-y-3">
         {loading ? (
-          <div className="py-8 flex flex-col gap-3">
-            {[1, 2].map((i) => <div key={i} className="h-12 bg-line rounded-lg animate-pulse" />)}
+          <div className="py-4 flex flex-col gap-3">
+            {[1, 2].map((i) => <div key={i} className="h-14 bg-line rounded-xl animate-pulse" />)}
           </div>
         ) : alerts.length === 0 ? (
           <p className="font-mono text-xs text-muted py-8">No alert rules yet.</p>
@@ -148,7 +148,7 @@ function AlertsTab() {
           alerts.map((a) => {
             const type = ALERT_TYPES.find((t) => t.value === a.alert_type)
             return (
-              <div key={a.id} className="flex items-center justify-between py-4 border-b border-line gap-4">
+              <div key={a.id} className="group flex items-center justify-between gap-4 bg-surface border border-line rounded-xl shadow-card px-4 py-4 hover:border-signal/30 transition-colors">
                 <div className="flex-1 min-w-0">
                   <p className="font-body text-sm font-medium">{type?.label} &gt; {a.threshold}{type?.unit}</p>
                   <p className="font-mono text-[10px] text-muted truncate">{a.webhook_url}</p>
@@ -255,7 +255,7 @@ export default function DashboardPage() {
       <h1 className="font-display text-3xl font-semibold mb-6">Dashboard</h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-line mb-8 overflow-x-auto">
+      <div className="flex gap-1 p-1 bg-panel border border-line rounded-xl mb-8 overflow-x-auto max-w-full">
         {[
           { id: 'keys', label: 'API Keys' },
           ...(hasKeys ? [
@@ -268,10 +268,10 @@ export default function DashboardPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 font-mono text-xs rounded-lg transition-colors whitespace-nowrap shrink-0 ${
               activeTab === tab.id
-                ? 'border-signal text-primary'
-                : 'border-transparent text-muted hover:text-primary'
+                ? 'bg-surface text-primary shadow-card'
+                : 'text-muted hover:text-primary'
             }`}
           >
             {tab.label}
@@ -292,7 +292,7 @@ export default function DashboardPage() {
               value={keyName}
               onChange={(e) => setKeyName(e.target.value)}
               placeholder="Key name (e.g. my-app)"
-              className="flex-1 bg-panel border border-line rounded-lg px-4 py-3 font-body text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal"
+              className="flex-1 bg-surface border border-line rounded-lg px-4 py-3 font-body text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
             />
             <button
               type="submit"
@@ -307,7 +307,7 @@ export default function DashboardPage() {
 
           {/* Newly created key — show once */}
           {newKey && (
-            <div className="border border-signal/40 bg-signal/5 rounded-lg p-4 mb-8">
+            <div className="border border-signal/40 bg-signal/5 rounded-xl p-4 mb-8 shadow-card">
               <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-2">Copy your key — you can view it anytime from the keys list</p>
               <div className="flex items-center gap-3">
                 <code className="font-mono text-xs text-primary break-all flex-1">{newKey}</code>
@@ -322,20 +322,20 @@ export default function DashboardPage() {
           )}
 
           {/* Key list */}
-          <div className="border-t border-line">
+          <div className="space-y-3">
             {loadingKeys ? (
               <div className="py-8 flex flex-col gap-3">
                 {[1, 2].map((i) => (
-                  <div key={i} className="h-12 bg-line rounded-lg animate-pulse" />
+                  <div key={i} className="h-14 bg-line rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : keys.length === 0 ? (
               <p className="font-mono text-xs text-muted py-8">No keys yet — generate one above.</p>
             ) : (
               keys.map((k) => (
-                <div key={k.id} className="flex items-center justify-between py-4 border-b border-line gap-4">
+                <div key={k.id} className="group flex items-center justify-between gap-4 bg-surface border border-line rounded-xl shadow-card px-4 py-4 hover:border-signal/30 hover:shadow-card-hover transition-all">
                   <div className="flex-1 min-w-0">
-                    <p className="font-body text-sm font-medium">{k.name}</p>
+                    <p className="font-body text-sm font-medium group-hover:text-signal transition-colors">{k.name}</p>
                     <p className="font-mono text-[10px] text-muted">{maskKey(k.key)}</p>
                     <p className="font-mono text-[10px] text-muted">created {new Date(k.created_at).toLocaleDateString()}</p>
                   </div>
