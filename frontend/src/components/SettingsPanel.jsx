@@ -241,28 +241,47 @@ export default function SettingsPanel({ onClose, onSaved }) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div ref={trapRef} className="bg-base border border-line rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div ref={trapRef} className="bg-base border border-line rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-pop animate-[cmd-slide_0.18s_ease-out]">
 
-        <div className="flex items-center justify-between px-6 py-5 border-b border-line">
-          <div>
-            <h2 className="font-display font-semibold text-lg">Bring your own model</h2>
-            <p className="font-mono text-xs text-muted mt-0.5">
-              Override any tier with your own provider + model. Unset tiers use defaults.
-            </p>
+        <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-line">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <span className="mt-0.5 flex items-center justify-center w-10 h-10 rounded-xl bg-signal/10 border border-signal/30 text-signal shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <polyline points="9 12 11 14 15 10" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <h2 className="font-display font-semibold text-lg text-primary leading-tight">Bring your own model</h2>
+              <p className="font-mono text-xs text-muted mt-1 leading-relaxed">
+                Override any tier with your own provider + model. Unset tiers keep built-in defaults.
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {['OpenAI-compatible', 'Keys stay client-side', 'Swappable in one click'].map((b) => (
+                  <span key={b} className="font-mono text-[9px] px-2 py-1 rounded-full border border-line bg-surface text-muted">
+                    {b}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-primary transition-colors text-xl leading-none" aria-label="Close settings">&#10005;</button>
+          <button onClick={onClose} className="text-muted hover:text-primary transition-colors text-xl leading-none shrink-0" aria-label="Close settings">&#10005;</button>
         </div>
 
-        <div className="px-6 py-4 border-b border-line bg-panel">
-          <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">Current active config</p>
-          <div className="flex flex-wrap gap-4">
-            {TIERS.map((t) => (
-              <div key={t} className="font-mono text-xs">
-                <span className="text-muted">{TIER_LABELS[t]}: </span>
-                <span className="text-primary">{activeConfig[t]?.model_id || '\u2014'}</span>
-                <span className="text-muted"> · {activeConfig[t]?.provider || '\u2014'}</span>
-              </div>
-            ))}
+        <div className="px-6 py-4 border-b border-line bg-surface/40">
+          <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2.5">Current active config</p>
+          <div className="flex flex-wrap gap-2">
+            {TIERS.map((t) => {
+              const dot = t === 'cheap' ? 'bg-cool' : t === 'mid' ? 'bg-signal' : 'bg-danger'
+              return (
+                <div key={t} className="flex items-center gap-2 font-mono text-[10px] px-3 py-1.5 rounded-full border border-line bg-base">
+                  <span className={`w-1.5 h-1.5 rounded-full ${dot} ${activeConfig[t]?.model_id ? 'animate-pulse' : 'opacity-40'}`} />
+                  <span className="text-muted capitalize">{t}:</span>
+                  <span className="text-primary truncate max-w-[150px]">{activeConfig[t]?.model_id || 'built-in'}</span>
+                  {activeConfig[t]?.provider && <span className="text-muted/70">{activeConfig[t].provider}</span>}
+                </div>
+              )
+            })}
           </div>
         </div>
 
@@ -276,7 +295,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
                 type="button"
                 onClick={handleCalibrate}
                 disabled={calibrating}
-                className="font-mono text-[10px] px-2.5 py-1 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition disabled:opacity-50"
+                className="font-mono text-[10px] px-3 py-1 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 hover:shadow-card transition disabled:opacity-50"
               >
                 {calibrating ? 'Analyzing...' : 'Run calibration'}
               </button>
@@ -292,10 +311,10 @@ export default function SettingsPanel({ onClose, onSaved }) {
                       key={m.mode}
                       type="button"
                       onClick={() => handleApplyCalibrate(m.margin)}
-                      className={`text-left p-2 rounded-lg border transition-colors ${
+                      className={`text-left p-2.5 rounded-xl border transition-all duration-200 ${
                         Math.abs(threshold - m.margin) < 0.05
-                          ? 'border-signal bg-signal/10'
-                          : 'border-line hover:border-signal/30 bg-surface'
+                          ? 'border-signal bg-signal/10 shadow-card'
+                          : 'border-line hover:border-signal/30 bg-surface hover:shadow-card hover:-translate-y-0.5'
                       }`}
                     >
                       <div className="font-mono text-[10px] font-semibold text-primary capitalize">{m.mode}</div>
@@ -319,7 +338,13 @@ export default function SettingsPanel({ onClose, onSaved }) {
           </div>
         </div>
 
-        <div className="px-6 py-6 flex flex-col gap-6">
+        <div className="px-6 py-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="font-mono text-[10px] text-muted uppercase tracking-wide">Tier overrides</p>
+            <p className="font-mono text-[9px] text-muted/60 num-tabular">
+              {Object.values(tiers).filter((t) => t.enabled).length}/3 customized
+            </p>
+          </div>
           {TIERS.map((tier) => (
             <TierConfigSection
               key={tier}
@@ -334,16 +359,25 @@ export default function SettingsPanel({ onClose, onSaved }) {
           ))}
         </div>
 
-        <div className="px-6 py-5 border-t border-line flex items-center justify-between gap-4">
-          <div className="flex-1">
+        <div className="px-6 py-5 border-t border-line bg-surface/40 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-[180px]">
             {error && <p className="font-mono text-xs text-danger">{error}</p>}
             {success && <p className="font-mono text-xs text-cool">{success}</p>}
+            {!error && !success && (
+              <p className="font-mono text-[9px] text-muted/70 flex items-start gap-1.5">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0">
+                  <rect x="3" y="11" width="18" height="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+                Keys are used from your browser at request time — never stored server-side.
+              </p>
+            )}
           </div>
           <div className="flex gap-3">
             <button
               onClick={handleReset}
               disabled={saving}
-              className={`font-mono text-xs px-4 py-2.5 rounded-lg border transition disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`font-mono text-xs px-4 py-2.5 rounded-full border transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 confirmReset
                   ? 'border-danger bg-danger text-white'
                   : 'border-danger text-danger hover:bg-danger/10'
@@ -354,7 +388,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="font-mono text-xs px-5 py-2.5 rounded-lg bg-signal text-white font-semibold hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="font-mono text-xs px-5 py-2.5 rounded-full bg-signal text-white font-semibold hover:brightness-110 shadow-card transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Validating & saving\u2026' : 'Save config'}
             </button>

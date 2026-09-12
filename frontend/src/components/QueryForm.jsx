@@ -84,7 +84,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
   return (
     <div className="relative">
       <form onSubmit={handleSubmit} className="relative">
-        <div className="bg-panel border border-line rounded-2xl overflow-hidden focus-within:border-signal/50 focus-within:ring-1 focus-within:ring-signal/20 transition-all">
+        <div className="bg-base border border-line rounded-2xl overflow-hidden focus-within:border-signal/50 focus-within:ring-2 focus-within:ring-signal/15 shadow-card hover:shadow-card-hover transition-all">
           <textarea
             ref={textareaRef}
             value={query}
@@ -100,7 +100,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
               <button
                 type="button"
                 onClick={() => setShowOptions((v) => !v)}
-                className="font-mono text-[11px] text-muted hover:text-primary transition-colors px-2.5 py-1.5 rounded-md hover:bg-base"
+                className="font-mono text-[11px] text-muted hover:text-primary hover:bg-panel transition-all px-2.5 py-1.5 rounded-full border border-transparent hover:border-line"
               >
                 {showOptions ? '▾' : '▸'} Options
               </button>
@@ -108,7 +108,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
                 <button
                   type="button"
                   onClick={() => setShowHistory((v) => !v)}
-                  className="font-mono text-[11px] text-muted hover:text-primary transition-colors px-2.5 py-1.5 rounded-md hover:bg-base"
+                  className="font-mono text-[11px] text-muted hover:text-primary hover:bg-panel transition-all px-2.5 py-1.5 rounded-full border border-transparent hover:border-line"
                 >
                   ↑ History
                 </button>
@@ -120,7 +120,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-signal text-white disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 transition"
+              className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-signal text-white disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-card-hover transition-all"
               aria-label="Send"
             >
               {loading ? (
@@ -142,7 +142,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
             <select
               value={override}
               onChange={(e) => setOverride(e.target.value)}
-              className="bg-panel border border-line rounded-lg px-3 py-1.5 font-mono text-[11px] text-muted flex-1 focus:outline-none focus:ring-1 focus:ring-signal/50"
+              className="bg-base border border-line rounded-lg px-3 py-1.5 font-mono text-[11px] text-muted flex-1 focus:outline-none focus:ring-1 focus:ring-signal/50 shadow-sm"
             >
               <option value="auto">Auto-route</option>
               {tiers.map((t) => (
@@ -152,8 +152,8 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
             <button
               type="button"
               onClick={() => setBypassCache((v) => !v)}
-              className={`font-mono text-[11px] px-3 py-1.5 rounded-lg border transition ${
-                bypassCache ? 'border-signal text-signal bg-signal/10' : 'border-line text-muted hover:text-primary'
+              className={`font-mono text-[11px] px-3 py-1.5 rounded-lg border transition-all shadow-sm ${
+                bypassCache ? 'border-signal text-signal bg-signal/10 shadow-card' : 'border-line text-muted hover:text-primary hover:border-line'
               }`}
             >
               Skip cache
@@ -222,7 +222,7 @@ export function ChatSuggestions({ onSelect }) {
           key={query}
           onClick={() => onSelect(query)}
           title={query}
-          className="font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-signal hover:border-signal/40 transition-colors max-w-[280px] truncate"
+          className="font-mono text-[11px] text-muted bg-base/70 backdrop-blur-sm border border-line rounded-full px-3.5 py-1.5 hover:text-signal hover:border-signal/40 hover:bg-base transition-all max-w-[280px] truncate shadow-sm"
         >
           {label}
         </button>

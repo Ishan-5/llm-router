@@ -92,12 +92,12 @@ export default function TopModels() {
           return (
             <div
               key={pick.model}
-              className="border border-line rounded-xl p-4 hover:border-signal/30 transition-colors bg-panel/50"
+              className="group border border-line rounded-xl p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 hover:border-signal/30 transition-all duration-200 bg-surface"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-mono text-[10px] text-muted shrink-0">#{i + 1}</span>
-                  <h4 className="font-display font-semibold text-sm truncate">{pick.model}</h4>
+                  <h4 className="font-display font-semibold text-sm truncate group-hover:text-signal transition-colors">{pick.model}</h4>
                 </div>
                 <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md border shrink-0 ${colorClass}`}>
                   {pick.provider}
