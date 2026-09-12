@@ -170,8 +170,8 @@ export default function CostAnalytics({ apiKey }) {
 
       {top_expensive.length > 0 && (
         <Section title="Most Expensive Queries">
-          <div className="bg-surface border border-line rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
+          <div className="bg-surface border border-line rounded-lg overflow-x-auto">
+            <table className="w-full text-xs min-w-[520px]">
               <thead>
                 <tr className="border-b border-line">
                   <th className="text-left px-3 py-2 text-muted font-mono text-[10px] uppercase">Query</th>

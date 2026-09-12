@@ -47,13 +47,13 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
         <span className="text-muted shrink-0 font-mono">
           ${log.cost_usd?.toFixed(4)}
         </span>
-        <span className="text-muted shrink-0 font-mono">
+        <span className="text-muted shrink-0 font-mono hidden sm:inline">
           {log.latency_ms?.toFixed(0)}ms
         </span>
         {log.cache_hit && (
-          <span className="text-cool shrink-0 font-mono">cache</span>
+          <span className="text-cool shrink-0 font-mono hidden sm:inline">cache</span>
         )}
-        <span className="text-muted shrink-0">
+        <span className="text-muted shrink-0 hidden md:inline">
           {formatTime(log.created_at)}
         </span>
         <span className="text-muted shrink-0 ml-1">

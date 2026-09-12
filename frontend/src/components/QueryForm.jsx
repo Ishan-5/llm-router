@@ -100,7 +100,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
               <button
                 type="button"
                 onClick={() => setShowOptions((v) => !v)}
-                className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-base"
+                className="font-mono text-[11px] text-muted hover:text-primary transition-colors px-2.5 py-1.5 rounded-md hover:bg-base"
               >
                 {showOptions ? '▾' : '▸'} Options
               </button>
@@ -108,7 +108,7 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
                 <button
                   type="button"
                   onClick={() => setShowHistory((v) => !v)}
-                  className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-2 py-1 rounded-md hover:bg-base"
+                  className="font-mono text-[11px] text-muted hover:text-primary transition-colors px-2.5 py-1.5 rounded-md hover:bg-base"
                 >
                   ↑ History
                 </button>
@@ -120,15 +120,15 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
             <button
               type="submit"
               disabled={loading || !query.trim()}
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-signal text-white disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 transition"
+              className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg bg-signal text-white disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 transition"
               aria-label="Send"
             >
               {loading ? (
-                <svg width="14" height="14" viewBox="0 0 14 14" className="animate-spin">
+                <svg width="15" height="15" viewBox="0 0 14 14" className="animate-spin">
                   <circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="20 14" />
                 </svg>
               ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <line x1="2" y1="7" x2="12" y2="7" />
                   <polyline points="7,2 12,7 7,12" />
                 </svg>

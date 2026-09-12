@@ -6,6 +6,73 @@ import QueryForm, { ChatSuggestions } from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
 
 
+function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading }) {
+  const [scanIndex, setScanIndex] = useState(-1)
+
+  useEffect(() => {
+    if (!loading) {
+      setScanIndex(-1)
+      return
+    }
+    setScanIndex(0)
+    const id = setInterval(() => setScanIndex((i) => (i + 1) % tiers.length), 400)
+    return () => clearInterval(id)
+  }, [loading, tiers.length])
+
+  const isScanning = loading && scanIndex >= 0
+  const scanTier = isScanning ? tiers[scanIndex]?.key : null
+  const isWeb = !loading && activeTier === 'web'
+
+  return (
+    <div className="bg-base border border-line rounded-xl px-4 py-3 space-y-3">
+      <div className="flex items-center gap-3 font-mono text-[11px] text-muted">
+        <span className="uppercase tracking-wide shrink-0">query</span>
+        <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="shrink-0">
+          <line x1="2" y1="7" x2="12" y2="7" />
+          <polyline points="7,2 12,7 7,12" />
+        </svg>
+        <span className="flex-1 relative h-1.5 rounded-full bg-line overflow-hidden">
+          <span
+            className={`absolute inset-y-0 left-0 rounded-full bg-signal transition-all duration-700 ${score == null || loading ? 'opacity-40' : ''}`}
+            style={{ width: score != null && !loading ? `${Math.max(2, (score / 10) * 100)}%` : '12%' }}
+          />
+        </span>
+        <span className="shrink-0 text-signal font-semibold">
+          {score != null && !loading ? score.toFixed(1) : '—'}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5">
+        {tiers.map((t) => {
+          const active = !loading && activeTier === t.key
+          const scanning = isScanning && scanTier === t.key
+          const on = active || scanning
+          const cl = active && cacheHit
+            ? 'text-cool border-cool/30 bg-cool/10'
+            : on
+              ? 'text-signal border-signal/40 bg-signal/10'
+              : 'text-muted border-line'
+          return (
+            <span
+              key={t.key}
+              className={`font-mono text-[11px] px-2 py-1.5 rounded-lg border transition-all flex-1 text-center truncate ${cl}`}
+            >
+              {t.label}
+            </span>
+          )
+        })}
+        <span
+          className={`font-mono text-[11px] px-2 py-1.5 rounded-lg border transition-all w-12 text-center shrink-0 ${
+            isWeb ? 'text-cool border-cool/30 bg-cool/10' : 'text-muted border-line'
+          }`}
+        >
+          web
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
@@ -230,6 +297,21 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 <p className="font-mono text-xs text-danger mb-3 px-1">{error}</p>
               )}
             </>
+          )}
+
+          {/* compact diagram for small screens */}
+          {!isEmpty && (
+            <div className="mb-5 sm:hidden">
+              <MobileRoutingDiagram
+                tiers={TIERS}
+                activeTier={activeTier}
+                score={score}
+                cacheHit={latestResult?.cache_hit}
+                loading={loading}
+                cheapCeil={cheapCeil}
+                frontierFloor={frontierFloor}
+              />
+            </div>
           )}
 
           {/* input — always visible */}

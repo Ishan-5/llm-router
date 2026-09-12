@@ -139,7 +139,7 @@ export default function AdminPage({ user }) {
           {stats.user_breakdown?.length > 0 && (
             <div>
               <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3">Cost by user</h3>
-              <div className="bg-panel border border-line rounded-lg overflow-hidden">
+              <div className="bg-panel border border-line rounded-lg overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-line">
@@ -186,7 +186,7 @@ export default function AdminPage({ user }) {
               <p className="font-mono text-xs text-muted/60">Users appear here once they create an API key.</p>
             </div>
           ) : (
-            <div className="bg-panel border border-line rounded-lg overflow-hidden">
+            <div className="bg-panel border border-line rounded-lg overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line">
@@ -220,7 +220,7 @@ export default function AdminPage({ user }) {
               <p className="font-mono text-xs text-muted/60">Keys are created when users sign up.</p>
             </div>
           ) : (
-            <div className="bg-panel border border-line rounded-lg overflow-hidden">
+            <div className="bg-panel border border-line rounded-lg overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line">
@@ -262,7 +262,7 @@ export default function AdminPage({ user }) {
               <p className="font-mono text-xs text-muted/60">Logs appear once queries are routed through the API.</p>
             </div>
           ) : (
-            <div className="bg-panel border border-line rounded-lg overflow-hidden">
+            <div className="bg-panel border border-line rounded-lg overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line">

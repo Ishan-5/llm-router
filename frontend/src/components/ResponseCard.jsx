@@ -93,41 +93,41 @@ export function AssistantBubble({ result, logId, onRegenerate, regenerating }) {
 
         {/* metadata chips */}
         <div className="flex flex-wrap items-center gap-1.5 mt-1.5 px-1">
-          <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md border ${tierClass}`}>
+          <span className={`font-mono text-[11px] px-1.5 py-0.5 rounded-md border ${tierClass}`}>
             {result.routed_to === 'web' ? 'web search' : result.routed_to}
           </span>
           {result.model_id && (
             <span
-              className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md border ${tierClass}`}
+              className={`font-mono text-[11px] px-1.5 py-0.5 rounded-md border ${tierClass}`}
               title={result.model_id}
             >
               {modelName}
             </span>
           )}
           {result.difficulty_score != null && (
-            <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
+            <span className="font-mono text-[11px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
               score {result.difficulty_score.toFixed(1)}
             </span>
           )}
-          <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
+          <span className="font-mono text-[11px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
             ${result.cost_usd?.toFixed(4)}
           </span>
-          <span className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
+          <span className="font-mono text-[11px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line">
             {result.latency_ms?.toFixed(0)}ms
           </span>
           {result.cache_hit && (
-            <span className="font-mono text-[10px] text-cool px-1.5 py-0.5 rounded-md bg-cool/10 border border-cool/30">
+            <span className="font-mono text-[11px] text-cool px-1.5 py-0.5 rounded-md bg-cool/10 border border-cool/30">
               cache
             </span>
           )}
           {result.fallback_used && (
-            <span className="font-mono text-[10px] text-danger px-1.5 py-0.5 rounded-md bg-danger/10 border border-danger/30">
+            <span className="font-mono text-[11px] text-danger px-1.5 py-0.5 rounded-md bg-danger/10 border border-danger/30">
               fallback
             </span>
           )}
           {result.route_reason && (
             <span
-              className="font-mono text-[10px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line max-w-[200px] truncate"
+              className="font-mono text-[11px] text-muted px-1.5 py-0.5 rounded-md bg-base border border-line max-w-[200px] truncate"
               title={result.route_reason}
             >
               {result.route_reason}
@@ -135,7 +135,7 @@ export function AssistantBubble({ result, logId, onRegenerate, regenerating }) {
           )}
           <button
             onClick={handleCopy}
-            className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-1.5 py-0.5 rounded-md hover:bg-base"
+            className="font-mono text-[11px] text-muted hover:text-primary transition-colors px-2.5 py-1.5 rounded-md hover:bg-base"
           >
             {copied ? 'copied ✓' : 'copy'}
           </button>
@@ -145,7 +145,7 @@ export function AssistantBubble({ result, logId, onRegenerate, regenerating }) {
               <button
                 onClick={() => handleFeedback('up')}
                 disabled={feedbackSaving}
-                className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md transition-colors disabled:opacity-50 ${
+                className={`font-mono text-[11px] px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 ${
                   feedback === 'up'
                     ? 'text-signal bg-signal/10 border border-signal/30'
                     : 'text-muted hover:text-primary hover:bg-base border border-transparent'
@@ -157,7 +157,7 @@ export function AssistantBubble({ result, logId, onRegenerate, regenerating }) {
               <button
                 onClick={() => handleFeedback('down')}
                 disabled={feedbackSaving}
-                className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md transition-colors disabled:opacity-50 ${
+                className={`font-mono text-[11px] px-2.5 py-1.5 rounded-md transition-colors disabled:opacity-50 ${
                   feedback === 'down'
                     ? 'text-danger bg-danger/10 border border-danger/30'
                     : 'text-muted hover:text-danger hover:bg-base border border-transparent'
@@ -170,7 +170,7 @@ export function AssistantBubble({ result, logId, onRegenerate, regenerating }) {
                 <button
                   onClick={() => onRegenerate(logId)}
                   disabled={regenerating}
-                  className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-1.5 py-0.5 rounded-md hover:bg-base disabled:opacity-50"
+                  className="font-mono text-[11px] text-muted hover:text-primary transition-colors px-2.5 py-1.5 rounded-md hover:bg-base disabled:opacity-50"
                   title="Regenerate this answer"
                 >
                   {regenerating ? '…' : 'regenerate'}
