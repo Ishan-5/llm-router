@@ -3,7 +3,7 @@ import { fetchAdminStats, fetchAdminKeys, fetchAdminLogs, fetchAdminUsers } from
 
 function Stat({ label, value, sub }) {
   return (
-    <div className="bg-panel border border-line rounded-lg px-4 py-3">
+    <div className="bg-surface border border-line rounded-xl shadow-card px-4 py-3">
       <div className="text-muted text-[10px] uppercase tracking-wide mb-1">{label}</div>
       <div className="text-primary font-mono text-lg font-semibold">{value}</div>
       {sub && <div className="text-muted text-[10px] mt-0.5">{sub}</div>}
@@ -106,7 +106,7 @@ export default function AdminPage({ user }) {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-line mb-8">
+      <div className="flex gap-1 p-1 bg-panel border border-line rounded-xl mb-8 w-fit max-w-full overflow-x-auto">
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'users', label: `Users (${users.length})` },
@@ -116,10 +116,10 @@ export default function AdminPage({ user }) {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors ${
+            className={`px-4 py-2 font-mono text-xs rounded-lg whitespace-nowrap transition-colors ${
               tab === t.id
-                ? 'border-signal text-primary'
-                : 'border-transparent text-muted hover:text-primary'
+                ? 'bg-surface text-primary shadow-card'
+                : 'text-muted hover:text-primary'
             }`}
           >
             {t.label}
@@ -139,7 +139,7 @@ export default function AdminPage({ user }) {
           {stats.user_breakdown?.length > 0 && (
             <div>
               <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3">Cost by user</h3>
-              <div className="bg-panel border border-line rounded-lg overflow-x-auto">
+              <div className="bg-surface border border-line rounded-xl shadow-card overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-line">
@@ -167,7 +167,7 @@ export default function AdminPage({ user }) {
               <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3">Cost by tier</h3>
               <div className="flex gap-4">
                 {Object.entries(stats.tier_costs).map(([tier, cost]) => (
-                  <div key={tier} className="bg-panel border border-line rounded-lg px-4 py-3 flex-1">
+                  <div key={tier} className="bg-surface border border-line rounded-xl shadow-card px-4 py-3 flex-1">
                     <p className="font-mono text-[10px] text-muted uppercase">{tier}</p>
                     <p className="font-mono text-lg font-semibold text-primary">${cost?.toFixed(4)}</p>
                   </div>
@@ -186,7 +186,7 @@ export default function AdminPage({ user }) {
               <p className="font-mono text-xs text-muted/60">Users appear here once they create an API key.</p>
             </div>
           ) : (
-            <div className="bg-panel border border-line rounded-lg overflow-x-auto">
+            <div className="bg-surface border border-line rounded-xl shadow-card overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line">
@@ -220,7 +220,7 @@ export default function AdminPage({ user }) {
               <p className="font-mono text-xs text-muted/60">Keys are created when users sign up.</p>
             </div>
           ) : (
-            <div className="bg-panel border border-line rounded-lg overflow-x-auto">
+            <div className="bg-surface border border-line rounded-xl shadow-card overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line">
@@ -262,7 +262,7 @@ export default function AdminPage({ user }) {
               <p className="font-mono text-xs text-muted/60">Logs appear once queries are routed through the API.</p>
             </div>
           ) : (
-            <div className="bg-panel border border-line rounded-lg overflow-x-auto">
+            <div className="bg-surface border border-line rounded-xl shadow-card overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-line">

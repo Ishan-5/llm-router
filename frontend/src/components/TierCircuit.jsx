@@ -52,37 +52,54 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
   const frontierTick = frontierFloor ?? 6.0
 
   return (
-    <svg viewBox="0 0 400 400" className="w-full h-auto">
-      <defs>
-        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="4" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <filter id="glow-sm" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="2.5" result="b" />
-          <feMerge>
-            <feMergeNode in="b" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+    <div className="relative">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <span className="font-mono text-[10px] tracking-[0.2em] text-muted uppercase">routing engine</span>
+        <span className="flex items-center gap-1.5 font-mono text-[10px] text-muted">
+          <span className={`relative flex h-1.5 w-1.5 ${loading ? 'animate-pulse' : ''}`}>
+            <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${loading ? 'animate-ping bg-signal' : 'bg-cool'}`} />
+            <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${loading ? 'bg-signal' : 'bg-cool'}`} />
+          </span>
+          {loading ? 'routing…' : 'live'}
+        </span>
+      </div>
+      <div className="bg-base/60 backdrop-blur-sm border border-line rounded-2xl shadow-card p-4">
+        <svg viewBox="0 0 400 400" className="w-full h-auto">
+          <defs>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <filter id="glow-sm" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge>
+                <feMergeNode in="b" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            <linearGradient id="difficulty-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="var(--color-cool)" />
+              <stop offset="55%" stopColor="var(--color-signal)" />
+              <stop offset="100%" stopColor="var(--color-danger)" />
+            </linearGradient>
+          </defs>
 
-      {/* background circuit traces */}
-      <g opacity="0.04" stroke="var(--color-muted)" fill="none" strokeWidth="1">
-        <line x1="35" y1="0" x2="35" y2="400" />
-        <line x1="365" y1="0" x2="365" y2="400" />
-        <line x1="35" y1="195" x2="365" y2="195" />
-        <circle cx="35" cy="50" r="2.5" fill="var(--color-muted)" stroke="none" />
-        <circle cx="365" cy="50" r="2.5" fill="var(--color-muted)" stroke="none" />
-        <circle cx="35" cy="350" r="2.5" fill="var(--color-muted)" stroke="none" />
-        <circle cx="365" cy="350" r="2.5" fill="var(--color-muted)" stroke="none" />
-        <circle cx="35" cy="195" r="2.5" fill="var(--color-muted)" stroke="none" />
-        <circle cx="365" cy="195" r="2.5" fill="var(--color-muted)" stroke="none" />
-        <line x1="35" y1="120" x2="365" y2="120" strokeDasharray="2 6" />
-      </g>
+          {/* background circuit traces */}
+          <g opacity="0.05" stroke="var(--color-muted)" fill="none" strokeWidth="1">
+            <line x1="35" y1="0" x2="35" y2="400" />
+            <line x1="365" y1="0" x2="365" y2="400" />
+            <line x1="35" y1="195" x2="365" y2="195" />
+            <circle cx="35" cy="50" r="2.5" fill="var(--color-muted)" stroke="none" />
+            <circle cx="365" cy="50" r="2.5" fill="var(--color-muted)" stroke="none" />
+            <circle cx="35" cy="350" r="2.5" fill="var(--color-muted)" stroke="none" />
+            <circle cx="365" cy="350" r="2.5" fill="var(--color-muted)" stroke="none" />
+            <circle cx="35" cy="195" r="2.5" fill="var(--color-muted)" stroke="none" />
+            <circle cx="365" cy="195" r="2.5" fill="var(--color-muted)" stroke="none" />
+            <line x1="35" y1="120" x2="365" y2="120" strokeDasharray="2 6" />
+          </g>
 
       {/* paths: query → tier */}
       {Object.entries(qPath).map(([k, d]) => {
@@ -134,21 +151,26 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
       {/* difficulty gauge */}
       <g>
         <text x={GX - 8} y={GY + 3} textAnchor="end"
-          className="font-mono" fontSize="8" fill="var(--color-muted)" letterSpacing="0.05em">
+          className="font-mono" fontSize="8" fill="var(--color-muted)" letterSpacing="0.08em">
           DIFFICULTY
         </text>
         <rect x={GX} y={GY - 1.5} width={GW} height="3" rx="1.5" fill="var(--color-line)" />
         {score != null && !loading && (
           <>
+            <rect x={GX} y={GY - 1.5} width={GW} height="3" rx="1.5" fill="none" opacity="0.25" />
             <rect x={GX} y={GY - 1.5}
               width={Math.max(0, (score / 10) * GW)}
-              height="3" rx="1.5" fill="var(--color-signal)"
+              height="3" rx="1.5" fill="url(#difficulty-grad)"
               className="transition-all duration-700"
             />
             <circle cx={gx(score)} cy={GY} r="5"
-              fill="var(--color-signal)" filter="url(#glow-sm)"
+              fill="var(--color-base)" stroke="var(--color-signal)" strokeWidth="2"
+              filter="url(#glow-sm)"
               className="transition-all duration-700"
             />
+            <circle cx={gx(score)} cy={GY} r="5" fill="none" stroke="var(--color-signal)" strokeWidth="1" opacity="0.4">
+              <animate attributeName="r" values="5;8;5" dur="2.2s" repeatCount="indefinite" />
+            </circle>
           </>
         )}
         <line x1={gx(cheapTick)} y1={GY - 5} x2={gx(cheapTick)} y2={GY + 5}
@@ -157,7 +179,7 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
         {score != null && !loading && (
           <text x={GX + GW + 10} y={GY + 3} textAnchor="start"
-            className="font-mono" fontSize="9" fontWeight="600" fill="var(--color-signal)">
+            className="font-mono" fontSize="10" fontWeight="600" fill="var(--color-signal)">
             {score.toFixed(1)}
           </text>
         )}
@@ -169,14 +191,14 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
 
       {/* query node */}
       <g>
-        <circle cx={Q.x} cy={Q.y} r="10"
+        <circle cx={Q.x} cy={Q.y} r="11"
           fill="var(--color-base)"
           stroke={loading ? 'var(--color-signal)' : 'var(--color-muted)'}
           strokeWidth="2"
         >
           {loading && (
             <>
-              <animate attributeName="r" values="10;13;10" dur="1s" repeatCount="indefinite" />
+              <animate attributeName="r" values="11;14;11" dur="1s" repeatCount="indefinite" />
               <animate attributeName="stroke-opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite" />
             </>
           )}
@@ -187,14 +209,14 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
         >
           {loading && <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite" />}
         </circle>
-        <text x={Q.x + 18} y={Q.y + 4}
+        <text x={Q.x + 19} y={Q.y + 4}
           className="font-mono" fontSize="10" fill="var(--color-muted)">
           query
         </text>
         {isScanning && (
-          <text x={Q.x + 18} y={Q.y + 18}
+          <text x={Q.x + 19} y={Q.y + 18}
             className="font-mono" fontSize="9" fill="var(--color-muted)">
-            evaluating...
+            evaluating…
           </text>
         )}
       </g>
@@ -229,16 +251,18 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
               {t.label}
             </text>
             <text x={p.x} y={p.y + 38} textAnchor="middle"
-              className="font-mono" fontSize="9" fill="var(--color-muted)"
-              opacity={scanning ? 0.7 : 1}>
+              className="font-mono" fontSize="8.5" fill="var(--color-muted)"
+              opacity={scanning ? 0.7 : 0.9}>
               {t.sub}
             </text>
             {/* cache hit label — pill badge below the tier text */}
             {active && cacheHit && (
               <g>
-                <rect x={p.x - 22} y={p.y + 42} width="44" height="14" rx="7"
-                  fill="var(--color-cool)" opacity="0.15" />
-                <text x={p.x} y={p.y + 52} textAnchor="middle"
+                <rect x={p.x - 24} y={p.y + 40} width="48" height="15" rx="7.5"
+                  fill="var(--color-cool)" opacity="0.12" />
+                <rect x={p.x - 24} y={p.y + 40} width="48" height="15" rx="7.5" fill="none"
+                  stroke="var(--color-cool)" strokeOpacity="0.3" />
+                <text x={p.x} y={p.y + 51} textAnchor="middle"
                   className="font-mono" fontSize="8" fontWeight="600" fill="var(--color-cool)">
                   cache hit
                 </text>
@@ -280,6 +304,8 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
           </g>
         )
       })()}
-    </svg>
+          </svg>
+        </div>
+    </div>
   )
 }

@@ -282,7 +282,7 @@ export default function ApiPlayground() {
     <div className="space-y-4">
       {/* Input area */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="bg-panel border border-line rounded-xl overflow-hidden focus-within:border-signal/50 focus-within:ring-1 focus-within:ring-signal/20 transition-all">
+        <div className="bg-panel border border-line rounded-xl shadow-card overflow-hidden focus-within:border-signal/50 focus-within:ring-1 focus-within:ring-signal/20 transition-all">
           <textarea
             ref={textareaRef}
             value={query}
@@ -378,7 +378,7 @@ export default function ApiPlayground() {
 
       {/* Streaming response */}
       {streaming && streamChunks.length > 0 && (
-        <div className="bg-panel border border-line rounded-xl px-5 py-4 space-y-3 animate-[slide-in_0.15s_ease-out]">
+        <div className="bg-panel border border-line rounded-xl shadow-card px-5 py-4 space-y-3 animate-[slide-in_0.15s_ease-out]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-cool animate-pulse" />
@@ -400,7 +400,7 @@ export default function ApiPlayground() {
 
       {/* Non-streaming response */}
       {response && !streaming && (
-        <div className="bg-panel border border-line rounded-xl px-5 py-4 space-y-4 animate-[slide-in_0.15s_ease-out]">
+        <div className="bg-panel border border-line rounded-xl shadow-card px-5 py-4 space-y-4 animate-[slide-in_0.15s_ease-out]">
           {/* Metadata bar */}
           <div className="flex items-center gap-2 flex-wrap">
             <MetaBadge label="tier" value={response.routed_to} color={response.routed_to === 'frontier' ? 'danger' : response.routed_to === 'mid' ? 'signal' : 'cool'} />
@@ -495,7 +495,7 @@ export default function ApiPlayground() {
               <button
                 key={i}
                 onClick={() => loadFromHistory(item)}
-                className="w-full text-left px-3 py-2.5 bg-surface hover:bg-panel border border-line hover:border-signal/30 rounded-lg transition-colors group"
+                className="w-full text-left px-3 py-2.5 bg-surface hover:bg-panel border border-line hover:border-signal/30 rounded-xl shadow-card hover:shadow-card-hover transition-all duration-150 group"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`font-mono text-[9px] px-1.5 py-0.5 rounded border ${

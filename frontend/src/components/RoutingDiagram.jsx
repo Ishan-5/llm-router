@@ -207,41 +207,62 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   return (
     <section className="relative overflow-hidden border-b border-line bg-panel">
 
-      <div className="absolute top-8 right-8 grid grid-cols-6 gap-1.5 opacity-40 pointer-events-none hidden lg:grid">
-        {Array.from({ length: 24 }).map((_, i) => (
-          <span key={i} className="w-1 h-1 rounded-full bg-muted" />
-        ))}
-      </div>
+      {/* ambient glow */}
+      <div aria-hidden className="pointer-events-none absolute -top-40 -right-32 w-[36rem] h-[36rem] rounded-full opacity-[0.15] dark:opacity-[0.18]"
+        style={{ background: 'radial-gradient(circle, var(--color-signal) 0%, transparent 65%)' }} />
+      <div aria-hidden className="pointer-events-none absolute -bottom-48 -left-32 w-[32rem] h-[32rem] rounded-full opacity-[0.10] dark:opacity-[0.14]"
+        style={{ background: 'radial-gradient(circle, var(--color-cool) 0%, transparent 65%)' }} />
+      <div aria-hidden className="pointer-events-none absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at center, transparent 55%, var(--color-base) 100%)' }} />
+
+      {/* dot matrix pattern */}
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[40%] overflow-hidden [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]"
+        style={{ backgroundImage: 'radial-gradient(var(--color-muted) 0.6px, transparent 0.6px)', backgroundSize: '22px 22px', opacity: 0.18 }} />
 
       <div className="hidden lg:block absolute left-6 top-1/2 -translate-y-1/2 -rotate-90 origin-left">
-        <span className="font-mono text-[10px] tracking-[0.3em] text-muted whitespace-nowrap">
+        <span className="font-mono text-[10px] tracking-[0.3em] text-muted/70 whitespace-nowrap">
           LIVE · AUTO-ROUTED · REAL COST
         </span>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 lg:pl-16 pt-16 pb-20 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 items-start">
+      <div className="max-w-6xl mx-auto px-6 lg:pl-16 pt-10 sm:pt-12 pb-10 sm:pb-12 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 items-start">
         {/* left column */}
         <div className="flex flex-col min-h-0">
           {/* empty state: hero text */}
           {isEmpty && (
             <>
-              <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">
+              <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4 flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-signal opacity-60" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-signal" />
+                </span>
                 Difficulty-scored request routing
               </p>
-              <h1 className="font-display text-[2.75rem] md:text-6xl font-semibold leading-[1.05] tracking-tight mb-6">
-                Most queries<br />don't need your<br /><span className="text-signal">most expensive</span> model.
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.05] tracking-tight mb-6">
+                Most queries<br />don't need your<br />{' '}
+                <span className="bg-gradient-to-r from-[var(--color-signal)] to-[var(--color-cool)] bg-clip-text text-transparent">
+                  most expensive
+                </span>{' '}
+                model.
               </h1>
               <p className="text-muted text-base leading-relaxed max-w-md mb-6">
                 A regression model trained on 8,200 Claude-gold labels predicts how hard each
                 request actually is, then routes it to the cheapest tier that can handle it.
               </p>
-              {savedPct !== null && (
-                <div className="flex items-baseline gap-3 mb-8 font-mono border-l-2 border-signal pl-4">
-                  <span className="text-3xl font-semibold text-signal">{savedPct}%</span>
-                  <span className="text-xs text-muted leading-snug">
-                    cheaper than routing all {ticker.total_requests} logged requests to frontier —
-                    ${ticker.total_savings_usd?.toFixed(4) || '0.0000'} saved
-                  </span>
+              {savedPct !== null && ticker && (
+                <div className="flex items-stretch gap-px mb-8 rounded-xl border border-line bg-base shadow-card overflow-hidden max-w-md">
+                  <div className="px-5 py-3.5 bg-base">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-display text-3xl font-bold text-signal num-tabular">{savedPct}%</span>
+                      <span className="font-mono text-[10px] text-muted uppercase tracking-wide">saved</span>
+                    </div>
+                  </div>
+                  <div className="px-5 py-3.5 bg-panel/50">
+                    <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">vs all-frontier</p>
+                    <p className="font-mono text-xs text-primary num-tabular">
+                      ${ticker.total_savings_usd?.toFixed(4) || '0.0000'} on {ticker.total_requests} requests
+                    </p>
+                  </div>
                 </div>
               )}
               <div className="mb-8">
@@ -255,15 +276,18 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             <>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-signal shrink-0" />
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-signal opacity-40 animate-ping" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-signal" />
+                  </span>
                   <h2 className="font-display text-lg font-semibold">Routing demo</h2>
-                  <span className="font-mono text-[10px] text-muted">
+                  <span className="font-mono text-[10px] text-muted px-2 py-0.5 rounded-full bg-base border border-line num-tabular">
                     {queryCount} {queryCount === 1 ? 'query' : 'queries'}
                   </span>
                 </div>
                 <button
                   onClick={handleExitChat}
-                  className="flex items-center gap-1.5 font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-primary hover:border-signal transition-colors"
+                  className="flex items-center gap-1.5 font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-primary hover:border-signal/50 hover:shadow-card transition-all"
                 >
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                     <line x1="1" y1="1" x2="9" y2="9" />
@@ -275,7 +299,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
               <div
                 ref={scrollRef}
-                className="flex flex-col max-h-[50vh] overflow-y-auto mb-6 scroll-smooth chat-scroll"
+                className="flex flex-col max-h-[46vh] lg:max-h-[42vh] overflow-y-auto mb-4 scroll-smooth chat-scroll"
               >
                 {messages.map((msg, i) =>
                   msg.role === 'user'
@@ -321,7 +345,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             tiers={TIERS}
             activeConfig={activeConfig}
           />
-          <div className="mt-4 px-1">
+          <div className="mt-2 px-1">
             <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
           </div>
         </div>
