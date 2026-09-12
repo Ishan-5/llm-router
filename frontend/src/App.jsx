@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from './supabase'
 import Header from './components/Header'
 import RoutingDiagram from './components/RoutingDiagram'
@@ -8,6 +8,9 @@ import Footer from './components/Footer'
 import SettingsPanel from './components/SettingsPanel'
 import CommandPalette from './components/CommandPalette'
 import Reveal from './components/Reveal'
+import LiveStatsStrip from './components/LiveStatsStrip'
+import LiveTicker from './components/LiveTicker'
+import MetricsBand from './components/MetricsBand'
 import { useTheme } from './useTheme'
 
 const PricingPage = lazy(() => import('./components/PricingTable'))
@@ -26,6 +29,7 @@ const TITLES = {
   '/': 'Routewise — Cost-aware LLM routing',
   '/models': 'Routewise — Models',
   '/pricing': 'Routewise — Models',
+  '/metrics': 'Routewise — Live Metrics',
   '/playground': 'Routewise — API Playground',
   '/guide': 'Routewise — Developer Guide',
   '/admin': 'Routewise — Admin',
@@ -125,11 +129,16 @@ function PageSkeleton({ type }) {
 
 const PAGE_SKELETONS = { '/models': 'pricing', '/pricing': 'pricing', '/about': 'about', '/auth': 'auth', '/dashboard': 'dashboard' }
 
-function HomePage({ configVersion, backendOnline, isDark }) {
+function HomePage({ configVersion, backendOnline, isDark, onNavigate }) {
   return (
     <>
       <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
+      <LiveStatsStrip />
+      <LiveTicker />
       <Reveal>
+        <HowItWorks />
+      </Reveal>
+      <Reveal delay={50}>
         <Suspense fallback={
           <div className="max-w-6xl mx-auto px-6 py-16">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -142,27 +151,49 @@ function HomePage({ configVersion, backendOnline, isDark }) {
           <Features />
         </Suspense>
       </Reveal>
-      <Reveal delay={50}>
-        <HowItWorks />
-      </Reveal>
       <Reveal delay={100}>
-        <Suspense fallback={
-          <div className="max-w-6xl mx-auto px-6 py-20 border-t border-line bg-panel">
-            <div className="h-7 w-48 bg-line rounded animate-pulse mb-2" />
-            <div className="h-4 w-72 bg-line rounded animate-pulse mb-12" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="border-l-2 border-line pl-4">
-                  <div className="h-3 w-20 bg-line rounded animate-pulse mb-3" />
-                  <div className="h-9 w-16 bg-line rounded animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-        }>
-          <MetricsDashboard isDark={isDark} backendOnline={backendOnline} />
-        </Suspense>
+        <MetricsBand />
       </Reveal>
+      <section className="relative overflow-hidden border-t border-line bg-panel">
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[44rem] h-[28rem] rounded-full opacity-10 dark:opacity-15"
+          style={{ background: 'radial-gradient(ellipse, var(--color-cool) 0%, transparent 70%)' }} />
+        <div className="max-w-6xl mx-auto px-6 py-24 text-center relative">
+          <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4 flex items-center justify-center gap-2">
+            <span className="w-1 h-4 rounded-full bg-signal" />
+            Start routing cheaper today
+          </p>
+          <h2 className="font-display text-3xl md:text-4xl font-semibold mb-4 text-primary">
+            Cut your LLM bill without cutting quality.
+          </h2>
+          <p className="text-muted text-sm max-w-lg mx-auto mb-8">
+            Route every query to the cheapest model that can handle it — and watch the savings stack up in real time.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link
+              to="/playground"
+              className="inline-flex items-center gap-2 bg-signal text-white font-semibold text-sm px-6 py-3 rounded-full hover:brightness-110 hover:shadow-card-hover shadow-card transition-all"
+            >
+              Try the API
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="2" y1="7" x2="12" y2="7" />
+                <polyline points="7,2 12,7 7,12" />
+              </svg>
+            </Link>
+            <Link
+              to="/models"
+              className="inline-flex items-center gap-2 font-mono text-xs text-primary bg-base border border-line rounded-full px-6 py-3 hover:border-signal/50 hover:shadow-card transition-all"
+            >
+              See the models
+            </Link>
+            <Link
+              to="/metrics"
+              className="inline-flex items-center gap-2 font-mono text-xs text-muted bg-base border border-line rounded-full px-6 py-3 hover:border-signal/50 hover:text-primary hover:shadow-card transition-all"
+            >
+              Live metrics
+            </Link>
+          </div>
+        </div>
+      </section>
     </>
   )
 }
@@ -280,6 +311,7 @@ export default function App() {
             <Route path="/" element={<HomePage configVersion={configVersion} backendOnline={backendOnline} isDark={isDark} />} />
             <Route path="/models" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/pricing" element={<PricingRoute onNavigate={handleNavigate} />} />
+            <Route path="/metrics" element={<MetricsDashboard isDark={isDark} backendOnline={backendOnline} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -296,11 +328,28 @@ export default function App() {
             <Route path="/get-started" element={<OnboardingWizard />} />
             <Route path="/admin" element={<AdminPage user={user} />} />
             <Route path="*" element={
-              <div className="max-w-3xl mx-auto px-6 py-32 text-center">
-                <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">404</p>
-                <h1 className="font-display text-3xl font-semibold mb-4">Page not found</h1>
-                <p className="text-muted text-sm mb-8">The page you're looking for doesn't exist.</p>
-                <a href="/" className="font-mono text-xs px-4 py-2 rounded-lg border border-signal text-signal hover:bg-signal/10 transition">Go home</a>
+              <div className="relative max-w-3xl mx-auto px-6 py-32 text-center">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 -z-10 dot-grid opacity-40 [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black,transparent)]"
+                />
+                <p className="font-mono text-xs text-cool tracking-wide uppercase mb-4">404 — not found</p>
+                <h1 className="font-display text-4xl font-semibold mb-3">Nothing here to route</h1>
+                <p className="text-muted text-sm mb-8">The page you're looking for rolled off the tier. Let's get you back on the wire.</p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <button
+                    onClick={() => handleNavigate('/')}
+                    className="bg-signal text-white font-semibold text-sm px-6 py-2.5 rounded-full hover:brightness-110 shadow-card transition"
+                  >
+                    Back home
+                  </button>
+                  <button
+                    onClick={() => handleNavigate('/dashboard')}
+                    className="font-mono text-sm text-muted border border-line px-6 py-2.5 rounded-full hover:text-primary hover:border-signal/50 hover:shadow-card transition"
+                  >
+                    Go to dashboard
+                  </button>
+                </div>
               </div>
             } />
           </Routes>

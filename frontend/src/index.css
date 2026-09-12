@@ -10,35 +10,57 @@
   --color-base: #FFFFFF;
   --color-panel: #F6F6F4;
   --color-panel2: #EEEEEA;
+  --color-surface: #FCFBF9;
   --color-line: #E2E2DD;
   --color-signal: #C2570C;
   --color-cool: #0F766E;
   --color-danger: #B91C1C;
   --color-primary: #16181C;
   --color-muted: #6B7078;
+
+  --shadow-card: 0 1px 2px rgba(16, 17, 20, 0.04), 0 1px 3px rgba(16, 17, 20, 0.05);
+  --shadow-card-hover: 0 2px 4px rgba(16, 17, 20, 0.05), 0 10px 24px -8px rgba(16, 17, 20, 0.14);
+  --shadow-pop: 0 12px 32px -8px rgba(16, 17, 20, 0.18), 0 24px 56px -16px rgba(16, 17, 20, 0.16);
 }
 
 .dark {
   --color-base: #0B0F14;
   --color-panel: #121821;
   --color-panel2: #182130;
+  --color-surface: #101823;
   --color-line: #232D3B;
   --color-signal: #FF9F1C;
   --color-cool: #3FB8AF;
   --color-danger: #E85D5D;
   --color-primary: #E6EDF3;
   --color-muted: #7C8B9A;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 4px 16px -2px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 16px 40px -8px rgba(0, 0, 0, 0.65);
 }
 
 body {
   background: var(--color-base);
   color: var(--color-primary);
   transition: background-color 0.25s ease, color 0.25s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 ::selection {
   background: var(--color-signal);
   color: var(--color-base);
+}
+
+:where(a, button, input, select, textarea, summary, [role='button']):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-signal) 50%, transparent);
+  outline-offset: 2px;
+}
+
+.num-tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes slide-in {
