@@ -68,7 +68,7 @@ export default function PricingTable({ onBack }) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search models..."
-            className="bg-panel border border-line rounded-lg px-3 py-2 font-mono text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 w-48"
+            className="bg-surface border border-line rounded-lg px-3 py-2 font-mono text-xs placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 w-48 shadow-card"
           />
           <div className="flex flex-wrap gap-2">
             <button
@@ -100,7 +100,7 @@ export default function PricingTable({ onBack }) {
             .map((provider) => (
               <div key={provider}>
                 <h3 className="font-display font-semibold text-base mb-3">{PROVIDER_LABELS[provider] || provider}</h3>
-                <div className="overflow-x-auto rounded-lg border border-line">
+                <div className="overflow-x-auto rounded-xl border border-line bg-surface shadow-card">
                   <table className="w-full text-xs font-mono">
                     <thead>
                       <tr className="border-b border-line bg-panel2/50">

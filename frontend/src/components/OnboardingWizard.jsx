@@ -20,13 +20,15 @@ const TIER_STYLES = {
 
 function StepIcon({ done, active, n }) {
   return (
-    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-mono text-xs font-semibold transition-all duration-300 ${
-      done
-        ? 'bg-signal text-white'
-        : active
-          ? 'bg-signal/15 text-signal ring-1 ring-signal'
-          : 'bg-line text-muted'
-    }`}>
+    <div
+      className={`flex items-center justify-center w-8 h-8 rounded-full font-mono text-xs font-semibold transition-all duration-300 ${
+        done
+          ? 'bg-signal text-white shadow-card'
+          : active
+            ? 'bg-signal/15 text-signal ring-1 ring-signal shadow-card'
+            : 'bg-surface border border-line text-muted'
+      }`}
+    >
       {done ? (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12" />
@@ -153,8 +155,8 @@ export default function OnboardingWizard() {
     return (
       <div className="min-h-[70vh] flex items-center justify-center px-6">
         <div className="w-full max-w-md text-center">
-          <div className="w-14 h-14 rounded-full bg-cool/10 border border-cool/30 flex items-center justify-center mx-auto auth-pulse mb-5">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-cool)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="w-16 h-16 rounded-2xl bg-cool/10 border border-cool/30 flex items-center justify-center mx-auto auth-pulse mb-6 shadow-card">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-cool)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="11" width="18" height="11" rx="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
@@ -163,7 +165,7 @@ export default function OnboardingWizard() {
           <p className="text-sm text-muted mb-8">You need an account to create an API key and start routing.</p>
           <Link
             to="/auth"
-            className="inline-block bg-signal text-white font-semibold text-sm px-6 py-3 rounded-lg hover:brightness-110 transition"
+            className="inline-block bg-signal text-white font-semibold text-sm px-7 py-3 rounded-full shadow-card hover:brightness-110 transition"
           >
             Sign in or create an account
           </Link>
@@ -215,12 +217,20 @@ export default function OnboardingWizard() {
             <>
               <div className="grid sm:grid-cols-3 gap-4 mb-8">
                 {[
-                  { icon: '🔑', t: 'Get an API key', d: 'One header and the router knows who you are.' },
-                  { icon: '⚡', t: 'Fire your first request', d: 'See it scored and routed in real time.' },
-                  { icon: '📊', t: 'Explore the dashboard', d: 'Watch traffic, cost, and tier split.' },
+                  { icon: 'key', t: 'Get an API key', d: 'One header and the router knows who you are.', chip: 'bg-signal/10 border-signal/30 text-signal' },
+                  { icon: 'bolt', t: 'Fire your first request', d: 'See it scored and routed in real time.', chip: 'bg-cool/10 border-cool/30 text-cool' },
+                  { icon: 'chart', t: 'Explore the dashboard', d: 'Watch traffic, cost, and tier split.', chip: 'bg-danger/10 border-danger/30 text-danger' },
                 ].map((item) => (
-                  <div key={item.t} className="border border-line rounded-xl p-5 bg-panel/60 text-center">
-                    <div className="text-2xl mb-2">{item.icon}</div>
+                  <div key={item.t} className="bg-surface border border-line rounded-2xl p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200">
+                    <div className={`w-9 h-9 rounded-xl mb-3 flex items-center justify-center border ${item.chip}`}>
+                      {item.icon === 'key' ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></svg>
+                      ) : item.icon === 'bolt' ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
+                      )}
+                    </div>
                     <p className="text-sm font-medium text-primary mb-1">{item.t}</p>
                     <p className="text-xs text-muted leading-relaxed">{item.d}</p>
                   </div>
@@ -229,7 +239,7 @@ export default function OnboardingWizard() {
               <div className="flex justify-center">
                 <button
                   onClick={() => goTo(1)}
-                  className="bg-signal text-white font-semibold text-sm px-8 py-3 rounded-lg hover:brightness-110 transition"
+                  className="bg-signal text-white font-semibold text-sm px-8 py-3 rounded-full shadow-card hover:brightness-110 transition"
                 >
                   Create my API key →
                 </button>
@@ -239,32 +249,34 @@ export default function OnboardingWizard() {
 
           {step === 1 && (
             <>
-              <div className="border border-signal/30 bg-signal/5 rounded-xl p-5 mb-6">
+              <div className="bg-surface border border-signal/30 rounded-2xl p-5 mb-6 shadow-card">
                 <div className="flex items-center gap-2 mb-3">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-signal">
                     <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
                   </svg>
                   <p className="font-mono text-[10px] text-signal uppercase tracking-wide">Your API key</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <code
-                    className={`font-mono text-sm text-primary break-all flex-1 bg-base border border-line rounded-lg px-4 py-3 ${revealed ? '' : 'select-none blur-sm'}`}
+                    className={`font-mono text-sm text-primary break-all flex-1 bg-base border border-line rounded-xl px-4 py-3 ${revealed ? '' : 'select-none blur-sm'}`}
                   >
                     {apiKey}
                   </code>
-                  <button
-                    onClick={() => setRevealed((v) => !v)}
-                    className="shrink-0 font-mono text-xs px-3 py-3 rounded-lg border border-line text-muted hover:text-primary hover:border-signal/50 transition"
-                    title={revealed ? 'Hide key' : 'Reveal key'}
-                  >
-                    {revealed ? 'Hide' : 'Reveal'}
-                  </button>
-                  <button
-                    onClick={handleCopy}
-                    className="shrink-0 font-mono text-xs px-4 py-3 rounded-lg border border-signal text-signal hover:bg-signal/10 transition font-medium"
-                  >
-                    {copied ? 'Copied' : 'Copy'}
-                  </button>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => setRevealed((v) => !v)}
+                      className="flex-1 sm:flex-none font-mono text-xs px-4 py-3 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition"
+                      title={revealed ? 'Hide key' : 'Reveal key'}
+                    >
+                      {revealed ? 'Hide' : 'Reveal'}
+                    </button>
+                    <button
+                      onClick={handleCopy}
+                      className="flex-1 sm:flex-none font-mono text-xs px-5 py-3 rounded-full bg-signal text-white hover:brightness-110 transition font-medium shadow-card"
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
                 <p className="font-mono text-[10px] text-muted mt-3">
                   Pass it in the <code className="bg-line px-1 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code> header. It’s revealed only on demand — keep it server-side.
@@ -273,7 +285,7 @@ export default function OnboardingWizard() {
               <div className="flex justify-center">
                 <button
                   onClick={() => goTo(2)}
-                  className="bg-signal text-white font-semibold text-sm px-8 py-3 rounded-lg hover:brightness-110 transition"
+                  className="bg-signal text-white font-semibold text-sm px-8 py-3 rounded-full shadow-card hover:brightness-110 transition"
                 >
                   Make your first request →
                 </button>
@@ -284,7 +296,7 @@ export default function OnboardingWizard() {
           {step === 2 && (
             <>
               {/* Test runner */}
-              <div className="border border-line rounded-xl p-5 mb-4 bg-panel/60">
+              <div className="bg-surface border border-line rounded-2xl p-5 mb-4 shadow-card">
                 <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-3">Try it live</p>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {EXAMPLES.map((ex) => (
@@ -303,12 +315,12 @@ export default function OnboardingWizard() {
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') runTest() }}
                     placeholder="Type any query…"
-                    className="flex-1 bg-base border border-line rounded-lg px-4 py-3 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition"
+                    className="flex-1 bg-base border border-line rounded-xl px-4 py-3 text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal focus:ring-1 focus:ring-signal/30 transition"
                   />
                   <button
                     onClick={() => runTest()}
                     disabled={test.running || !query.trim()}
-                    className="shrink-0 font-mono text-xs px-5 py-3 rounded-lg bg-signal text-white hover:brightness-110 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="shrink-0 font-mono text-xs px-5 py-3 rounded-full bg-signal text-white hover:brightness-110 shadow-card transition disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {test.running ? 'Routing…' : 'Run test'}
                   </button>
@@ -322,7 +334,7 @@ export default function OnboardingWizard() {
                 </div>
               )}
               {test.result && !test.error && (
-                <div className="border border-line rounded-xl overflow-hidden mb-4 animate-[page-fade-in_0.3s_ease-out]">
+                <div className="bg-surface border border-line rounded-2xl overflow-hidden mb-4 shadow-card animate-[page-fade-in_0.3s_ease-out]">
                   <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-2.5 bg-panel border-b border-line">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tierStyle.color }} />
@@ -346,7 +358,7 @@ export default function OnboardingWizard() {
               )}
 
               {/* Code snippet */}
-              <div className="border border-line rounded-xl overflow-hidden mb-6">
+              <div className="bg-surface border border-line rounded-2xl overflow-hidden mb-6 shadow-card">
                 <div className="flex items-center justify-between px-4 py-2.5 bg-panel border-b border-line">
                   <p className="font-mono text-[10px] text-muted uppercase tracking-wide">Do it with code</p>
                   <div className="flex gap-1 p-0.5 bg-base border border-line rounded-md">
@@ -385,13 +397,13 @@ print(result["cost_usd"])    # actual cost`}</pre>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
                   onClick={() => goTo(3)}
-                  className="w-full sm:w-auto text-center bg-signal text-white font-semibold text-sm px-8 py-3 rounded-lg hover:brightness-110 transition"
+                  className="w-full sm:w-auto text-center bg-signal text-white font-semibold text-sm px-8 py-3 rounded-full shadow-card hover:brightness-110 transition"
                 >
                   Finish →
                 </button>
                 <button
                   onClick={() => navigate('/playground')}
-                  className="w-full sm:w-auto text-center font-mono text-sm text-muted border border-line px-6 py-3 rounded-lg hover:text-primary hover:border-signal/50 transition"
+                  className="w-full sm:w-auto text-center font-mono text-sm text-muted border border-line px-6 py-3 rounded-full hover:text-primary hover:border-signal/50 hover:shadow-card transition"
                 >
                   Open full playground
                 </button>
@@ -402,7 +414,7 @@ print(result["cost_usd"])    # actual cost`}</pre>
           {step === 3 && (
             <>
               <div className="text-center mb-8">
-                <div className="w-16 h-16 rounded-full bg-signal/10 border border-signal/40 flex items-center justify-center mx-auto auth-pulse">
+                <div className="w-16 h-16 rounded-2xl bg-signal/10 border border-signal/40 flex items-center justify-center mx-auto auth-pulse shadow-card">
                   <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--color-signal)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -414,16 +426,24 @@ print(result["cost_usd"])    # actual cost`}</pre>
               </div>
               <div className="grid sm:grid-cols-3 gap-4 mb-8">
                 {[
-                  { to: '/dashboard', icon: '📊', t: 'Dashboard', d: 'Live traffic, cost, tier split' },
-                  { to: '/playground', icon: '🧪', t: 'Playground', d: 'Streaming, tiers, code snippets' },
-                  { to: '/guide', icon: '📖', t: 'Developer guide', d: 'SDK, MCP, alerts, BYOM' },
+                  { to: '/dashboard', chip: 'bg-cool/10 border-cool/30 text-cool', d: 'Live traffic, cost, tier split', di: 'chart' },
+                  { to: '/playground', chip: 'bg-signal/10 border-signal/30 text-signal', d: 'Streaming, tiers, code snippets', di: 'bolt' },
+                  { to: '/guide', chip: 'bg-danger/10 border-danger/30 text-danger', d: 'SDK, MCP, alerts, BYOM', di: 'book' },
                 ].map((item) => (
                   <Link
-                    key={item.t}
+                    key={item.to}
                     to={item.to}
-                    className="border border-line rounded-xl p-5 bg-panel/60 text-center hover:border-signal/40 transition group"
+                    className="bg-surface border border-line rounded-2xl p-5 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 hover:border-signal/40 transition-all duration-200 group"
                   >
-                    <div className="text-2xl mb-2">{item.icon}</div>
+                    <div className={`w-9 h-9 rounded-xl mb-3 flex items-center justify-center border ${item.chip}`}>
+                      {item.di === 'chart' ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>
+                      ) : item.di === 'bolt' ? (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                      )}
+                    </div>
                     <p className="text-sm font-medium text-primary mb-1 group-hover:text-signal transition">{item.t}</p>
                     <p className="text-xs text-muted leading-relaxed">{item.d}</p>
                   </Link>
