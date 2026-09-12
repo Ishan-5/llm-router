@@ -49,7 +49,7 @@ export default function AboutPage() {
       {/* What it does */}
       <div className="border-t border-line pt-12 mb-16">
         <h2 className="font-display text-2xl font-semibold mb-8">What it actually does</h2>
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3 max-w-3xl">
           {[
             {
               title: 'Scores difficulty in real time',
@@ -76,8 +76,8 @@ export default function AboutPage() {
               body: 'If you already have API keys for OpenAI, Anthropic, or others, you can wire them into your own tier configuration instead of using the defaults.',
             },
           ].map(({ title, body }) => (
-            <div key={title} className="border-l-2 border-line pl-5">
-              <p className="font-display font-semibold text-primary mb-1">{title}</p>
+            <div key={title} className="group bg-surface border border-line rounded-2xl shadow-card hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 p-5">
+              <p className="font-display font-semibold text-primary mb-1 group-hover:text-signal transition-colors">{title}</p>
               <p className="text-muted text-sm leading-relaxed">{body}</p>
             </div>
           ))}
@@ -110,20 +110,20 @@ export default function AboutPage() {
       </div>
 
       {/* Try it */}
-      <div className="border-t border-line pt-12 mb-16 bg-panel -mx-6 px-6 py-12 -my-12">
+      <div className="border-t border-line pt-12 mb-16 bg-panel -mx-6 px-6 py-12 -my-12 border-b border-line">
         <h2 className="font-display text-2xl font-semibold mb-4">Try it</h2>
         <p className="text-muted text-base leading-relaxed mb-6">
           The live demo is a real, working instance — type anything into it and watch the actual routing
           decision happen. No account needed.
         </p>
         <div className="flex flex-wrap gap-4">
-          <a href="/" className="font-mono text-xs px-4 py-2 rounded-lg border border-signal text-signal hover:bg-signal/10 transition">
+          <a href="/" className="font-mono text-xs px-4 py-2 rounded-full border border-signal text-signal hover:bg-signal/10 transition">
             Live demo
           </a>
-          <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-lg border border-line text-muted hover:text-primary hover:border-signal/50 transition">
+          <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition">
             GitHub
           </a>
-          <a href="https://pypi.org/project/routewise/" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-lg border border-line text-muted hover:text-primary hover:border-signal/50 transition">
+          <a href="https://pypi.org/project/routewise/" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition">
             pip install routewise
           </a>
         </div>
@@ -143,13 +143,13 @@ export default function AboutPage() {
           for opportunities where I can keep doing exactly that.
         </p>
         <div className="flex flex-wrap gap-4">
-          <a href="https://www.linkedin.com/in/devansh584" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-lg border border-line text-muted hover:text-primary hover:border-signal/50 transition">
+          <a href="https://www.linkedin.com/in/devansh584" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition">
             LinkedIn
           </a>
-          <a href="https://github.com/Ishan-5" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-lg border border-line text-muted hover:text-primary hover:border-signal/50 transition">
+          <a href="https://github.com/Ishan-5" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition">
             GitHub
           </a>
-          <a href="mailto:devansh.7711@gmail.com" className="font-mono text-xs px-4 py-2 rounded-lg border border-line text-muted hover:text-primary hover:border-signal/50 transition">
+          <a href="mailto:devansh.7711@gmail.com" className="font-mono text-xs px-4 py-2 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition">
             devansh.7711@gmail.com
           </a>
         </div>
@@ -168,21 +168,21 @@ export default function AboutPage() {
             <button onClick={() => { setSent(false); setFeedback({ name: '', email: '', message: '' }) }} className="font-mono text-xs text-muted hover:text-primary mt-3 transition-colors">Send another</button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="max-w-lg flex flex-col gap-4">
+          <form onSubmit={handleSubmit} className="max-w-lg bg-surface border border-line rounded-2xl shadow-card flex flex-col gap-4 p-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <input
                 type="text"
                 placeholder="Name"
                 value={feedback.name}
                 onChange={(e) => setFeedback((f) => ({ ...f, name: e.target.value }))}
-                className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors"
+                className="bg-panel border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50 transition-colors"
               />
               <input
                 type="email"
                 placeholder="Email"
                 value={feedback.email}
                 onChange={(e) => setFeedback((f) => ({ ...f, email: e.target.value }))}
-                className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors"
+                className="bg-panel border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50 transition-colors"
               />
             </div>
             <textarea
@@ -190,13 +190,13 @@ export default function AboutPage() {
               rows={4}
               value={feedback.message}
               onChange={(e) => setFeedback((f) => ({ ...f, message: e.target.value }))}
-              className="bg-surface border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:border-signal transition-colors resize-none"
+              className="bg-panel border border-line rounded-lg px-4 py-2.5 font-body text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50 transition-colors resize-none"
             />
             {error && <p className="font-mono text-xs text-danger">{error}</p>}
             <button
               type="submit"
               disabled={sending}
-              className="self-start font-mono text-xs px-5 py-2.5 rounded-lg bg-signal text-white font-semibold hover:brightness-110 transition disabled:opacity-50"
+              className="self-start font-mono text-xs px-5 py-2.5 rounded-full bg-signal text-white font-semibold hover:brightness-110 transition disabled:opacity-50"
             >
               {sending ? 'Sending...' : 'Send message'}
             </button>

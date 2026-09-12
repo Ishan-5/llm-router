@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { Link } from 'react-router-dom'
 import { API_BASE, API_KEY } from '../config'
 
 const COPY_RESET_MS = 2000
@@ -87,7 +86,7 @@ result = client.ask("hello", user_api_keys={"frontier": "sk-..."})`,
         print(item, end="", flush=True)
     else:
         # final metadata dict
-        print(f"\\n\\nTier: {item['tier']}, Cost: \${item['cost_usd']:.4f}")`,
+        print(f"\\n\\nTier: {item['tier']}, Cost: $\\{item['cost_usd']:.4f}")`,
         lang: 'python',
       },
       {
@@ -425,19 +424,55 @@ function CodeBlock({ code, lang }) {
   }
 
   return (
-    <div className="relative group rounded-xl border border-line overflow-hidden">
-      <div className="flex items-center justify-between bg-panel px-3 py-2 border-b border-line">
-        <span className="font-mono text-[10px] text-muted uppercase">{lang}</span>
+    <div className="relative group rounded-2xl border border-line bg-surface overflow-hidden shadow-card">
+      <div className="flex items-center justify-between bg-panel px-4 py-2.5 border-b border-line">
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-danger/60" />
+            <span className="w-2.5 h-2.5 rounded-full bg-signal/60" />
+            <span className="w-2.5 h-2.5 rounded-full bg-cool/60" />
+          </div>
+          <span className="font-mono text-[10px] text-primary">routewise.{lang}</span>
+        </div>
         <button
           onClick={copy}
-          className="font-mono text-[10px] text-muted hover:text-primary transition-colors px-2 py-0.5 rounded hover:bg-base"
+          className={`flex items-center gap-1.5 font-mono text-[10px] px-3 py-1 rounded-full border transition ${
+            copied
+              ? 'border-cool/30 bg-cool/10 text-cool'
+              : 'border-line text-muted hover:text-primary hover:border-signal/50 hover:shadow-card'
+          }`}
         >
+          {copied && (
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          )}
           {copied ? 'copied' : 'copy'}
         </button>
       </div>
-      <pre className="bg-surface px-4 py-3 overflow-x-auto text-xs font-mono text-primary leading-relaxed">
+      <pre className="bg-panel/40 px-5 py-4 overflow-x-auto text-xs font-mono text-primary leading-relaxed">
         <code>{code}</code>
       </pre>
+    </div>
+  )
+}
+
+function PillTabBar({ tabs, active, onSelect }) {
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          onClick={() => onSelect(tab.id)}
+          className={`px-4 py-2 font-mono text-xs rounded-full border transition-all ${
+            active === tab.id
+              ? 'border-signal bg-signal/10 text-signal shadow-card'
+              : 'border-line text-muted hover:text-primary hover:border-signal/40 hover:shadow-card'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
   )
 }
@@ -449,36 +484,90 @@ function EndpointBadge({ method, path }) {
     DELETE: 'text-danger bg-danger/10 border-danger/30',
   }
   return (
-    <span className={`inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded border ${colors[method] || 'text-muted bg-surface border-line'}`}>
+    <span className={`inline-flex items-center gap-1.5 font-mono text-[10px] px-2 py-0.5 rounded border shrink-0 ${colors[method] || 'text-muted bg-surface border-line'}`}>
       <span className="font-semibold">{method}</span>
       <span>{path}</span>
     </span>
   )
 }
 
-function ApiReference() {
-  const endpoints = [
-    { method: 'POST', path: '/route', desc: 'Standard routing — ML picks the tier' },
-    { method: 'POST', path: '/route/stream', desc: 'Streaming routing — SSE chunks' },
-    { method: 'POST', path: '/v1/chat/completions', desc: 'OpenAI-compatible endpoint' },
-    { method: 'GET', path: '/analytics', desc: 'Cost analytics for your key' },
-    { method: 'GET', path: '/logs', desc: 'Recent request logs' },
-    { method: 'GET', path: '/logs/{id}', desc: 'Full detail of a single log' },
-    { method: 'GET', path: '/stats', desc: 'Aggregate system stats' },
-    { method: 'GET', path: '/pricing', desc: 'All model pricing' },
-    { method: 'GET', path: '/providers', desc: 'Supported providers list' },
-    { method: 'GET', path: '/config', desc: 'Current model config' },
-    { method: 'POST', path: '/config', desc: 'Save BYOM config' },
-    { method: 'DELETE', path: '/config', desc: 'Reset to defaults' },
-    { method: 'GET', path: '/health', desc: 'Health check (no auth)' },
-  ]
+const ENDPOINT_GROUPS = [
+  {
+    label: 'Routing',
+    dot: 'bg-signal',
+    items: [
+      { method: 'POST', path: '/route', desc: 'Standard routing — ML picks the tier' },
+      { method: 'POST', path: '/route/stream', desc: 'Streaming routing — SSE chunks' },
+      { method: 'POST', path: '/v1/chat/completions', desc: 'OpenAI-compatible endpoint' },
+    ],
+  },
+  {
+    label: 'Observability',
+    dot: 'bg-cool',
+    items: [
+      { method: 'GET', path: '/analytics', desc: 'Cost analytics for your key' },
+      { method: 'GET', path: '/logs', desc: 'Recent request logs' },
+      { method: 'GET', path: '/logs/{id}', desc: 'Full detail of a single log' },
+      { method: 'GET', path: '/stats', desc: 'Aggregate system stats' },
+    ],
+  },
+  {
+    label: 'System',
+    dot: 'bg-danger',
+    items: [
+      { method: 'GET', path: '/pricing', desc: 'All model pricing' },
+      { method: 'GET', path: '/providers', desc: 'Supported providers list' },
+      { method: 'GET', path: '/config', desc: 'Current model config' },
+      { method: 'POST', path: '/config', desc: 'Save BYOM config' },
+      { method: 'DELETE', path: '/config', desc: 'Reset to defaults' },
+      { method: 'GET', path: '/health', desc: 'Health check (no auth)' },
+    ],
+  },
+]
 
+function CopyCurlButton({ method, path }) {
+  const [copied, setCopied] = useState(false)
+  function copy() {
+    const curl = `curl -X ${method} ${API_BASE}${path} \\\n  -H "Authorization: Bearer <your-key>"`
+    navigator.clipboard.writeText(curl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), COPY_RESET_MS)
+    })
+  }
   return (
-    <div className="space-y-2">
-      {endpoints.map((ep) => (
-        <div key={`${ep.method}-${ep.path}`} className="flex items-center gap-3 py-2 px-3 bg-surface rounded-lg border border-line hover:border-signal/30 transition-colors">
-          <EndpointBadge method={ep.method} path={ep.path} />
-          <span className="font-body text-xs text-muted">{ep.desc}</span>
+    <button
+      onClick={copy}
+      className={`font-mono text-[10px] px-2 py-0.5 rounded-full border transition shrink-0 ${
+        copied ? 'border-cool/30 bg-cool/10 text-cool' : 'border-line text-muted hover:text-primary hover:border-signal/50'
+      }`}
+    >
+      {copied ? 'copied' : 'curl'}
+    </button>
+  )
+}
+
+function ApiReference() {
+  return (
+    <div className="space-y-8">
+      {ENDPOINT_GROUPS.map((group) => (
+        <div key={group.label}>
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3 flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 rounded-full ${group.dot}`} />
+            {group.label}
+            <span className="font-mono text-[9px] text-muted/50 ml-1">({group.items.length})</span>
+          </h3>
+          <div className="space-y-2">
+            {group.items.map((ep) => (
+              <div
+                key={`${ep.method}-${ep.path}`}
+                className="flex flex-wrap sm:flex-nowrap items-center gap-3 py-3 px-4 bg-surface rounded-xl border border-line shadow-card hover:shadow-card-hover hover:-translate-y-0.5 hover:border-signal/30 transition-all duration-200"
+              >
+                <EndpointBadge method={ep.method} path={ep.path} />
+                <span className="flex-1 font-body text-xs text-muted">{ep.desc}</span>
+                <CopyCurlButton method={ep.method} path={ep.path} />
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>
@@ -490,7 +579,13 @@ export default function GuidePage() {
   const current = EXAMPLES[activeTab]
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-20">
+    <div className="relative max-w-4xl mx-auto px-6 py-20">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 dot-grid opacity-30 [mask-image:radial-gradient(ellipse_70%_40%_at_50%_0%,black,transparent)]"
+      />
+
+      {/* Hero */}
       <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">Documentation</p>
       <h1 className="font-display text-3xl font-semibold mb-2">Developer Guide</h1>
       <p className="text-muted text-sm mb-10 max-w-xl">
@@ -499,24 +594,12 @@ export default function GuidePage() {
       </p>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-line mb-8 overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'border-signal text-primary'
-                : 'border-transparent text-muted hover:text-primary'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="mb-8">
+        <PillTabBar tabs={TABS} active={activeTab} onSelect={setActiveTab} />
       </div>
 
       {/* Content */}
-      <div className="space-y-6 animate-[slide-in_0.15s_ease-out]">
+      <div key={activeTab} className="space-y-6 animate-[page-fade-in_0.2s_ease-out]">
         <div>
           <h2 className="font-display text-xl font-semibold mb-1">{current.title}</h2>
           <p className="text-muted text-sm">{current.description}</p>
@@ -525,7 +608,10 @@ export default function GuidePage() {
         <div className="space-y-4">
           {current.sections.map((section) => (
             <div key={section.label}>
-              <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">{section.label}</h3>
+              <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2 flex items-center gap-2">
+                <span className="w-1 h-1 rounded-full bg-signal" />
+                {section.label}
+              </h3>
               <CodeBlock code={section.code} lang={section.lang} />
             </div>
           ))}
@@ -534,9 +620,43 @@ export default function GuidePage() {
 
       {/* API Reference */}
       <div className="mt-16 border-t border-line pt-10">
-        <h2 className="font-display text-xl font-semibold mb-2">API Reference</h2>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-6">
+          <h2 className="font-display text-xl font-semibold">API Reference</h2>
+          <span className="font-mono text-[9px] uppercase tracking-wide text-muted px-2.5 py-1 rounded-full border border-line">
+            13 endpoints · Bearer auth
+          </span>
+        </div>
         <p className="text-muted text-sm mb-6">All available endpoints. Most require <code className="font-mono text-[10px] bg-panel px-1 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code> header.</p>
         <ApiReference />
+      </div>
+
+      {/* Closing CTA */}
+      <div className="relative mt-16 rounded-2xl border border-line bg-surface overflow-hidden shadow-card">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-20 -left-16 w-64 h-64 rounded-full bg-cool/10 blur-3xl" />
+          <div className="absolute -bottom-24 -right-16 w-64 h-64 rounded-full bg-signal/10 blur-3xl" />
+        </div>
+        <div className="relative px-8 py-10 text-center">
+          <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-3">Ready when you are</p>
+          <h2 className="font-display text-2xl font-semibold mb-2">Start routing in 30 seconds</h2>
+          <p className="text-sm text-muted mb-7 max-w-md mx-auto">
+            Grab your API key and send your first query — the router picks the cheapest tier that gets it right.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              to="/get-started"
+              className="bg-signal text-white font-semibold text-sm px-7 py-3 rounded-full shadow-card hover:brightness-110 transition"
+            >
+              Get your API key
+            </Link>
+            <Link
+              to="/"
+              className="font-mono text-sm text-muted border border-line px-7 py-3 rounded-full hover:text-primary hover:border-signal/50 hover:shadow-card transition"
+            >
+              ← Back to live demo
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   )
