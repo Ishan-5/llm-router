@@ -144,36 +144,33 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
           </div>
 
           {/* Mobile controls */}
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-1.5 md:hidden">
             <ThemeToggle isDark={isDark} toggle={toggleTheme} />
-            {user ? (
-              <UserMenu user={user} isAdmin={isAdmin} onSignOut={handleSignOut} />
-            ) : (
-              <button
-                onClick={() => setMobileOpen(!mobileOpen)}
-                className="text-muted hover:text-primary transition-colors p-1"
-                aria-label="Toggle menu"
-              >
-                {mobileOpen ? (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="4" y1="4" x2="16" y2="16" />
-                    <line x1="16" y1="4" x2="4" y2="16" />
-                  </svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="3" y1="5" x2="17" y2="5" />
-                    <line x1="3" y1="10" x2="17" y2="10" />
-                    <line x1="3" y1="15" x2="17" y2="15" />
-                  </svg>
-                )}
-              </button>
-            )}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="text-muted hover:text-primary transition-colors p-2 rounded-md"
+              aria-label="Toggle menu"
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <line x1="4" y1="4" x2="16" y2="16" />
+                  <line x1="16" y1="4" x2="4" y2="16" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <line x1="3" y1="5" x2="17" y2="5" />
+                  <line x1="3" y1="10" x2="17" y2="10" />
+                  <line x1="3" y1="15" x2="17" y2="15" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile drawer — only for unauthenticated users */}
-      {!user && mobileOpen && (
+      {/* Mobile drawer — all users */}
+      {mobileOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />
           <div className="fixed top-0 right-0 z-50 w-72 h-full bg-base border-l border-line shadow-2xl md:hidden overflow-y-auto animate-[slide-in_0.2s_ease-out]">
@@ -199,15 +196,41 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
                 className="text-sm text-muted hover:text-primary transition-colors py-2.5">
                 Guide
               </Link>
+              <Link to="/evaluate" onClick={() => setMobileOpen(false)}
+                className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                Evaluate
+              </Link>
               <Link to="/about" onClick={() => setMobileOpen(false)}
                 className="text-sm text-muted hover:text-primary transition-colors py-2.5">
                 About
               </Link>
+              {user && (
+                <>
+                  <div className="border-t border-line my-2" />
+                  <Link to="/dashboard" onClick={() => setMobileOpen(false)}
+                    className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                    Dashboard
+                  </Link>
+                  {isAdmin && (
+                    <Link to="/admin" onClick={() => setMobileOpen(false)}
+                      className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                      Admin
+                    </Link>
+                  )}
+                </>
+              )}
               <div className="border-t border-line my-2" />
-              <Link to="/auth" onClick={() => setMobileOpen(false)}
-                className="text-sm text-signal hover:text-primary transition-colors py-2.5 font-medium">
-                Sign in
-              </Link>
+              {user ? (
+                <button onClick={() => { onSignOut(); setMobileOpen(false) }}
+                  className="text-left text-sm text-signal hover:text-primary transition-colors py-2.5 font-medium">
+                  Sign out
+                </button>
+              ) : (
+                <Link to="/auth" onClick={() => setMobileOpen(false)}
+                  className="text-sm text-signal hover:text-primary transition-colors py-2.5 font-medium">
+                  Sign in
+                </Link>
+              )}
               <button onClick={() => { onOpenSettings(); setMobileOpen(false) }}
                 className="flex items-center gap-1.5 font-mono text-xs text-muted hover:text-primary transition-colors py-2.5 text-left">
                 {byomActive && <span className="w-2 h-2 rounded-full bg-signal" />}

@@ -255,7 +255,7 @@ export default function DashboardPage() {
       <h1 className="font-display text-3xl font-semibold mb-6">Dashboard</h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-line mb-8">
+      <div className="flex gap-1 border-b border-line mb-8 overflow-x-auto">
         {[
           { id: 'keys', label: 'API Keys' },
           ...(hasKeys ? [
@@ -268,7 +268,7 @@ export default function DashboardPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors ${
+            className={`px-4 py-2.5 font-mono text-xs border-b-2 transition-colors whitespace-nowrap shrink-0 ${
               activeTab === tab.id
                 ? 'border-signal text-primary'
                 : 'border-transparent text-muted hover:text-primary'
