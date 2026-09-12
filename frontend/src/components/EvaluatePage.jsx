@@ -92,7 +92,7 @@ export default function EvaluatePage() {
       </p>
 
       {/* Threshold explanation */}
-      <div className="bg-surface border border-line rounded-xl p-4 mb-6">
+      <div className="bg-surface border border-line rounded-xl shadow-card p-4 mb-6">
         <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">How routing works</p>
         <div className="grid grid-cols-3 gap-3 font-mono text-[10px]">
           <div className="text-center">
@@ -119,7 +119,7 @@ export default function EvaluatePage() {
         </p>
       </div>
 
-      <div className="bg-panel border border-line rounded-xl overflow-hidden mb-6">
+      <div className="bg-panel border border-line rounded-xl shadow-card overflow-hidden mb-6">
         <textarea
           value={queries}
           onChange={(e) => setQueries(e.target.value)}
@@ -158,7 +158,7 @@ export default function EvaluatePage() {
             {MARGINS.map((m) => {
               const c = counts[m.key.replace('tier_', '')]
               return (
-                <div key={m.key} className={`bg-panel border rounded-xl p-4 ${
+                <div key={m.key} className={`bg-surface border rounded-2xl shadow-card p-4 ${
                   m.color === 'cool' ? 'border-cool/20' : m.color === 'signal' ? 'border-signal/20' : 'border-danger/20'
                 }`}>
                   <div className={`font-mono text-[10px] font-semibold ${
@@ -183,7 +183,7 @@ export default function EvaluatePage() {
           </div>
 
           {/* Results table */}
-          <div className="bg-panel border border-line rounded-xl overflow-hidden">
+          <div className="bg-panel border border-line rounded-xl shadow-card overflow-hidden">
             <div className="px-5 py-3 border-b border-line flex items-center justify-between">
               <span className="font-mono text-[10px] text-muted uppercase tracking-wide">Results ({total} queries)</span>
               <span className="font-mono text-[9px] text-muted">

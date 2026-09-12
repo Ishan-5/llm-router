@@ -16,7 +16,7 @@ const PIE_COLORS_LIGHT = ['#0F766E', '#C2570C', '#B91C1C', '#6D28D9', '#059669',
 
 function Stat({ label, value, sub }) {
   return (
-    <div className="bg-surface border border-line rounded-lg px-4 py-3">
+    <div className="bg-surface border border-line rounded-xl shadow-card px-4 py-3">
       <div className="text-muted text-[10px] uppercase tracking-wide mb-1">{label}</div>
       <div className="text-primary font-mono text-lg font-semibold">{value}</div>
       {sub && <div className="text-muted text-[10px] mt-0.5">{sub}</div>}
@@ -62,7 +62,7 @@ export default function CostAnalytics({ apiKey }) {
   }, [apiKey])
 
   if (error) return <p className="font-mono text-xs text-danger">Failed to load analytics: {error}</p>
-  if (!data) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-line rounded-lg animate-pulse" />)}</div>
+  if (!data) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-line rounded-xl animate-pulse" />)}</div>
 
   const { summary, tier_costs, model_costs, daily, latency_by_tier, top_expensive } = data
 
@@ -83,7 +83,7 @@ export default function CostAnalytics({ apiKey }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {daily.length > 0 && (
           <Section title="Cost Over Time">
-            <div className="bg-surface border border-line rounded-lg p-4 h-56">
+            <div className="bg-surface border border-line rounded-xl shadow-card p-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={daily}>
                   <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} />
@@ -99,7 +99,7 @@ export default function CostAnalytics({ apiKey }) {
 
         {tierPieData.length > 0 && (
           <Section title="Cost by Tier">
-            <div className="bg-surface border border-line rounded-lg p-4 h-56 flex items-center">
+            <div className="bg-surface border border-line rounded-xl shadow-card p-4 h-56 flex items-center">
               <ResponsiveContainer width="50%" height="100%">
                 <PieChart>
                   <Pie data={tierPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} innerRadius={35}>
@@ -125,7 +125,7 @@ export default function CostAnalytics({ apiKey }) {
 
         {modelBarData.length > 0 && (
           <Section title="Cost by Model">
-            <div className="bg-surface border border-line rounded-lg p-4 h-56">
+            <div className="bg-surface border border-line rounded-xl shadow-card p-4 h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={modelBarData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke={palette.grid} />
@@ -141,7 +141,7 @@ export default function CostAnalytics({ apiKey }) {
 
         {Object.keys(latency_by_tier).length > 0 && (
           <Section title="Avg Latency by Tier">
-            <div className="bg-surface border border-line rounded-lg p-4">
+            <div className="bg-surface border border-line rounded-xl shadow-card p-4">
               <div className="space-y-3">
                 {Object.entries(latency_by_tier).map(([tier, ms]) => (
                   <div key={tier} className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export default function CostAnalytics({ apiKey }) {
 
       {top_expensive.length > 0 && (
         <Section title="Most Expensive Queries">
-          <div className="bg-surface border border-line rounded-lg overflow-x-auto">
+          <div className="bg-surface border border-line rounded-xl shadow-card overflow-x-auto">
             <table className="w-full text-xs min-w-[520px]">
               <thead>
                 <tr className="border-b border-line">
