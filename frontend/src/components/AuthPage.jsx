@@ -262,7 +262,7 @@ export default function AuthPage() {
             </span>
           </div>
 
-          <div className="border border-line rounded-2xl bg-panel/80 backdrop-blur p-8">
+          <div className="border border-line rounded-2xl bg-panel/80 backdrop-blur p-8 shadow-card">
             {/* Mode tabs */}
             <div className="grid grid-cols-2 gap-1 p-1 bg-base border border-line rounded-lg mb-8">
               {[

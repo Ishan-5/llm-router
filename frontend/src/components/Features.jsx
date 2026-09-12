@@ -67,14 +67,18 @@ export default function Features() {
   return (
     <section className="max-w-6xl mx-auto px-6 py-16">
       <div className="mb-10">
-        <p className="font-mono text-xs text-signal tracking-wide uppercase mb-2">What we offer</p>
+        <p className="font-mono text-xs text-signal tracking-wide uppercase mb-2 flex items-center gap-2">
+          <span className="w-1 h-4 rounded-full bg-signal" />
+          What we offer
+        </p>
         <h2 className="font-display text-2xl font-semibold text-primary mb-2">Built for production</h2>
         <p className="text-sm text-muted max-w-lg">Everything you need to route LLM traffic intelligently — from cost optimization to security.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {FEATURES.map((f) => (
-          <div key={f.title} className="border border-line rounded-lg p-5 bg-panel hover:border-signal/30 transition-colors group">
-            <div className="w-9 h-9 rounded-md bg-surface border border-line flex items-center justify-center mb-4 group-hover:border-signal/30 transition-colors">
+          <div key={f.title} className="group relative border border-line rounded-xl p-5 bg-base shadow-card hover:shadow-card-hover hover:-translate-y-0.5 hover:border-signal/30 transition-all">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-signal/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-10 h-10 rounded-xl bg-panel border border-line flex items-center justify-center mb-4 group-hover:bg-signal/10 group-hover:border-signal/30 group-hover:shadow-card transition-all">
               {f.icon}
             </div>
             <h3 className="text-sm font-semibold text-primary mb-1.5">{f.title}</h3>
