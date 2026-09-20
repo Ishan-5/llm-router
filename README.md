@@ -1,6 +1,7 @@
 <p align="center">
   <a href="https://llm-router-nine-eta.vercel.app/"><img src="https://img.shields.io/badge/🚀-Live_Demo-8A2BE2?style=for-the-badge&labelColor=111" /></a>
   <a href="https://pypi.org/project/routewise/"><img src="https://img.shields.io/badge/📦-PyPI_SDK-00ADD8?style=for-the-badge&labelColor=111" /></a>
+  <a href="https://www.npmjs.com/package/routewise"><img src="https://img.shields.io/badge/🖥️-Terminal_CLI-22C55E?style=for-the-badge&labelColor=111" /></a>
   <a href="https://github.com/Ishan-5/llm-router"><img src="https://img.shields.io/badge/⭐-Star_on_GitHub-FFD700?style=for-the-badge&labelColor=111" /></a>
 </p>
 
@@ -21,6 +22,8 @@
   <img src="https://img.shields.io/badge/Docker-containerized-2496ED" />
   <img src="https://img.shields.io/badge/tests-38%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
+  <img src="https://img.shields.io/npm/v/routewise" />
+  <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
   <img src="https://img.shields.io/badge/license-Proprietary-red" />
   <a href="https://llm-router-d2b2.onrender.com/health"><img src="https://img.shields.io/website?url=https%3A%2F%2Fllm-router-d2b2.onrender.com%2Fhealth&label=backend&color=green" /></a>
@@ -44,11 +47,20 @@
 
 ## 🚀 Quick start
 
-<kbd>pip install routewise</kbd>
+<kbd>npm install -g routewise</kbd> &nbsp;·&nbsp; <kbd>pip install routewise</kbd>
 
 ```bash
-pip install routewise
+npm install -g routewise
+
+routewise login                 # create your key, save it without it touching shell history
+routewise ask "What is the capital of France?"
+
+Paris
+[cheap score=3.11 $0.00008 · 812ms]    # routing metadata on stderr, answer clean on stdout
 ```
+
+One call and the query is **scored, routed, cached, logged, and billed** — automatically.
+The same routing pipeline is a Python SDK, a REST API, and an OpenAI-compatible endpoint:
 
 ```python
 from routewise import RouteWiseClient
@@ -89,6 +101,7 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | Bring your own models | n/a | **Per-request `byom_config`** |
 | Web search for time-sensitive queries | Manual | **Automatic Tavily routing** |
 | OpenAI-compatible API | Native | **Drop-in `/v1/chat/completions`** |
+| Terminal-first access | Write your own client | **`routewise` CLI, zero deps, from npm** |
 
 > [!IMPORTANT]
 > The average query costs **$0.000144** with RouteWise vs **$0.00033** if you send everything
@@ -110,6 +123,8 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | Economy → Balanced → Quality moves both tier boundaries live | Agents call the full routing pipeline as a tool — no HTTP round-trip | Cost / error-rate / latency thresholds → SSRF-safe webhooks |
 | 📊 **Live dashboard** | 👍 **Feedback loop** | 🧪 **OpenAI-compatible** |
 | Real-time tier diagram, cost, latency, tier distribution | Thumbs up/down on every answer feeds active learning | Drop-in `/v1/chat/completions` endpoint |
+| 🖥️ **Terminal-first** | ⚕️ **`routewise doctor`** | 📈 **Usage on demand** |
+| `npm i -g routewise` → ask, stream, and chat right in your shell, zero runtime deps | One command walks config, backend, providers, and a live ask | `stats`, `logs`, `analytics` — no browser needed |
 
 ---
 
@@ -395,6 +410,44 @@ client.stats()          # requests, cost saved, tier distribution
 
 ---
 
+## 🖥️ Terminal CLI
+
+Same router, your terminal. Installed and updated straight from npm with zero runtime
+dependencies, talking to the identical hosted backend as the SDK:
+
+```bash
+npm install -g routewise
+
+routewise login                                        # create + save your key (hidden paste)
+routewise ask "what is the capital of france"           # one query, answered instantly
+routewise ask "design a rate limiter" --tier frontier   # force a tier, or --threshold 0|1|2
+routewise stream "write a haiku about routing"          # tokens as they arrive
+routewise chat                                          # multi-turn REPL
+```
+
+Answers print to **stdout**; routing metadata — tier, difficulty score, cost, latency,
+cache hit — prints to **stderr**, so `routewise ask "$Q" --json | jq -r .response` and
+`routewise ask "$Q" > out.txt` pipeline like any Unix tool.
+
+Replies arrive as Markdown and are **re-rendered for the terminal**: bold headings, `•`
+lists, `☐`/`☑` checklists, aligned tables, quotes, and code blocks. Piped output gets the
+markup stripped with **zero ANSI codes** (`--no-color` / `NO_COLOR` forces plain text).
+
+| Command | What it does |
+|---|---|
+| `login` / `whoami` | Create + save a key via masked paste / verify identity, spend & cache rate |
+| `ask` / `stream` / `chat` | Route a query · stream tokens as they arrive · multi-turn conversation |
+| `stats` / `logs` / `analytics` | Usage, cost, savings, request log lines, cost analytics |
+| `byom` | Bring your own model per tier — set once, auto-attached to every call |
+| `doctor` | End-to-end self-check: config → backend → providers → live ask |
+| `evaluate "<q>"` | Difficulty score + routing per mode (works without a key) |
+| `pricing` / `providers` / `config` | Model price list · provider catalog · effective config |
+
+Keys never enter shell history (`login` masks the paste), and BYOM keys live only in your
+local config file — never on the server. Full command reference: [cli/README](./cli/README.md).
+
+---
+
 ## 🤖 MCP gateway
 
 RouteWise ships an MCP server (`router/mcp_server.py`) that exposes the full routing pipeline
@@ -458,6 +511,15 @@ Webhook payload:
 ---
 
 ## ❓ FAQ
+
+<details>
+<summary><b>Do I need Python to use RouteWise?</b></summary>
+
+No. `npm install -g routewise` gives you the whole router in your terminal, against the same
+hosted backend — no Python required. Python is only needed if you want to run the backend and
+Ollama locally.
+
+</details>
 
 <details>
 <summary><b>Do I need an account to use the router?</b></summary>
@@ -626,6 +688,11 @@ llm-router/
 │   ├── package.json
 │   └── vite.config.js
 │
+├── cli/
+│   ├── src/                  # routewise npm CLI: ask, stream, chat, stats, byom, doctor, login
+│   ├── test/
+│   └── package.json
+│
 ├── sdk/
 │   ├── routewise/                # PyPI package
 │   └── setup.py
@@ -659,5 +726,6 @@ llm-router/
 <p align="center">
   <a href="https://llm-router-nine-eta.vercel.app/"><img src="https://img.shields.io/badge/🚀-Try_the_Demo-8A2BE2?style=for-the-badge&labelColor=111" /></a>
   <a href="https://pypi.org/project/routewise/"><img src="https://img.shields.io/badge/📦-pip_install_routewise-00ADD8?style=for-the-badge&labelColor=111" /></a>
+  <a href="https://www.npmjs.com/package/routewise"><img src="https://img.shields.io/badge/🖥️-npm_CLI-22C55E?style=for-the-badge&labelColor=111" /></a>
   <a href="https://github.com/Ishan-5/llm-router"><img src="https://img.shields.io/badge/⭐-Star_us_on_GitHub-FFD700?style=for-the-badge&labelColor=111" /></a>
 </p>
