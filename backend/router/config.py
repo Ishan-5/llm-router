@@ -73,7 +73,7 @@ FALLBACK_CHAIN = {
 
 # Last-resort fallback if the entire Groq/Ollama chain fails.
 GEMINI_FALLBACK_CONFIG = {
-    "model_id": "gemini-2.0-flash",
+    "model_id": "gemini-3.6-flash",
     "price_per_m_input": 0.10,
     "price_per_m_output": 0.40,
 }

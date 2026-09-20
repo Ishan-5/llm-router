@@ -8,9 +8,34 @@ CLOSED = "closed"
 OPEN   = "open"
 HALF   = "half"
 
+# Demo "simulate outage" mode. When a tier is listed here, its breaker reports
+# OPEN without needing real failures -- every request skips that tier and the
+# failover chain exercises itself in front of an audience. In-memory only.
+_chaos_tiers: set[str] = set()
+_chaos_lock = threading.Lock()
+
+
+def set_chaos(active: bool, tiers: list[str] | None = None):
+    """Enable/disable outage simulation. With no tier list, trips every tier
+    except 'gemini' so the independent last-resort provider stays up."""
+    with _chaos_lock:
+        if not active:
+            _chaos_tiers.clear()
+            return
+        if tiers:
+            _chaos_tiers.update(t for t in tiers)
+        else:
+            _chaos_tiers.update(("cheap", "mid", "frontier"))
+
+
+def get_chaos() -> dict:
+    with _chaos_lock:
+        return {"active": bool(_chaos_tiers), "tiers": sorted(_chaos_tiers)}
+
 
 class CircuitBreaker:
-    def __init__(self, failure_threshold: int = 3, cooldown_seconds: int = 60):
+    def __init__(self, tier: str = "unknown", failure_threshold: int = 3, cooldown_seconds: int = 60):
+        self.tier = tier
         self._failure_threshold = failure_threshold
         self._cooldown_seconds = cooldown_seconds
         self._failures = 0
@@ -45,6 +70,8 @@ class CircuitBreaker:
                             self._failures, self._cooldown_seconds)
 
     def is_open(self) -> bool:
+        if self.tier in _chaos_tiers:
+            return True
         return self.state == OPEN
 
     def get_stats(self) -> dict:
@@ -53,21 +80,23 @@ class CircuitBreaker:
                 "state": self._state,
                 "failures": self._failures,
                 "opened_at": self._opened_at,
+                "simulated": self.tier in _chaos_tiers,
             }
 
 
 # One circuit breaker per tier — shared across all requests
 _breakers: dict[str, CircuitBreaker] = {
-    "cheap":    CircuitBreaker(),
-    "mid":      CircuitBreaker(),
-    "frontier": CircuitBreaker(),
-    "gemini":   CircuitBreaker(),
+    "cheap":    CircuitBreaker("cheap"),
+    "mid":      CircuitBreaker("mid"),
+    "frontier": CircuitBreaker("frontier"),
+    "gemini":   CircuitBreaker("gemini"),
 }
 
 
 def get_breaker(tier: str) -> CircuitBreaker:
-    return _breakers.get(tier, CircuitBreaker())
+    return _breakers.get(tier, CircuitBreaker(tier))
 
 
 def get_all_stats() -> dict:
-    return {tier: b.get_stats() for tier, b in _breakers.items()}
+    with _chaos_lock:
+        return {tier: b.get_stats() for tier, b in _breakers.items()}

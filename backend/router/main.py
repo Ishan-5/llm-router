@@ -21,6 +21,7 @@ from router.routes.alerts import router as alerts_router
 from router.routes.admin import router as admin_router
 from router.routes.settings import router as settings_router
 from router.routes.news import router as news_router
+from router.routes.demo import router as demo_router
 
 log = logging.getLogger("routewise")
 
@@ -82,6 +83,7 @@ def _check_and_fire_alerts():
     finally:
         session.close()
 
+
 # ThreadPoolExecutor for running blocking tasks in the background
 executor = ThreadPoolExecutor()
 
@@ -131,6 +133,7 @@ app.include_router(alerts_router)
 app.include_router(admin_router)
 app.include_router(settings_router)
 app.include_router(news_router)
+app.include_router(demo_router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

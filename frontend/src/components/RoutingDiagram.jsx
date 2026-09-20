@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchStats, fetchConfig, fetchSettings, setSharedThreshold, getSharedThreshold } from '../api'
+import { fetchStats, fetchConfig, fetchSettings, fetchChaosStatus, setSharedThreshold, getSharedThreshold } from '../api'
 import TierCircuit from './TierCircuit'
 import ThresholdSlider from './ThresholdSlider'
 import QueryForm, { ChatSuggestions } from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
 
 
-function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading }) {
+function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading, chaosActive, crossProviderFallback }) {
   const [scanIndex, setScanIndex] = useState(-1)
 
   useEffect(() => {
@@ -22,6 +22,7 @@ function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading }) {
   const isScanning = loading && scanIndex >= 0
   const scanTier = isScanning ? tiers[scanIndex]?.key : null
   const isWeb = !loading && activeTier === 'web'
+  const isGemini = !loading && (activeTier === 'gemini' || crossProviderFallback)
 
   return (
     <div className="bg-base border border-line rounded-xl px-4 py-3 space-y-3">
@@ -68,6 +69,18 @@ function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading }) {
         >
           web
         </span>
+        <span
+          className={`font-mono text-[11px] px-2 py-1.5 rounded-lg border transition-all shrink-0 ${
+            isGemini ? 'text-danger border-danger/30 bg-danger/10' : 'text-muted border-line'
+          }`}
+        >
+          gemini
+        </span>
+        {chaosActive && (
+          <span className="font-mono text-[10px] text-danger border border-danger/30 bg-danger/10 px-2 py-1 rounded-lg shrink-0 animate-pulse">
+            ⚠ outage
+          </span>
+        )}
       </div>
     </div>
   )
@@ -81,6 +94,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
   const [threshold, setThreshold] = useState(() => getSharedThreshold() ?? 1.0)
+  const [chaosActive, setChaosActive] = useState(false)
+  const [chaosBusy, setChaosBusy] = useState(false)
   const abortRef = useRef(null)
   const scrollRef = useRef(null)
   const latestResult = messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.result || null
@@ -90,6 +105,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     fetchStats().then(setTicker).catch(() => setTicker(null))
     fetchConfig().then(setActiveConfig).catch(() => {})
     fetchSettings().then((s) => { const v = s.router_threshold ?? 1.0; setThreshold(v); setSharedThreshold(v) }).catch(() => {})
+    fetchChaosStatus().then((s) => setChaosActive(s?.active ?? false)).catch(() => {})
     return () => abortRef.current?.abort()
   }, [configVersion, backendOnline])
 
@@ -180,6 +196,20 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     sendQuery(query, 'auto', true, messages.slice(0, userIndex + 1), index)
   }
 
+  async function toggleChaos() {
+    if (chaosBusy) return
+    setChaosBusy(true)
+    try {
+      const { setChaos } = await import('../api')
+      await setChaos(!chaosActive)
+      setChaosActive((v) => !v)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setChaosBusy(false)
+    }
+  }
+
   function handleExitChat() {
     if (abortRef.current) abortRef.current.abort()
     setMessages([])
@@ -218,6 +248,28 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
       {/* dot matrix pattern */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[40%] overflow-hidden [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]"
         style={{ backgroundImage: 'radial-gradient(var(--color-muted) 0.6px, transparent 0.6px)', backgroundSize: '22px 22px', opacity: 0.18 }} />
+
+      {chaosActive && (
+        <div className="relative max-w-6xl mx-auto px-6 pt-8 sm:pt-10">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-60" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-danger" />
+            </span>
+            <p className="font-mono text-xs text-danger">
+              <span className="font-semibold">SIMULATED OUTAGE</span> — cheap · mid · frontier are down. Send a query and watch failover land on the{' '}
+              <span className="font-semibold">Gemini last resort</span>.
+            </p>
+            <button
+              onClick={toggleChaos}
+              disabled={chaosBusy}
+              className="ml-auto font-mono text-[10px] text-primary bg-base border border-line rounded-full px-3 py-1.5 hover:border-danger/50 hover:shadow-card transition-all disabled:opacity-40"
+            >
+              end outage
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="hidden lg:block absolute left-6 top-1/2 -translate-y-1/2 -rotate-90 origin-left">
         <span className="font-mono text-[10px] tracking-[0.3em] text-muted/70 whitespace-nowrap">
@@ -332,8 +384,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 score={score}
                 cacheHit={latestResult?.cache_hit}
                 loading={loading}
-                cheapCeil={cheapCeil}
-                frontierFloor={frontierFloor}
+                chaosActive={chaosActive}
+                crossProviderFallback={latestResult?.cross_provider_fallback}
               />
             </div>
           )}
@@ -345,8 +397,20 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             tiers={TIERS}
             activeConfig={activeConfig}
           />
-          <div className="mt-2 px-1">
+          <div className="mt-2 px-1 flex items-center gap-2 flex-wrap">
             <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
+            <button
+              onClick={toggleChaos}
+              disabled={chaosBusy}
+              className={`font-mono text-[10px] px-3 py-2 rounded-lg border transition-all disabled:opacity-40 ${
+                chaosActive
+                  ? 'border-danger/40 bg-danger/10 text-danger animate-pulse'
+                  : 'border-line text-muted hover:text-danger hover:border-danger/50 hover:shadow-card'
+              }`}
+              title="Simulate a provider-wide outage so requests fail over to the Gemini last resort"
+            >
+              {chaosActive ? '● outage on' : '⚡ simulate outage'}
+            </button>
           </div>
         </div>
 
@@ -360,6 +424,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             loading={loading}
             cheapCeil={cheapCeil}
             frontierFloor={frontierFloor}
+            chaosActive={chaosActive}
+            crossProviderFallback={latestResult?.cross_provider_fallback}
+            intendedTier={latestResult?.intended_tier}
           />
         </div>
       </div>

@@ -348,3 +348,26 @@ export async function fetchAdminLogs(limit = 50) {
 export async function fetchAdminUsers() {
   return _adminFetch(`${API_BASE}/admin/users`)
 }
+
+// ------------------------------------------------------------------
+// Demo controls — "simulate outage" mode
+// ------------------------------------------------------------------
+
+export async function fetchChaosStatus() {
+  const res = await fetch(`${API_BASE}/demo/chaos`)
+  if (!res.ok) throw new Error('Could not load chaos status')
+  return res.json()
+}
+
+export async function setChaos(active, tiers = null) {
+  const res = await fetch(`${API_BASE}/demo/chaos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    body: JSON.stringify({ active, ...(tiers && tiers.length ? { tiers } : {}) }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Chaos toggle failed' }))
+    throw new Error(err.detail || 'Chaos toggle failed')
+  }
+  return res.json()
+}

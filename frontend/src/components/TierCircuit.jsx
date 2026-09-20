@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 const SCAN_ORDER = ['cheap', 'mid', 'frontier']
 
-export default function TierCircuit({ tiers, activeTier, score, cacheHit, loading, cheapCeil, frontierFloor }) {
+export default function TierCircuit({ tiers, activeTier, score, cacheHit, loading, cheapCeil, frontierFloor, chaosActive = false, crossProviderFallback = false, intendedTier = null }) {
   const [scanIndex, setScanIndex] = useState(-1)
 
   useEffect(() => {
@@ -27,6 +27,7 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
     frontier: { x: 335, y: 190 },
   }
   const W = { x: 200, y: 350 }
+  const G = { x: 200, y: 475 }
 
   const qPath = {
     cheap:    `M${Q.x},${Q.y} C${Q.x},${Q.y + 55} ${T.cheap.x},${T.cheap.y - 50} ${T.cheap.x},${T.cheap.y}`,
@@ -40,10 +41,17 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
     frontier: `M${T.frontier.x},${T.frontier.y} C${T.frontier.x},${T.frontier.y + 55} ${W.x},${W.y - 50} ${W.x},${W.y}`,
   }
 
+  const tGemini = {
+    cheap:    `M${T.cheap.x},${T.cheap.y} C${T.cheap.x},${T.cheap.y + 135} ${G.x},${G.y - 60} ${G.x},${G.y}`,
+    mid:      `M${T.mid.x},${T.mid.y} C${T.mid.x},${T.mid.y + 130} ${G.x},${G.y - 60} ${G.x},${G.y}`,
+    frontier: `M${T.frontier.x},${T.frontier.y} C${T.frontier.x},${T.frontier.y + 135} ${G.x},${G.y - 60} ${G.x},${G.y}`,
+  }
+
   const qWeb = `M${Q.x},${Q.y} C${Q.x},${Q.y + 110} ${W.x},${W.y - 80} ${W.x},${W.y}`
 
   const hc = cacheHit ? 'var(--color-cool)' : 'var(--color-signal)'
   const isWeb = activeTier === 'web' && !loading
+  const isGemini = !loading && (activeTier === 'gemini' || crossProviderFallback)
 
   const GX = 75, GW = 250, GY = 120
   const gx = (s) => GX + (Math.min(10, Math.max(0, s)) / 10) * GW
@@ -64,7 +72,7 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
         </span>
       </div>
       <div className="bg-base/60 backdrop-blur-sm border border-line rounded-2xl shadow-card p-4">
-        <svg viewBox="0 0 400 400" className="w-full h-auto">
+        <svg viewBox="0 0 400 520" className="w-full h-auto">
           <defs>
             <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="4" result="b" />
@@ -127,6 +135,17 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
         />
       ))}
 
+      {/* paths: tier → gemini last resort */}
+      {Object.entries(tGemini).map(([k, d]) => (
+        <path key={k} d={d} fill="none"
+          stroke={isGemini ? 'var(--color-danger)' : 'var(--color-line)'}
+          strokeWidth={isGemini ? 2 : 1}
+          strokeDasharray={isGemini ? 'none' : '4 3'}
+          opacity={isGemini ? 1 : (chaosActive ? 0.35 : 0.15)}
+          className="transition-all duration-500"
+        />
+      ))}
+
       {/* scanning particle */}
       {isScanning && (
         <circle r="3" fill="var(--color-signal)" opacity="0.4">
@@ -134,8 +153,14 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
         </circle>
       )}
 
+      {isGemini && (
+        <circle r="4" fill="var(--color-danger)" filter="url(#glow-sm)">
+          <animateMotion dur="1.1s" repeatCount="indefinite" path={tGemini[intendedTier] || tGemini.mid} />
+        </circle>
+      )}
+
       {/* active path particle */}
-      {!loading && activeTier && activeTier !== 'web' && (
+      {!loading && activeTier && activeTier !== 'web' && activeTier !== 'gemini' && (
         <circle r="4" fill={hc} filter="url(#glow-sm)">
           <animateMotion dur="0.7s" repeatCount="indefinite" path={qPath[activeTier]} />
         </circle>
@@ -300,6 +325,39 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
             <text x={W.x + 18} y={W.y + 10}
               className="font-mono" fontSize="9" fill="var(--color-muted)">
               tavily/search · live
+            </text>
+          </g>
+        )
+      })()}
+
+      {/* gemini last-resort node */}
+      {(() => {
+        const on = isGemini
+        return (
+          <g>
+            <circle cx={G.x} cy={G.y} r={on ? 13 : 9}
+              fill={on ? 'var(--color-danger)' : 'var(--color-base)'}
+              stroke={on ? 'var(--color-danger)' : 'var(--color-line)'}
+              strokeWidth="2"
+              strokeDasharray={on ? 'none' : '4 3'}
+              filter={on ? 'url(#glow)' : 'none'}
+              className="transition-all duration-500"
+            />
+            {on && (
+              <circle cx={G.x} cy={G.y} r="13"
+                fill="none" stroke="var(--color-danger)" strokeWidth="1" opacity="0.3">
+                <animate attributeName="r" values="13;20;13" dur="2s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
+              </circle>
+            )}
+            <text x={G.x + 18} y={G.y - 6}
+              className="font-display font-semibold" fontSize="14"
+              fill={on ? 'var(--color-danger)' : 'var(--color-primary)'}>
+              Gemini
+            </text>
+            <text x={G.x + 18} y={G.y + 10}
+              className="font-mono" fontSize="9" fill="var(--color-muted)">
+              last resort
             </text>
           </g>
         )

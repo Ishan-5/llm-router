@@ -93,7 +93,6 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
         try:
             result = call_gemini(query)
             gemini_breaker.record_success()
-            result["tier"] = intended_tier
             result["intended_tier"] = intended_tier
             result["fallback_used"] = True
             result["cross_provider_fallback"] = True
