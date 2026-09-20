@@ -74,6 +74,22 @@ $ routewise ask "convert 5 miles to km" --json
 }
 ```
 
+## Readable answers
+
+Model replies come back as Markdown, which is unreadable in a raw terminal.
+`routewise ask`, `stream` and `chat` render replies like a good chat app:
+
+- headings → **bold** (underlined for `#`/`##`)
+- lists → `• item`, checklists → `☐`/`☑`
+- inline code → `code`, fenced code blocks → indented
+- tables → column-aligned rows
+- quotes → `│ text`, `---` → a rule, links → `label (url)`
+
+Colors and emphasis apply when stdout is a terminal. When the output is piped
+or redirected, the markdown markup is stripped but **no ANSI codes are emitted**
+— scripts and `> file` stay clean. Force plain text with `--no-color`
+(or set the `NO_COLOR` environment variable).
+
 ## Commands
 
 | Command | What it does |
@@ -153,7 +169,7 @@ substitution behave the way any Unix tool would.
 cd cli
 npm install
 npm run build        # tsc -> dist/src
-npm test             # 35 unit tests, mock-fetch (no network)
+npm test             # 46 unit tests, mock-fetch (no network)
 node dist/src/cli.js --help
 ```
 

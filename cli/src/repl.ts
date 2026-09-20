@@ -1,5 +1,12 @@
 import { createInterface } from "node:readline/promises";
 import type { JsonRecord, RouteWiseClient } from "./client.js";
+import {
+  createStreamState,
+  flushStream,
+  formatStreamChunk,
+  type FormatOptions,
+  type StreamFormatState,
+} from "./markdown.js";
 
 const HELP = [
   "Slash commands:",
@@ -14,6 +21,7 @@ export interface ReplOptions {
   client: RouteWiseClient;
   model?: string;
   json?: boolean;
+  color?: boolean;
   initialQuery?: string;
 }
 
@@ -23,6 +31,7 @@ export async function startRepl(options: ReplOptions): Promise<number> {
   let model = options.model ?? "auto";
   let jsonMode = options.json ?? false;
   const messages: Array<{ role: string; content: string }> = [];
+  const fmt: FormatOptions = { color: Boolean(options.color) };
 
   console.log("routewise chat — multi-turn routing REPL. /help for commands.");
 
@@ -35,14 +44,22 @@ export async function startRepl(options: ReplOptions): Promise<number> {
         return;
       }
       let full = "";
+      const fmtState: StreamFormatState = createStreamState();
       for await (const chunk of options.client.chatStream({ messages, model })) {
         const choice = (chunk["choices"] as Array<JsonRecord> | undefined)?.[0];
         const delta = choice?.["delta"] as JsonRecord | undefined;
         const content = delta?.["content"];
         if (typeof content === "string" && content.length > 0) {
           full += content;
-          process.stdout.write(content);
+          const rendered = formatStreamChunk(content, fmtState, fmt);
+          if (rendered.length > 0) {
+            process.stdout.write(rendered);
+          }
         }
+      }
+      const flushed = flushStream(fmtState, fmt);
+      if (flushed.length > 0) {
+        process.stdout.write(flushed);
       }
       if (full.length > 0) {
         process.stdout.write("\n");

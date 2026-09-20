@@ -32,6 +32,14 @@ import {
 } from "./output.js";
 import { startRepl } from "./repl.js";
 import { promptHidden } from "./prompt.js";
+import {
+  createStreamState,
+  flushStream,
+  formatMarkdown,
+  formatStreamChunk,
+  type FormatOptions,
+  type StreamFormatState,
+} from "./markdown.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string };
@@ -128,6 +136,11 @@ function limitFrom(flags: ParsedArgs["flags"], fallback: number): number {
   return Number.isFinite(n) && n > 0 ? Math.min(n, 100) : fallback;
 }
 
+function formatOptionsFor(flags: ParsedArgs["flags"]): FormatOptions {
+  const disabled = flagBool(flags, "no-color") || Boolean(process.env.NO_COLOR);
+  return { color: !disabled && process.stdout.isTTY === true };
+}
+
 function printJson(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
 }
@@ -192,6 +205,7 @@ async function cmdAsk(
   const json = flagBool(flags, "json");
   const quiet = flagBool(flags, "quiet");
   const stream = forceStream || flagBool(flags, "stream");
+  const fmt = formatOptionsFor(flags);
 
   if (!stream) {
     const res = await client.ask(options);
@@ -199,7 +213,7 @@ async function cmdAsk(
       printJson(res);
       return;
     }
-    process.stdout.write(str(res["response"]) + "\n");
+    process.stdout.write(formatMarkdown(str(res["response"]), fmt));
     if (!quiet) {
       process.stderr.write(metaLine(res) + "\n");
     }
@@ -208,13 +222,22 @@ async function cmdAsk(
 
   let meta: JsonRecord | null = null;
   let wrote = false;
+  const fmtState: StreamFormatState = createStreamState();
   for await (const item of client.askStream(options)) {
     if (typeof item === "string") {
-      process.stdout.write(item);
-      wrote = true;
+      const rendered = formatStreamChunk(item, fmtState, fmt);
+      if (rendered.length > 0) {
+        process.stdout.write(rendered);
+        wrote = true;
+      }
     } else {
       meta = item;
     }
+  }
+  const flushed = flushStream(fmtState, fmt);
+  if (flushed.length > 0) {
+    process.stdout.write(flushed);
+    wrote = true;
   }
   if (wrote) {
     process.stdout.write("\n");
@@ -240,6 +263,7 @@ async function cmdChat(
     client,
     model: tier ?? "auto",
     json: flagBool(flags, "json"),
+    color: formatOptionsFor(flags).color,
     initialQuery: initialQuery || undefined,
   });
 }
