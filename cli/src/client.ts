@@ -333,6 +333,24 @@ export class RouteWiseClient {
     return (await res.json()) as JsonRecord;
   }
 
+  async health(): Promise<boolean> {
+    try {
+      const res = await this.request("GET", "/health", undefined, undefined, 10_000);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async evaluate(queries: string[]): Promise<JsonRecord> {
+    const clean = queries.map((q) => q.trim()).filter((q) => q.length > 0);
+    if (clean.length === 0) {
+      throw new RouteWiseError(0, "evaluate needs at least one query");
+    }
+    const res = await this.request("POST", "/evaluate", { queries: clean }, undefined, 60_000);
+    return (await res.json()) as JsonRecord;
+  }
+
   async logs(limit = 50): Promise<Array<JsonRecord>> {
     const res = await this.request(
       "GET",

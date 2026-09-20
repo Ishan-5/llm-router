@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 
@@ -30,10 +31,13 @@ import {
   str,
 } from "./output.js";
 import { startRepl } from "./repl.js";
+import { promptHidden } from "./prompt.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json") as { version: string };
 const VERSION = pkg.version;
+
+const DASHBOARD_URL = "https://llm-router-nine-eta.vercel.app/get-started";
 
 const HELP = `routewise v${VERSION} — cost-aware LLM request router, from your terminal.
 
@@ -59,6 +63,10 @@ Usage:
   routewise config set-base <url>    save a base URL
   routewise config unset [key|base]  clear saved config
   routewise config path              print the config file path
+  routewise login                    open the dashboard, save your API key (paste is hidden)
+  routewise whoami                   show your identity + account usage snapshot
+  routewise doctor                   run a full self-check (config, network, live ask)
+  routewise evaluate "<q>"           difficulty score + which tier each routing mode picks (no key needed)
   routewise version                  print version
   routewise help                     show this help
 
@@ -403,6 +411,245 @@ function cmdConfig(
   }
 }
 
+function openBrowser(url: string): void {
+  try {
+    if (process.platform === "win32") {
+      execFile("cmd", ["/c", "start", "", url], { windowsHide: true }, () => {});
+    } else if (process.platform === "darwin") {
+      execFile("open", [url], () => {});
+    } else {
+      execFile("xdg-open", [url], () => {});
+    }
+  } catch {
+    // browser launch is best-effort; the URL is printed regardless
+  }
+}
+
+function byomSummaryLine(byomFrom: Partial<Record<TierName, ByomTierConfig>>): string {
+  const entries = Object.entries(byomFrom);
+  if (entries.length === 0) {
+    return "none";
+  }
+  return entries.map(([t, c]) => `${t} → ${c.provider}/${c.model_id}`).join(", ");
+}
+
+async function cmdWhoami(client: RouteWiseClient, flags: ParsedArgs["flags"]): Promise<number> {
+  const file = loadConfig();
+  const envKey = process.env.ROUTEWISE_API_KEY?.trim() || "";
+  const savedKey = file.api_key?.trim() || "";
+  const key = client.apiKey ?? "";
+  const json = flagBool(flags, "json");
+  const byom = byomOverrides(file);
+  const base = resolveBaseUrl(file);
+  const byomEntries: JsonRecord = {};
+  for (const [t, c] of Object.entries(byom)) {
+    byomEntries[t] = {
+      provider: c.provider,
+      model_id: c.model_id,
+      api_key: c.api_key ? maskKey(c.api_key) : undefined,
+    };
+  }
+
+  if (!key) {
+    if (json) {
+      printJson({ api_key: "(unset)", key_source: "not set", base_url: base, byom: byomEntries, valid: false });
+      return 1;
+    }
+    console.log(`API key:    (unset)`);
+    console.log(`Base URL:   ${base}`);
+    console.log(`BYOM:       ${byomSummaryLine(byom)}`);
+    console.log("");
+    console.log("No API key configured. Get one and save it locally:");
+    console.log("  routewise login");
+    return 1;
+  }
+
+  const identity: JsonRecord = {
+    api_key: maskKey(key),
+    key_source: envKey ? "environment" : "config file",
+    base_url: base,
+    byom: byomEntries,
+  };
+
+  let stats: JsonRecord;
+  try {
+    stats = await client.stats();
+  } catch (err) {
+    if (json) {
+      printJson({ ...identity, valid: false, error: (err as Error).message });
+      return 1;
+    }
+    console.log(`API key:    ${maskKey(key)} (${envKey ? "environment" : "config file"})`);
+    console.log(`Base URL:   ${base}`);
+    console.log(`BYOM:       ${byomSummaryLine(byom)}`);
+    console.log("");
+    console.log(`Key status: NOT VALID — the server rejected it.`);
+    console.log(`  ${(err as Error).message}`);
+    console.log("Fix it with: routewise login  (or: routewise config set <key>)");
+    return 1;
+  }
+
+  const tierCounts = (stats["tier_counts"] as Record<string, number> | null) ?? {};
+  const total = num(stats["total_requests"]) ?? 0;
+  const tierLines =
+    total > 0
+      ? Object.entries(tierCounts)
+          .map(([t, c]) => `${t} ${Math.round(((c as number) / total) * 100)}%`)
+          .join(" · ")
+      : "—";
+  const cacheRate = (num(stats["cache_hit_rate"]) ?? 0) * 100;
+
+  if (json) {
+    printJson({
+      ...identity,
+      valid: true,
+      requests: total,
+      spend_usd: num(stats["total_actual_cost"]) ?? 0,
+      savings_usd: num(stats["total_savings_usd"]) ?? 0,
+      cache_hit_pct: Math.round(cacheRate * 10) / 10,
+      tiers: tierCounts,
+      feedback_updown: stats["feedback_counts"] ?? null,
+    });
+    return 0;
+  }
+
+  console.log(`API key:    ${maskKey(key)} (${envKey ? "environment" : "config file"})`);
+  console.log(`Base URL:   ${base}`);
+  console.log(`BYOM:       ${byomSummaryLine(byom)}`);
+  console.log(`Key status: valid`);
+  console.log(`Requests:   ${total}`);
+  console.log(
+    `Spend:      ${money(num(stats["total_actual_cost"]))}  (savings ${money(num(stats["total_savings_usd"]))} · cache ${Math.round(cacheRate * 10) / 10}%)`,
+  );
+  console.log(`Tiers:      ${tierLines}`);
+  return 0;
+}
+
+async function cmdLogin(positionals: string[], flags: ParsedArgs["flags"]): Promise<void> {
+  let key = positionals[0]?.trim() ?? flagValue(flags, "key") ?? "";
+  const file = loadConfig();
+  if (!key && !process.stdin.isTTY) {
+    key = queryFrom([]);
+  }
+  if (!key) {
+    openBrowser(DASHBOARD_URL);
+    console.log("Opening the dashboard in your browser…");
+    console.log("Sign in and create an API key, then paste it here:");
+    console.log(`  (or open ${DASHBOARD_URL} yourself)`);
+    console.log("");
+    key = await promptHidden("Paste your API key: ");
+  }
+  if (!key) {
+    console.log("No key entered. Existing config left untouched.");
+    return;
+  }
+  saveConfig({ api_key: key.trim() });
+  console.log(`Saved API key to ${configFilePath()}`);
+  if (!file.base_url) {
+    console.log("Next: routewise ask \"what is the capital of france\"");
+  }
+}
+
+async function cmdEvaluate(client: RouteWiseClient, flags: ParsedArgs["flags"], positionals: string[]): Promise<void> {
+  let queries = positionals.map((q) => q.trim()).filter(Boolean);
+  if (queries.length === 0 && !process.stdin.isTTY) {
+    queries = readFileSync(0, "utf8")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+  }
+  if (queries.length === 0) {
+    throw new Error('Usage: routewise evaluate "<query>" [more queries…]');
+  }
+  const res = await client.evaluate(queries);
+  if (flagBool(flags, "json")) {
+    printJson(res);
+    return;
+  }
+  const results = (res["results"] as Array<JsonRecord> | null) ?? [];
+  for (const r of results) {
+    console.log(`Query:  ${str(r["query"])}`);
+    console.log(`  difficulty score: ${str(r["difficulty_score"])}`);
+    for (const mode of ["economy", "balanced", "quality"]) {
+      console.log(`  ${mode.padEnd(9)}→ ${str(r[`tier_${mode}`])}`);
+    }
+    console.log("");
+  }
+  const thresholds = (res["thresholds"] as Array<JsonRecord> | null) ?? [];
+  if (thresholds.length > 0) {
+    console.log("Routing thresholds (difficulty score):");
+    for (const t of thresholds) {
+      console.log(`  ${str(t["mode"]).padEnd(9)} cheap below ${str(t["cheap_below"])} · frontier above ${str(t["frontier_above"])}`);
+    }
+  }
+}
+
+async function cmdDoctor(client: RouteWiseClient, flags: ParsedArgs["flags"]): Promise<number> {
+  const json = flagBool(flags, "json");
+  const file = loadConfig();
+  const key = client.apiKey ?? "";
+  const checks: Array<{ name: string; ok: boolean; detail: string }> = [];
+
+  checks.push({
+    name: "config",
+    ok: true,
+    detail: key
+      ? `key ${maskKey(key)} from ${process.env.ROUTEWISE_API_KEY ? "environment" : "config file"} · ${configFilePath()}`
+      : `no API key · ${configFilePath()}`,
+  });
+
+  const healthStart = Date.now();
+  const healthy = await client.health();
+  checks.push({
+    name: "backend",
+    ok: healthy,
+    detail: healthy
+      ? `${client.baseUrl}/health — ok (${Date.now() - healthStart}ms)`
+      : `${client.baseUrl}/health unreachable`,
+  });
+
+  let providerCount = 0;
+  try {
+    const providers = await client.providers();
+    providerCount = Object.keys(providers).length;
+    checks.push({ name: "providers", ok: providerCount > 0, detail: `${providerCount} providers loaded` });
+  } catch (err) {
+    checks.push({ name: "providers", ok: false, detail: (err as Error).message });
+  }
+
+  if (!key) {
+    checks.push({ name: "ask", ok: false, detail: "skipping — no API key" });
+  } else {
+    try {
+      const t0 = Date.now();
+      const res = await client.ask({ query: "Reply with exactly: OK" });
+      checks.push({
+        name: "ask",
+        ok: true,
+        detail: `routed to ${str(res["routed_to"])} via ${str(res["model_id"])} in ${Date.now() - t0}ms · ${money(num(res["cost_usd"]))}`,
+      });
+    } catch (err) {
+      checks.push({ name: "ask", ok: false, detail: (err as Error).message });
+    }
+  }
+
+  const okCount = checks.filter((c) => c.ok).length;
+  if (json) {
+    printJson({ all_ok: okCount === checks.length, checks });
+    return okCount === checks.length ? 0 : 1;
+  }
+
+  console.log("RouteWise doctor");
+  for (const c of checks) {
+    console.log(`  [${c.ok ? "ok" : "FAIL"}] ${c.name.padEnd(9)} ${c.detail}`);
+  }
+  console.log(`\n${okCount}/${checks.length} checks passed.`);
+  if (okCount < checks.length) {
+    console.log("Fix the failing checks, then re-run: routewise doctor");
+  }
+  return okCount === checks.length ? 0 : 1;
+}
+
 async function cmdStats(client: RouteWiseClient, flags: ParsedArgs["flags"]): Promise<void> {
   requireKey(client);
   const res = await client.stats();
@@ -565,6 +812,16 @@ export async function run(argv: string[]): Promise<number> {
         break;
       case "feedback":
         await cmdFeedback(client, flags, positionals);
+        break;
+      case "whoami":
+        return await cmdWhoami(client, flags);
+      case "login":
+        await cmdLogin(positionals, flags);
+        break;
+      case "doctor":
+        return await cmdDoctor(client, flags);
+      case "evaluate":
+        await cmdEvaluate(client, flags, positionals);
         break;
       default:
         throw new Error(`Unknown command: ${command}. Run "routewise help".`);

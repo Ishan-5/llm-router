@@ -31,6 +31,24 @@ cat questions.txt | routewise ask --json
 
 # interactive multi-turn chat
 routewise chat
+
+# see who you are + how much you've spent
+routewise whoami
+
+# end-to-end self-check (config, backend, providers, live ask)
+routewise doctor
+
+# score difficulty + see what each routing mode picks (no key needed)
+routewise evaluate "implement a red-black tree"
+```
+
+## Getting a key
+
+```bash
+# opens the dashboard + saves your key (paste is hidden, never in shell history)
+routewise login
+# or, non-interactive:
+routewise login rw_your-key
 ```
 
 ## What you get per call
@@ -72,6 +90,10 @@ $ routewise ask "convert 5 miles to km" --json
 | `routewise pricing` | Model price list |
 | `routewise providers` | Supported providers + models |
 | `routewise byom` | Bring your own model — set/remove/list per-tier overrides |
+| `routewise login` | Open the dashboard, save your API key (hidden paste) |
+| `routewise whoami` | Identity + account usage snapshot (key valid?, spend, tiers) |
+| `routewise doctor` | End-to-end self-check: config, backend, providers, live ask |
+| `routewise evaluate "<q>"` | Difficulty score + routing per mode (public, no key) |
 | `routewise config` | Show current config / save API key / set base URL |
 | `routewise version` | Print version |
 
@@ -131,7 +153,7 @@ substitution behave the way any Unix tool would.
 cd cli
 npm install
 npm run build        # tsc -> dist/src
-npm test             # 32 unit tests, mock-fetch (no network)
+npm test             # 35 unit tests, mock-fetch (no network)
 node dist/src/cli.js --help
 ```
 

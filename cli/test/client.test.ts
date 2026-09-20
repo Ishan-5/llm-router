@@ -161,3 +161,50 @@ test("chat returns non-stream JSON", async () => {
   const choices = res["choices"] as Array<Record<string, unknown>>;
   assert.equal((choices[0]["message"] as Record<string, unknown>)["content"], "hi");
 });
+
+test("evaluate posts queries without auth", async () => {
+  let capturedUrl = "";
+  let capturedHeaders: Headers | Record<string, string> = {};
+  let capturedBody = "";
+  const client = new RouteWiseClient({
+    baseUrl: "https://example.com",
+    fetchImpl: (async (url: RequestInfo | URL, init?: RequestInit) => {
+      capturedUrl = String(url);
+      capturedHeaders = init?.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {};
+      capturedBody = String(init?.body ?? "");
+      return jsonResponse({
+        results: [{ query: "q", difficulty_score: 4.2, tier_economy: "mid" }],
+        thresholds: [],
+      });
+    }) as typeof fetch,
+  });
+  const res = await client.evaluate(["q"]);
+  assert.equal(capturedUrl, "https://example.com/evaluate");
+  assert.deepEqual(JSON.parse(capturedBody), { queries: ["q"] });
+  assert.equal(capturedHeaders["authorization"], undefined);
+  assert.equal((res["results"] as Array<{ difficulty_score: number }>)[0]["difficulty_score"], 4.2);
+});
+
+test("evaluate rejects empty query list", async () => {
+  const client = new RouteWiseClient({
+    baseUrl: "https://example.com",
+    fetchImpl: (async () => jsonResponse({})) as typeof fetch,
+  });
+  await assert.rejects(() => client.evaluate(["  "]), /needs at least one query/);
+});
+
+test("health resolves true on 200 and false on failure", async () => {
+  const okClient = new RouteWiseClient({
+    baseUrl: "https://example.com",
+    fetchImpl: (async () => jsonResponse({ ok: true })) as typeof fetch,
+  });
+  assert.equal(await okClient.health(), true);
+
+  const downClient = new RouteWiseClient({
+    baseUrl: "https://example.com",
+    fetchImpl: (async () => {
+      throw new Error("ECONNREFUSED");
+    }) as typeof fetch,
+  });
+  assert.equal(await downClient.health(), false);
+});
