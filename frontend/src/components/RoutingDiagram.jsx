@@ -98,6 +98,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const abortRef = useRef(null)
   const scrollRef = useRef(null)
   const latestResult = messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.result || null
+  const streamingAssistant = messages.filter((m) => m.role === 'assistant').slice(-1)[0]
+  const showTyping = loading && !streamingAssistant?.result?.response
 
   useEffect(() => {
     if (!backendOnline) return
@@ -139,36 +141,61 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
     setLoading(true)
     setError(null)
+    const startTime = Date.now()
 
-    const applyResult = (result) => {
-      if (replaceIndex != null) {
-        setMessages((prev) => prev.map((m, i) => (i === replaceIndex ? { role: 'assistant', result } : m)))
-      } else {
-        setMessages((prev) => [...prev, { role: 'assistant', result }])
-      }
+    // seed an assistant bubble immediately so tokens render as they arrive
+    if (replaceIndex != null) {
+      setMessages((prev) => prev.map((m, i) => (i === replaceIndex ? { role: 'assistant', result: { response: '' } } : m)))
+    } else {
+      setMessages((prev) => [...prev, { role: 'assistant', result: { response: '' } }])
     }
 
+    const patchResult = (patchFn) =>
+      setMessages((prev) => prev.map((m, i) =>
+        i === (replaceIndex != null ? replaceIndex : prev.length - 1) && m.role === 'assistant'
+          ? { ...m, result: patchFn(m.result || {}) }
+          : m
+      ))
+
     try {
-      const { routeQuery } = await import('../api')
-      const data = await routeQuery(
+      const { routeQueryStream } = await import('../api')
+      await routeQueryStream(
         query,
         override === 'auto' ? null : override,
         bypassCache,
+        (text) => patchResult((r) => ({ ...r, response: r.response + text })),
+        (meta) => { const { type, ...rest } = meta; patchResult((r) => ({ ...r, ...rest })) },
+        (done) => {
+          patchResult((r) => ({
+            ...r,
+            ...done,
+            latency_ms: done.latency_ms ?? r.latency_ms ?? (Date.now() - startTime),
+            cost_usd: done.cost_usd ?? r.cost_usd ?? 0,
+            routed_to: done.routed_to ?? r.routed_to,
+          }))
+          if (abortRef.current === controller) setLoading(false)
+        },
+        (detail) => {
+          setError(detail)
+          patchResult((r) => ({ ...r, response: r.response || `Error: ${detail}`, routed_to: 'error', cost_usd: 0, latency_ms: Date.now() - startTime }))
+          if (abortRef.current === controller) setLoading(false)
+        },
         controller.signal,
         threshold,
         conversationMessages,
       )
-      applyResult(data)
       fetchStats().then(setTicker).catch(() => {})
       fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
-      if (err.name !== 'AbortError') {
+      if (!(err.name === 'AbortError' && controller.signal.aborted)) {
         setError(err.message)
-        applyResult({ response: `Error: ${err.message}`, routed_to: 'error', cost_usd: 0, latency_ms: 0 })
+        patchResult((r) => ({ ...r, response: r.response || `Error: ${err.message}`, routed_to: 'error', cost_usd: 0, latency_ms: Date.now() - startTime }))
       }
     } finally {
-      setLoading(false)
-      setRegeneratingIndex(null)
+      if (abortRef.current === controller) {
+        setLoading(false)
+        setRegeneratingIndex(null)
+      }
     }
   }
 
@@ -345,7 +372,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                         />
                       )
                 )}
-                {loading && <TypingIndicator />}
+                {showTyping && <TypingIndicator />}
               </div>
 
               {error && !loading && (
