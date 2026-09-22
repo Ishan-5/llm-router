@@ -283,7 +283,7 @@ class EvaluateRequest(BaseModel):
 
 @router.post("/evaluate")
 def evaluate(req: EvaluateRequest):
-    from predict_difficulty import predict_difficulty
+    from predict_difficulty import predict_difficulty, score_to_tier
     margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
     results = []
     for q in req.queries:
@@ -293,8 +293,11 @@ def evaluate(req: EvaluateRequest):
             entry[f"tier_{mode_name}"] = score_to_tier(score, margin=margin)[0]
         results.append(entry)
     thresholds = [
-        {"mode": "economy",  "cheap_below": 3.475, "frontier_above": 4.9},
-        {"mode": "balanced", "cheap_below": 3.4,   "frontier_above": 4.6},
-        {"mode": "quality",  "cheap_below": 3.325, "frontier_above": 4.3},
+        {
+            "mode": mode_name,
+            "cheap_below": score_to_tier(0.0, margin=margin)[1],
+            "frontier_above": score_to_tier(0.0, margin=margin)[2],
+        }
+        for mode_name, margin in margins
     ]
     return {"results": results, "thresholds": thresholds}

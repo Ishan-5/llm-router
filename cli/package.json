@@ -2,7 +2,7 @@
   "name": "routewise",
   "version": "0.1.1",
   "description": "The cost-aware LLM request router, from your terminal. Auto-routes every query to the cheapest model tier that can handle it.",
-  "license": "MIT",
+  "license": "UNLICENSED",
   "type": "module",
   "bin": {
     "routewise": "dist/src/cli.js"

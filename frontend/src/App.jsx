@@ -12,6 +12,7 @@ import LiveStatsStrip from './components/LiveStatsStrip'
 import LiveTicker from './components/LiveTicker'
 import MetricsBand from './components/MetricsBand'
 import { useTheme } from './useTheme'
+import { API_BASE } from './config'
 
 const PricingPage = lazy(() => import('./components/PricingTable'))
 const AboutPage = lazy(() => import('./components/AboutPage'))
@@ -251,7 +252,7 @@ export default function App() {
         let hasKeys = false
         if (session?.access_token) {
           try {
-            const res = await fetch(`${import.meta.env.VITE_API_BASE}/keys`, {
+            const res = await fetch(`${API_BASE}/keys`, {
               headers: { 'Authorization': `Bearer ${session.access_token}` },
             })
             const keys = res.ok ? await res.json() : []
@@ -267,7 +268,7 @@ export default function App() {
 
   useEffect(() => {
     function checkHealth() {
-      fetch(`${import.meta.env.VITE_API_BASE}/health`)
+      fetch(`${API_BASE}/health`)
         .then((r) => setBackendOnline(r.ok))
         .catch(() => setBackendOnline(false))
     }

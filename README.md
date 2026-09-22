@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/React-frontend-61DAFB" />
   <img src="https://img.shields.io/badge/LightGBM-difficulty%20model-orange" />
   <img src="https://img.shields.io/badge/Docker-containerized-2496ED" />
-  <img src="https://img.shields.io/badge/tests-38%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-39%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
@@ -195,7 +195,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (38 tests) · GitHub Actions CI |
+| ✅ Testing | pytest (39 tests) · GitHub Actions CI |
 
 ---
 
@@ -208,7 +208,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | 💎 Frontier | `openai/gpt-oss-120b` | $0.15 | $0.60 | Groq |
 | 🔎 Web | live search results | — | — | Tavily (time-sensitive only) |
 
-**Last-resort fallback:** `gemini-2.0-flash` via Google — a genuinely independent provider, not
+**Last-resort fallback:** `gemini-3.6-flash` via Google — a genuinely independent provider, not
 just another Groq tier.
 
 ---
