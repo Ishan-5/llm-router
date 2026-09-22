@@ -11,6 +11,12 @@ log = logging.getLogger("routewise.db")
 
 Base = declarative_base()
 _db_url = os.getenv("DATABASE_URL", "")
+if not _db_url:
+    _db_url = "sqlite:///./routewise_dev.db"
+    log.warning(
+        "DATABASE_URL not set - falling back to local SQLite dev DB "
+        "(./routewise_dev.db). Set DATABASE_URL for production."
+    )
 _is_postgres = _db_url.startswith("postgresql")
 _connect_args = {"connect_timeout": 10} if _is_postgres else {}
 _pool_kwargs = {"pool_pre_ping": True, "pool_recycle": 300, "pool_size": 5, "max_overflow": 10} if _is_postgres else {}
