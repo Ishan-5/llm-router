@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchAdminStats, fetchAdminKeys, fetchAdminLogs, fetchAdminUsers } from '../api'
+import { fetchAdminStats, fetchAdminKeys, fetchAdminLogs, fetchAdminUsers, fetchChaosStatus, setChaos } from '../api'
 
 function Stat({ label, value, sub }) {
   return (
@@ -29,6 +29,8 @@ export default function AdminPage({ user }) {
   const [keys, setKeys] = useState([])
   const [logs, setLogs] = useState([])
   const [users, setUsers] = useState([])
+  const [chaos, setChaosState] = useState(null)
+  const [chaosBusy, setChaosBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -40,11 +42,13 @@ export default function AdminPage({ user }) {
       fetchAdminKeys(),
       fetchAdminLogs(100),
       fetchAdminUsers(),
-    ]).then(([s, k, l, u]) => {
+      fetchChaosStatus().catch(() => null),
+    ]).then(([s, k, l, u, c]) => {
       setStats(s)
       setKeys(k)
       setLogs(l)
       setUsers(u)
+      setChaosState(c)
       setLoading(false)
     }).catch((e) => {
       setError(e.message || 'Failed to load admin data')
@@ -53,6 +57,19 @@ export default function AdminPage({ user }) {
   }
 
   useEffect(load, [])
+
+  async function toggleOutage() {
+    if (chaosBusy) return
+    setChaosBusy(true)
+    try {
+      const next = await setChaos(!(chaos?.active ?? false))
+      setChaosState(next)
+    } catch (e) {
+      setError(e.message || 'Failed to toggle outage simulation')
+    } finally {
+      setChaosBusy(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -112,6 +129,7 @@ export default function AdminPage({ user }) {
           { id: 'users', label: `Users (${users.length})` },
           { id: 'keys', label: `Keys (${keys.length})` },
           { id: 'logs', label: `Logs (${logs.length})` },
+          { id: 'outage', label: 'Outage Simulator' },
         ].map((t) => (
           <button
             key={t.id}
@@ -298,6 +316,56 @@ export default function AdminPage({ user }) {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'outage' && (
+        <div className="space-y-6">
+          <div className="bg-surface border border-line rounded-xl shadow-card px-5 py-4">
+            <h3 className="font-display text-lg font-semibold mb-1">Outage Simulator</h3>
+            <p className="text-muted text-sm mb-4">
+              Simulate a provider-wide outage so requests fail over through the tier chain to the
+              Gemini last resort — great for live demos. While active, the home page shows a
+              "SIMULATED OUTAGE" banner and routed traffic skips the downed tiers.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${chaos?.active ? 'animate-ping bg-danger' : 'bg-muted/50'}`} />
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${chaos?.active ? 'bg-danger' : 'bg-muted/40'}`} />
+              </span>
+              <span className="font-mono text-xs text-primary">
+                {chaos?.active ? `OUTAGE ACTIVE — down: ${(chaos?.tiers || []).join(', ') || 'tiers'}` : 'No simulated outage'}
+              </span>
+              <button
+                onClick={toggleOutage}
+                disabled={chaosBusy}
+                className={`ml-auto font-mono text-xs px-4 py-2 rounded-lg border font-medium transition-all disabled:opacity-40 ${
+                  chaos?.active
+                    ? 'border-cool/40 bg-cool/10 text-cool hover:shadow-card'
+                    : 'border-danger/50 bg-danger/10 text-danger hover:bg-danger/20 hover:shadow-card'
+                }`}
+              >
+                {chaosBusy ? 'working…' : chaos?.active ? 'End simulated outage' : 'Start simulated outage'}
+              </button>
+            </div>
+
+            {chaos?.active && (
+              <p className="font-mono text-[10px] text-danger mt-3">
+                ⚠ Remember to end the outage after your demo — every tier listed above is skipped for
+                all traffic until you turn it off.
+              </p>
+            )}
+          </div>
+
+          <div className="bg-base border border-line rounded-xl px-5 py-4">
+            <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">How it works</p>
+            <ul className="text-sm text-muted space-y-1.5 list-disc pl-5">
+              <li>Only admins can start or stop outages — end users see the status, never control it.</li>
+              <li>cheap · mid · frontier are sent down together; Gemini (independent provider) stays up as the last resort.</li>
+              <li>Outage state is in-memory — it resets automatically if the backend restarts.</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>

@@ -95,7 +95,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   const [activeConfig, setActiveConfig] = useState({})
   const [threshold, setThreshold] = useState(() => getSharedThreshold() ?? 1.0)
   const [chaosActive, setChaosActive] = useState(false)
-  const [chaosBusy, setChaosBusy] = useState(false)
   const abortRef = useRef(null)
   const scrollRef = useRef(null)
   const latestResult = messages.filter((m) => m.role === 'assistant').slice(-1)[0]?.result || null
@@ -196,20 +195,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     sendQuery(query, 'auto', true, messages.slice(0, userIndex + 1), index)
   }
 
-  async function toggleChaos() {
-    if (chaosBusy) return
-    setChaosBusy(true)
-    try {
-      const { setChaos } = await import('../api')
-      await setChaos(!chaosActive)
-      setChaosActive((v) => !v)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setChaosBusy(false)
-    }
-  }
-
   function handleExitChat() {
     if (abortRef.current) abortRef.current.abort()
     setMessages([])
@@ -258,15 +243,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             </span>
             <p className="font-mono text-xs text-danger">
               <span className="font-semibold">SIMULATED OUTAGE</span> — cheap · mid · frontier are down. Send a query and watch failover land on the{' '}
-              <span className="font-semibold">Gemini last resort</span>.
+              <span className="font-semibold">Gemini last resort</span>.{' '}
+              <span className="text-danger/70">(managed from the Admin outage simulator)</span>.
             </p>
-            <button
-              onClick={toggleChaos}
-              disabled={chaosBusy}
-              className="ml-auto font-mono text-[10px] text-primary bg-base border border-line rounded-full px-3 py-1.5 hover:border-danger/50 hover:shadow-card transition-all disabled:opacity-40"
-            >
-              end outage
-            </button>
           </div>
         </div>
       )}
@@ -399,18 +378,6 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
           />
           <div className="mt-2 px-1 flex items-center gap-2 flex-wrap">
             <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
-            <button
-              onClick={toggleChaos}
-              disabled={chaosBusy}
-              className={`font-mono text-[10px] px-3 py-2 rounded-lg border transition-all disabled:opacity-40 ${
-                chaosActive
-                  ? 'border-danger/40 bg-danger/10 text-danger animate-pulse'
-                  : 'border-line text-muted hover:text-danger hover:border-danger/50 hover:shadow-card'
-              }`}
-              title="Simulate a provider-wide outage so requests fail over to the Gemini last resort"
-            >
-              {chaosActive ? '● outage on' : '⚡ simulate outage'}
-            </button>
           </div>
         </div>
 

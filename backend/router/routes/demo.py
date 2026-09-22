@@ -1,17 +1,17 @@
 """
-Demo controls: "simulate outage" mode for live presentations.
+Admin-only controls: "simulate outage" mode for live presentations.
 
 Trips the in-memory circuit breakers for a set of tiers so the real failover
 machinery (tier chain -> Gemini last resort) runs in front of an audience
 without waiting for an actual provider failure. Fully reversible and reset
-on restart.
+on restart. Disabling/starting an outage requires admin access; the status
+endpoint stays public so frontends can show the outage visually.
 """
 import logging
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, field_validator
-from router.auth import require_api_key
+from router.auth import require_admin_any
 from router.circuit_breaker import set_chaos, get_chaos
-from router.db import ApiKey
 
 router = APIRouter()
 log = logging.getLogger("routewise.demo")
@@ -40,6 +40,6 @@ def chaos_status():
 
 
 @router.post("/demo/chaos")
-def chaos_control(req: ChaosRequest, api_key: ApiKey = Depends(require_api_key)):
+def chaos_control(req: ChaosRequest, _admin: str = Depends(require_admin_any)):
     set_chaos(req.active, req.tiers)
     return get_chaos()

@@ -175,7 +175,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     loop = asyncio.get_event_loop()
 
     async def _maybe_check_cache():
-        return await loop.run_in_executor(executor, check_cache, user_query)
+        return await loop.run_in_executor(executor, check_cache, user_query, api_key.id)
 
     from router.db import SessionLocal, UserSettings
     def _load_threshold():
@@ -241,6 +241,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         loop.run_in_executor(
             executor, add_to_cache, user_query, result["text"], result["tier"],
             result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"],
+            api_key.id,
         )
 
         usage = {"input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"]}
@@ -309,7 +310,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         loop.run_in_executor(
             executor, add_to_cache, user_query, full_response,
             meta["tier"], meta["model_id"], meta["cost_usd"],
-            meta["input_tokens"], meta["output_tokens"],
+            meta["input_tokens"], meta["output_tokens"], api_key.id,
         )
 
     return StreamingResponse(_stream(), media_type="text/event-stream")

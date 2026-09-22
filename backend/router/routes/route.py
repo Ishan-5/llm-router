@@ -107,7 +107,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     async def _maybe_check_cache():
         if req.bypass_cache:
             return None
-        return await loop.run_in_executor(_executor, check_cache, req.query)
+        return await loop.run_in_executor(_executor, check_cache, req.query, api_key.id)
 
     cached, (difficulty_score, tier, cheap_ceil, frontier_floor) = await asyncio.gather(
         _maybe_check_cache(),
@@ -238,7 +238,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
         "quality_score": quality_score,
     })
-    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"])
+    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"], api_key.id)
     if log_id is not None:
         loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), result["text"], result["tier"], result["model_id"])
         loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
@@ -341,7 +341,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         })
         loop.run_in_executor(executor, add_to_cache, req.query, full_response,
             meta["tier"], meta["model_id"], meta["cost_usd"],
-            meta["input_tokens"], meta["output_tokens"])
+            meta["input_tokens"], meta["output_tokens"], api_key.id)
         if log_id is not None:
             loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), full_response, meta["tier"], meta["model_id"])
             loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))

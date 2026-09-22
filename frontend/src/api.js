@@ -360,9 +360,10 @@ export async function fetchChaosStatus() {
 }
 
 export async function setChaos(active, tiers = null) {
+  const headers = await _adminHeaders()
   const res = await fetch(`${API_BASE}/demo/chaos`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify({ active, ...(tiers && tiers.length ? { tiers } : {}) }),
   })
   if (!res.ok) {

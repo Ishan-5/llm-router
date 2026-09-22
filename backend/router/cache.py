@@ -23,6 +23,7 @@ SessionLocal = _SessionLocal
 class QueryCache(Base):
     __tablename__ = "query_cache"
     id = Column(Integer, primary_key=True)
+    api_key_id = Column(Integer, nullable=True, index=True)  # owner; NULL = legacy/seed rows
     query = Column(Text)
     embedding = Column(Text)  # JSON-encoded list of floats
     response = Column(Text)
@@ -39,18 +40,32 @@ try:
 except Exception as e:
     log.warning("DB init failed (will retry on first request): %s", e)
 
+# Migration: add the tenant column to pre-existing cache tables.
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE query_cache ADD COLUMN api_key_id INTEGER"))
+        conn.commit()
+except Exception:
+    pass
+
 
 def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
 
 
-def check_cache(query: str) -> dict | None:
+def check_cache(query: str, api_key_id: int | None = None) -> dict | None:
     embedder = get_embedder()
     query_embed = embedder.encode([query])[0]
 
     session = SessionLocal()
     try:
-        rows = session.query(QueryCache).order_by(QueryCache.created_at.desc()).limit(MAX_SCAN_ROWS).all()
+        q = session.query(QueryCache)
+        if api_key_id is not None:
+            q = q.filter(QueryCache.api_key_id == api_key_id)
+        else:
+            q = q.filter(QueryCache.api_key_id.is_(None))
+        rows = q.order_by(QueryCache.created_at.desc()).limit(MAX_SCAN_ROWS).all()
     finally:
         session.close()
 
@@ -91,7 +106,7 @@ def _evict(session):
         session.query(QueryCache).filter(QueryCache.id.in_(oldest_ids)).delete(synchronize_session=False)
 
 
-def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float, input_tokens: int = 0, output_tokens: int = 0):
+def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float, input_tokens: int = 0, output_tokens: int = 0, api_key_id: int | None = None):
     embedder = get_embedder()
     embedding = embedder.encode([query])[0].tolist()
 
@@ -106,6 +121,7 @@ def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: 
             original_cost_usd=cost_usd,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
+            api_key_id=api_key_id,
         )
         session.add(entry)
         _evict(session)
