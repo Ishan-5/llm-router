@@ -76,7 +76,7 @@ function LinkRow({ item }) {
   )
 }
 
-export default function Footer() {
+export default function Footer({ backendOnline }) {
   return (
     <footer className="relative border-t border-line bg-panel overflow-hidden">
       <div className="relative h-px bg-gradient-to-r from-transparent via-signal/40 to-transparent" />
@@ -103,12 +103,12 @@ export default function Footer() {
             <p className="text-sm text-muted leading-relaxed max-w-xs mb-5">
               Cost-aware LLM request router. Scores every query for difficulty, routes to the cheapest tier that can handle it.
             </p>
-            <div className="inline-flex items-center gap-2 font-mono text-[10px] rounded-full border border-cool/30 bg-cool/10 text-cool px-3 py-1.5 shadow-card">
+            <div className={`inline-flex items-center gap-2 font-mono text-[10px] rounded-full border px-3 py-1.5 shadow-card ${backendOnline ? 'border-cool/30 bg-cool/10 text-cool' : 'border-danger/30 bg-danger/10 text-danger'}`}>
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-cool opacity-60 animate-ping" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cool" />
+                <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping ${backendOnline ? 'bg-cool' : 'bg-danger'}`} />
+                <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${backendOnline ? 'bg-cool' : 'bg-danger'}`} />
               </span>
-              All systems operational
+              {backendOnline ? 'All systems operational' : 'Backend offline'}
             </div>
           </div>
 

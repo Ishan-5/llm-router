@@ -140,7 +140,7 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
 
   return (
     <>
-      <header className={`sticky top-0 z-40 border-b bg-base/80 backdrop-blur-xl transition-shadow duration-300 ${scrolled ? 'border-line shadow-card' : 'border-line'}`}>
+      <header id="top" className={`sticky top-0 z-40 border-b bg-base/80 backdrop-blur-xl transition-shadow duration-300 ${scrolled ? 'border-line shadow-card' : 'border-line'}`}>
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Left: Logo + Nav */}
           <div className="flex items-center gap-8">

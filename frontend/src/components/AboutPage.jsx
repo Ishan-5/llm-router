@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import emailjs from '@emailjs/browser'
 
 export default function AboutPage() {
@@ -117,9 +118,9 @@ export default function AboutPage() {
           decision happen. No account needed.
         </p>
         <div className="flex flex-wrap gap-4">
-          <a href="/" className="font-mono text-xs px-4 py-2 rounded-full border border-signal text-signal hover:bg-signal/10 transition">
+          <Link to="/" className="font-mono text-xs px-4 py-2 rounded-full border border-signal text-signal hover:bg-signal/10 transition">
             Live demo
-          </a>
+          </Link>
           <a href="https://github.com/Ishan-5/llm-router" target="_blank" rel="noreferrer" className="font-mono text-xs px-4 py-2 rounded-full border border-line text-muted hover:text-primary hover:border-signal/50 transition">
             GitHub
           </a>

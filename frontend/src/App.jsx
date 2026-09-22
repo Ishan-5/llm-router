@@ -355,7 +355,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </div>
-      {location.pathname !== '/auth' && <Footer />}
+      {location.pathname !== '/auth' && <Footer backendOnline={backendOnline} />}
       <CommandPalette
         open={cmdOpen}
         onClose={() => setCmdOpen(false)}
