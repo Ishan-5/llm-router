@@ -19,7 +19,7 @@ frontend/dist
 
 
 seed_cache.py
-backend/models/
+backend/models/minilm/
 
 ARCHITECTURE.md
 production_upgrade_needed.md
