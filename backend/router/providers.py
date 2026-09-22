@@ -269,16 +269,27 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
     Only supports OpenAI-compatible providers -- Ollama falls back to call_model (non-streaming).
     Uses load balancer for key rotation when multiple keys are configured.
     """
-    if user_config:
-        # BYOM: skip streaming entirely -- non-streaming path gives accurate token counts
-        # across all providers regardless of stream_options support
-        result = call_model(tier, query, user_config, messages=messages, max_tokens=max_tokens, temperature=temperature)
-        yield result["text"]
-        yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
-        return
-
-    # default path
+    default_cfg = MODEL_CONFIG[tier]
     effective_max = max_tokens or 1000
+
+    if user_config:
+        # Only tiers genuinely overridden by the user (BYOM/onboarding) take the
+        # non-streaming path: accurate token counts and no assumption that a custom
+        # provider supports stream_options. The default (server-configured) providers
+        # are true OpenAI-compatible endpoints, so those stream token-by-token.
+        byom_override = (
+            user_config.get("provider") != default_cfg.get("provider")
+            or user_config.get("model_id") != default_cfg.get("model_id")
+        )
+        if byom_override:
+            result = call_model(tier, query, user_config, messages=messages, max_tokens=max_tokens, temperature=temperature)
+            yield result["text"]
+            yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
+            return
+        cfg = user_config
+    else:
+        cfg = default_cfg
+
     if tier == "cheap" and not DISABLE_OLLAMA:
         try:
             result = call_ollama(query)
@@ -286,9 +297,8 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
             yield {"tier": "cheap", "model_id": result["model_id"], "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0}
             return
         except Exception as e:
-            log.warning("ollama local call failed (%s), falling back to %s", e, MODEL_CONFIG["cheap"]["model_id"])
+            log.warning("ollama local call failed (%s), falling back to %s", e, cfg["model_id"])
 
-    cfg = MODEL_CONFIG[tier]
     yield from _stream_openai_compatible(
         cfg["model_id"], query, tier,
         cfg["price_per_m_input"], cfg["price_per_m_output"],
