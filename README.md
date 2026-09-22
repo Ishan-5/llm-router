@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/React-frontend-61DAFB" />
   <img src="https://img.shields.io/badge/LightGBM-difficulty%20model-orange" />
   <img src="https://img.shields.io/badge/Docker-containerized-2496ED" />
-  <img src="https://img.shields.io/badge/tests-39%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-46%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
@@ -195,7 +195,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (39 tests) · GitHub Actions CI |
+| ✅ Testing | pytest (46 tests) · GitHub Actions CI |
 
 ---
 
@@ -635,26 +635,30 @@ llm-router/
 │   ├── router/
 │   │   ├── main.py               # FastAPI app, mounts all routers, alert loop, /health, /metrics
 │   │   ├── routes/
-│   │   │   ├── route.py          # /route, /route/stream, /route/feedback
+│   │   │   ├── route.py          # /route, /route/stream (SSE token streaming), /route/feedback
 │   │   │   ├── keys.py           # /keys CRUD
 │   │   │   ├── config.py         # /config, /pricing, /providers
 │   │   │   ├── stats.py          # /stats, /logs, /analytics, /calibrate, /compare, /evaluate
 │   │   │   ├── alerts.py         # /alerts CRUD
 │   │   │   ├── settings.py       # /settings
-│   │   │   └── admin.py          # /admin/*
+│   │   │   ├── admin.py          # /admin/* (incl. outage simulator)
+│   │   │   ├── demo.py           # presentation outage-mode controls
+│   │   │   └── news.py           # time-sensitive queries → live news/web results
 │   │   ├── classifier.py         # get_tier() — wraps predict_difficulty + score_to_tier
 │   │   ├── providers.py          # call_model(), call_gemini(), stream_model()
 │   │   ├── providers_registry.py # all supported providers + model lists
-│   │   ├── rate_limiter.py       # call_with_failover(), AllTiersFailedError
+│   │   ├── rate_limiter.py       # call_with_failover(), stream_model_with_failover(), AllTiersFailedError
 │   │   ├── circuit_breaker.py    # per-tier circuit breaker (CLOSED/OPEN/HALF)
 │   │   ├── load_balancer.py      # multi-key round-robin with 429 cooldown
 │   │   ├── cache.py              # semantic cache (cosine similarity, vectorized)
 │   │   ├── guardrails.py         # injection detection, PII sanitization, web search detection
 │   │   ├── auth.py               # API key auth, JWT, budget enforcement
 │   │   ├── db.py                 # SQLAlchemy models: ApiKey, RequestLog, UserConfig, AlertRule, ...
-│   │   ├── openai_compat.py      # /v1/chat/completions drop-in endpoint
+│   │   ├── openai_compat.py      # /v1/chat/completions drop-in (SSE streaming included)
 │   │   ├── mcp_server.py         # MCP stdio server — ask_routewise tool
-│   │   ├── model_config_loader.py
+│   │   ├── model_config_loader.py# per-user merged tier config (BYOM overrides on defaults)
+│   │   ├── quality_judge.py      # post-hoc response quality scoring (feedback loop)
+│   │   ├── difficulty_labeler.py # LLM-assisted difficulty labeling for training data
 │   │   ├── ollama_client.py
 │   │   └── config.py             # MODEL_CONFIG, FALLBACK_CHAIN, env vars
 │   ├── src/
@@ -664,25 +668,24 @@ llm-router/
 │   │   ├── difficulty_regressor.joblib
 │   │   └── minilm/               # MiniLM-L6-v2 weights (local, no download at runtime)
 │   ├── tests/
+│   │   ├── conftest.py           # shared fixtures
 │   │   ├── test_tier_logic.py
 │   │   ├── test_cache_similarity.py
 │   │   ├── test_auth.py
-│   │   ├── test_rate_limiter.py
+│   │   ├── test_rate_limiter.py  # incl. stream_model_with_failover live tier tests
 │   │   ├── test_route_integration.py
-│   │   └── test_openai_compat.py
-│   ├── scripts/
-│   │   ├── create_api_key.py
-│   │   ├── seed_requests.py
-│   │   └── seed_pricing.sql
-│   ├── seed_cache.py
-│   ├── migrate_add_response_column.py
-│   ├── migrate_add_user_id.py
-│   └── eval/                     # training datasets
+│   │   └── test_openai_compat.py # /v1 streaming + cache/web SSE tests
+│   └── scripts/
+│       ├── create_api_key.py
+│       ├── seed_requests.py
+│       ├── export_labeled_queries.py
+│       └── seed_pricing.sql
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/           # QueryForm, RoutingDiagram, TierCircuit, DashboardPage, ...
-│   │   ├── api.js
+│   │   ├── components/           # QueryForm, RoutingDiagram, TierCircuit, DashboardPage,
+│   │   │                         #   OnboardingWizard, ApiPlayground, ResponseCard, ... (~30)
+│   │   ├── api.js                # REST + SSE streaming client (routeQueryStream)
 │   │   ├── App.jsx
 │   │   └── config.js
 │   ├── package.json
@@ -690,7 +693,6 @@ llm-router/
 │
 ├── cli/
 │   ├── src/                  # routewise npm CLI: ask, stream, chat, stats, byom, doctor, login
-│   ├── test/
 │   └── package.json
 │
 ├── sdk/

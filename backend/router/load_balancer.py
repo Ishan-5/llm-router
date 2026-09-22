@@ -81,23 +81,11 @@ def get_key_for_tier(tier: str) -> str | None:
     return pool.get_key()
 
 
-def report_rate_limit(tier: str, key: str = None):
-    """Report that a key got rate-limited (429). It will be skipped for cooldown."""
-    pool = _tier_pools.get(tier)
-    if pool:
-        pool.mark_rate_limited(key)
-
-
 def report_rate_limit_from_error(tier: str, error: Exception):
     """Check if error is rate-limit related and report it (uses last tracked key for tier)."""
     pool = _tier_pools.get(tier)
     if pool:
         pool.mark_rate_limited_from_exception(None, error)
-
-
-def has_multi_key_support() -> bool:
-    """Returns True if any tier has more than one key configured."""
-    return any(len(pool._keys) > 1 for pool in _tier_pools.values())
 
 
 def get_pool_stats() -> dict:

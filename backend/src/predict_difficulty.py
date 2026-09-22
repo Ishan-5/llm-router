@@ -66,7 +66,8 @@ def predict_difficulty(query: str) -> float:
 #   - Economy (0.0): cheap <= 5.25, frontier >= 6.75
 #   - Balanced (1.0): cheap <= 4.50, frontier >= 6.00
 #   - Quality (2.0): cheap <= 3.75, frontier >= 5.25
-def score_to_tier(score: float, margin: float = 0.3) -> tuple[str, float, float]:
+def score_to_tier(score: float, margin: float = 1.0) -> tuple[str, float, float]:
+    # margin is 0.0 (economy) / 1.0 (balanced, the app default) / 2.0 (quality)
     scaled = margin * 0.3          # 0.0→0.0, 1.0→0.3, 2.0→0.6
     t = (scaled - 0.3) / 0.3       # -1.0 (economy) -> 0.0 (balanced) -> +1.0 (quality)
     cheap_ceil = 4.5 - t * 0.75    # economy=5.25, balanced=4.5, quality=3.75

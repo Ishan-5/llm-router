@@ -115,22 +115,6 @@ async def require_user(authorization: str = Header(None)) -> str:
         raise HTTPException(status_code=401, detail="Could not verify session")
 
 
-async def require_admin(authorization: str = Header(None)) -> str:
-    """Verifies Supabase JWT and returns user_id only if it matches ADMIN_USER_ID."""
-    user_id = await require_user(authorization)
-    if user_id != ADMIN_USER_ID:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return user_id
-
-
-async def require_admin_api_key(authorization: str = Header(None)) -> ApiKey:
-    """API-key-based admin check. Returns the ApiKey record if key belongs to admin user."""
-    api_key = await require_api_key(authorization)
-    if not is_admin_user_id(api_key.user_id):
-        raise HTTPException(status_code=403, detail="Admin access required")
-    return api_key
-
-
 async def require_admin_any(authorization: str = Header(None)) -> str:
     """Accepts either API key (rw_...) or Supabase JWT. Returns admin user_id."""
     if not authorization or not authorization.startswith("Bearer "):

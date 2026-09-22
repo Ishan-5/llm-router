@@ -174,6 +174,14 @@ try:
 except Exception:
     pass
 
+try:
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE request_logs ADD COLUMN tokens_saved_usd FLOAT"))
+        conn.commit()
+except Exception:
+    pass
+
 
 def compute_quality_score(cache_hit: bool, cache_similarity: float | None, fallback_used: bool) -> float:
     if cache_hit and cache_similarity is not None:
