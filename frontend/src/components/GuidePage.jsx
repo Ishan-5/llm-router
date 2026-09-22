@@ -8,11 +8,39 @@ const TABS = [
   { id: 'quickstart', label: 'Quick Start' },
   { id: 'sdk', label: 'Python SDK' },
   { id: 'openai', label: 'OpenAI SDK' },
+  { id: 'cli', label: 'Terminal CLI' },
   { id: 'rest', label: 'REST API' },
   { id: 'streaming', label: 'Streaming' },
   { id: 'byom', label: 'BYOM' },
   { id: 'config', label: 'Configuration' },
   { id: 'mcp', label: 'MCP' },
+]
+
+const AUDIENCES = [
+  {
+    id: 'curious',
+    title: 'Just curious',
+    desc: 'Play with the live router, grab a free key, and ask anything from your browser.',
+    tab: 'quickstart',
+  },
+  {
+    id: 'builder',
+    title: 'Building an app',
+    desc: 'Integrate with the Python SDK, OpenAI SDK, or plain REST — inside your codebase in minutes.',
+    tab: 'sdk',
+  },
+  {
+    id: 'tinkerer',
+    title: 'Terminal power user',
+    desc: 'Install one CLI and route, stream, chat, and read analytics right from your shell.',
+    tab: 'cli',
+  },
+  {
+    id: 'ops',
+    title: 'Team lead / ops',
+    desc: 'Self-host the router, wire the MCP gateway, tune config, and control cost per person.',
+    tab: 'config',
+  },
 ]
 
 const EXAMPLES = {
@@ -146,6 +174,56 @@ for chunk in stream:
     if delta.content:
         print(delta.content, end="", flush=True)`,
         lang: 'python',
+      },
+    ],
+  },
+  cli: {
+    title: 'Terminal CLI',
+    description: 'The `routewise` npm CLI brings routing, streaming chat, analytics, and BYOM straight to your shell.',
+    sections: [
+      {
+        label: 'Install',
+        code: 'npm i -g routewise',
+        lang: 'bash',
+      },
+      {
+        label: 'Set your key and run a self-check',
+        code: `routewise config set rw_your_key_here
+routewise doctor        # self-check: config, network, live ask
+routewise whoami        # identity + usage snapshot`,
+        lang: 'bash',
+      },
+      {
+        label: 'Route a query',
+        code: `# single answer (metadata goes to stderr)
+routewise ask "What is 2+2?"
+
+# stream tokens as they arrive
+routewise stream "Explain how transformers work"
+
+# interactive multi-turn chat
+routewise chat`,
+        lang: 'bash',
+      },
+      {
+        label: 'Usage, cost & feedback',
+        code: `routewise stats          # usage, cost and savings summary
+routewise logs --limit 10
+routewise analytics       # cost analytics + daily breakdown
+routewise pricing         # model price list
+
+# thumb up/down to tune routing quality
+routewise feedback <log_id> up --reason "great answer"`,
+        lang: 'bash',
+      },
+      {
+        label: 'Bring your own model',
+        code: `# save a custom model for any tier, once
+routewise byom set frontier --provider openrouter --model deepseek/deepseek-v4-flash --key sk-or-v1-...
+
+routewise byom list      # see saved config
+routewise ask "..."      # auto-applies your saved models`,
+        lang: 'bash',
       },
     ],
   },
@@ -578,6 +656,11 @@ export default function GuidePage() {
   const [activeTab, setActiveTab] = useState('quickstart')
   const current = EXAMPLES[activeTab]
 
+  function switchTo(tab) {
+    setActiveTab(tab)
+    document.getElementById('guide-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="relative max-w-4xl mx-auto px-6 py-20">
       <div
@@ -589,12 +672,36 @@ export default function GuidePage() {
       <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">Documentation</p>
       <h1 className="font-display text-3xl font-semibold mb-2">Developer Guide</h1>
       <p className="text-muted text-sm mb-10 max-w-xl">
-        Everything you need to integrate Routewise into your app. Use the SDK, call the OpenAI-compatible endpoint,
-        or talk to the REST API directly.
+        Everything you need to integrate Routewise into your app — via the Python SDK, the terminal CLI, the
+        OpenAI-compatible endpoint, or the REST API directly.
       </p>
 
-      {/* Tabs */}
+      {/* Pick your path */}
       <div className="mb-8">
+        <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3 flex items-center gap-2">
+          <span className="w-1 h-1 rounded-full bg-cool" />
+          Pick your path
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {AUDIENCES.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => switchTo(a.tab)}
+              className="group relative text-left rounded-xl border border-line bg-surface p-4 shadow-card hover:shadow-card-hover hover:-translate-y-0.5 hover:border-signal/30 transition-all duration-200"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-signal" />
+                <span className="text-sm font-semibold text-primary">{a.title}</span>
+              </div>
+              <p className="text-xs text-muted leading-relaxed mb-3">{a.desc}</p>
+              <span className="font-mono text-[10px] text-signal group-hover:underline">Start here →</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div id="guide-tabs" className="mb-8">
         <PillTabBar tabs={TABS} active={activeTab} onSelect={setActiveTab} />
       </div>
 
