@@ -7,14 +7,13 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from router.classifier import get_tier
-from router.rate_limiter import call_with_failover, AllTiersFailedError
+from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings, compute_quality_score
 from router.auth import require_api_key, check_budget
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.model_config_loader import get_active_config, get_pricing_for_model
-from router.providers import stream_model
 from router.quality_judge import update_quality_score
 from router.difficulty_labeler import update_difficulty_label
 
@@ -300,7 +299,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
 
         def _run_generator():
             try:
-                for item in stream_model(routing_tier, req.query, user_config.get(routing_tier), messages=pre.get("messages")):
+                for item in stream_model_with_failover(routing_tier, req.query, user_config, messages=pre.get("messages")):
                     loop.call_soon_threadsafe(queue.put_nowait, item)
             except Exception as e:
                 loop.call_soon_threadsafe(queue.put_nowait, Exception(str(e)))
@@ -317,6 +316,9 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
                 yield f"data: {json.dumps({'type': 'error', 'detail': str(item)})}\n\n"
                 return
             if isinstance(item, dict):
+                if item.get("type") == "failover":
+                    yield f"data: {json.dumps({'type': 'failover', 'from_tier': item.get('from_tier'), 'detail': item.get('detail', '')})}\n\n"
+                    continue
                 meta = item
             else:
                 full_text.append(item)
@@ -328,13 +330,15 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
 
         latency_ms = round((time.time() - start) * 1000, 2)
         full_response = "".join(full_text)
-        quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=False)
+        fallback_used = meta["tier"] != routing_tier
+        cross_provider_fallback = meta["tier"] == "gemini"
+        quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=fallback_used)
 
         log_id = log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
             "query": sanitize_pii(req.query), "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
-            "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
+            "tier": meta["tier"], "fallback_used": fallback_used, "cache_hit": False,
             "cache_similarity": None, "model_id": meta["model_id"],
             "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms, "quality_score": quality_score,
@@ -346,7 +350,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), full_response, meta["tier"], meta["model_id"])
             loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
 
-        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': False, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id'], 'request_log_id': log_id})}\n\n"
+        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': fallback_used, 'cross_provider_fallback': cross_provider_fallback, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id'], 'request_log_id': log_id})}\n\n"
 
     return StreamingResponse(_live_stream(), media_type="text/event-stream")
 

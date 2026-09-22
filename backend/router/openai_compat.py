@@ -16,8 +16,7 @@ from router.db import log_request, ApiKey
 from router.auth import require_api_key, check_budget
 from router.config import MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii
-from router.rate_limiter import call_with_failover, AllTiersFailedError
-from router.providers import stream_model
+from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
 from router.model_config_loader import get_active_config, get_pricing_for_model
 
 router = APIRouter()
@@ -115,6 +114,16 @@ def _build_stream_chunk(id: str, model: str, delta: dict, finish_reason: str | N
     return f"data: {json.dumps(chunk)}\n\n"
 
 
+def _sse_single_answer(chat_id: str, model: str, text: str):
+    """Stream a pre-computed answer (cache hit / web search) as OpenAI-compatible SSE."""
+    async def _body():
+        yield _build_stream_chunk(chat_id, model, {"role": "assistant"})
+        yield _build_stream_chunk(chat_id, model, {"content": text})
+        yield _build_stream_chunk(chat_id, model, {}, finish_reason="stop")
+        yield "data: [DONE]\n\n"
+    return _body()
+
+
 @router.post("/v1/chat/completions")
 async def chat_completions(req: ChatCompletionRequest, request: Request, response: Response, api_key: ApiKey = Depends(require_api_key)):
     # --- validate messages ---
@@ -169,6 +178,17 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             response.headers["x-routewise-cost"] = "0"
             response.headers["x-routewise-cache-hit"] = "false"
             response.headers["x-routewise-difficulty"] = ""
+            if req.stream:
+                return StreamingResponse(
+                    _sse_single_answer(chat_id, req.model, answer),
+                    media_type="text/event-stream",
+                    headers={
+                        "x-routewise-tier": "web",
+                        "x-routewise-cost": "0",
+                        "x-routewise-cache-hit": "false",
+                        "x-routewise-difficulty": "",
+                    },
+                )
             return _build_chat_response(chat_id, req.model, answer, {"input_tokens": 0, "output_tokens": 0}, "web")
 
     # --- cache + classifier in parallel ---
@@ -206,6 +226,17 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         response.headers["x-routewise-cost"] = "0"
         response.headers["x-routewise-cache-hit"] = "true"
         response.headers["x-routewise-difficulty"] = ""
+        if req.stream:
+            return StreamingResponse(
+                _sse_single_answer(chat_id, req.model, cached["response"]),
+                media_type="text/event-stream",
+                headers={
+                    "x-routewise-tier": cached["tier"],
+                    "x-routewise-cost": "0",
+                    "x-routewise-cache-hit": "true",
+                    "x-routewise-difficulty": "",
+                },
+            )
         return _build_chat_response(chat_id, req.model, cached["response"], {"input_tokens": 0, "output_tokens": 0}, cached["tier"])
 
     # --- resolve tier ---
@@ -259,7 +290,14 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
         def _run_generator():
             try:
-                for item in stream_model(routing_tier, user_query, messages=provider_messages, max_tokens=req.max_tokens, temperature=req.temperature):
+                for item in stream_model_with_failover(
+                    routing_tier,
+                    user_query,
+                    user_config=get_active_config(api_key.user_id),
+                    messages=provider_messages,
+                    max_tokens=req.max_tokens,
+                    temperature=req.temperature,
+                ):
                     loop.call_soon_threadsafe(queue.put_nowait, item)
             except Exception as e:
                 loop.call_soon_threadsafe(queue.put_nowait, Exception(str(e)))
@@ -282,6 +320,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
                 yield f"data: {json.dumps(err_chunk)}\n\n"
                 return
             if isinstance(item, dict):
+                if item.get("type") == "failover":
+                    continue
                 meta = item
             else:
                 full_text.append(item)
@@ -296,13 +336,15 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
         latency_ms = round((time.time() - start) * 1000, 2)
         full_response = "".join(full_text)
+        served_tier = meta["tier"]
+        fallback_used = served_tier != routing_tier
 
         log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
             "query": sanitize_pii(user_query),
             "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
-            "tier": meta["tier"], "fallback_used": False, "cache_hit": False,
+            "tier": served_tier, "fallback_used": fallback_used, "cache_hit": False,
             "cache_similarity": None, "model_id": meta["model_id"],
             "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,

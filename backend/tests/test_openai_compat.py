@@ -201,8 +201,8 @@ def test_streaming_returns_sse_with_done():
     key = _make_test_key("stream-test")
     with patch("router.openai_compat.check_cache", return_value=None), \
          patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
-         patch("router.openai_compat.stream_model") as mock_stream:
-        def fake_stream(tier, query, messages=None, max_tokens=None, temperature=None):
+         patch("router.openai_compat.stream_model_with_failover") as mock_stream:
+        def fake_stream(tier, query, user_config=None, messages=None, max_tokens=None, temperature=None):
             yield "Hello"
             yield " world"
             yield {"tier": "cheap", "model_id": "test-model", "input_tokens": 5, "output_tokens": 3, "cost_usd": 0.0}
@@ -226,12 +226,63 @@ def test_streaming_returns_sse_with_done():
         assert first_obj["choices"][0]["delta"]["role"] == "assistant"
 
 
+def test_streaming_cache_hit_returns_sse_not_plain_json():
+    key = _make_test_key("stream-cache")
+    with patch("router.openai_compat.check_cache") as mock_cache, \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)):
+        mock_cache.return_value = {
+            "response": "cached stream answer",
+            "tier": "cheap",
+            "model_id": "test-model",
+            "similarity": 0.99,
+            "input_tokens": 10,
+            "output_tokens": 5,
+        }
+        resp = client.post(
+            ENDPOINT,
+            json={**_basic_body("cached stream query"), "stream": True},
+            headers=_auth_header(key),
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "text/event-stream; charset=utf-8"
+        assert resp.headers["x-routewise-cache-hit"] == "true"
+        assert "cached stream answer" in resp.text
+        assert "[DONE]" in resp.text
+        assert '"role": "assistant"' in resp.text
+        assert '"object": "chat.completion"' not in resp.text
+
+
+def test_streaming_web_answer_returns_sse_not_plain_json():
+    key = _make_test_key("stream-web")
+
+    class FakeResp:
+        status_code = 200
+        raise_for_status = lambda self: None
+        json = lambda self: {"answer": "live web result", "results": []}
+
+    with patch("router.openai_compat.check_cache", return_value=None), \
+         patch("router.guardrails.needs_web_search", return_value=True), \
+         patch("router.config.TAVILY_API_KEY", "test-key"), \
+         patch("httpx.post", return_value=FakeResp()) as mock_web:
+        resp = client.post(
+            ENDPOINT,
+            json={**_basic_body("latest news"), "stream": True},
+            headers=_auth_header(key),
+        )
+        assert resp.status_code == 200
+        assert resp.headers["content-type"] == "text/event-stream; charset=utf-8"
+        assert "live web result" in resp.text
+        assert "[DONE]" in resp.text
+        assert '"object": "chat.completion"' not in resp.text
+        mock_web.assert_called_once()
+
+
 def test_streaming_error_returns_error_chunk():
     key = _make_test_key("stream-err")
     with patch("router.openai_compat.check_cache", return_value=None), \
          patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
-         patch("router.openai_compat.stream_model") as mock_stream:
-        def bad_stream(tier, query, messages=None):
+         patch("router.openai_compat.stream_model_with_failover") as mock_stream:
+        def bad_stream(tier, query, user_config=None, messages=None, max_tokens=None, temperature=None):
             raise Exception("provider exploded")
             yield  # make it a generator
 

@@ -17,7 +17,7 @@ just another tier of the same infrastructure.
 import time
 import logging
 from router.config import FALLBACK_CHAIN
-from router.providers import call_model, call_gemini
+from router.providers import call_model, call_gemini, stream_model
 from router.model_config_loader import get_active_config
 from router.load_balancer import report_rate_limit_from_error
 from router.circuit_breaker import get_breaker
@@ -108,4 +108,73 @@ def call_with_failover(intended_tier: str, query: str, user_api_keys: dict | Non
 
     raise AllTiersFailedError(
         f"All tiers failed for intended_tier='{intended_tier}'. Errors: {errors}"
+    )
+
+
+def stream_model_with_failover(
+    intended_tier: str,
+    query: str,
+    user_config: dict | None = None,
+    messages: list[dict] | None = None,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+):
+    """
+    Streaming counterpart to call_with_failover.
+
+    Yields text chunks from the intended tier's stream (via stream_model). If
+    that tier raises mid-stream (timeout, 5xx, rate limit), emits a FAILOVER
+    MARKER dict and continues with the next tier in the fallback chain, then
+    Gemini as a last resort (degraded to a single chunk, mirroring call_gemini).
+
+    Consumers distinguish markers from the final metadata dict by checking
+    `item.get("type") == "failover"`. The final metadata dict always contains
+    "tier" and ends the stream.
+
+    No in-place retry of the same tier: chunks already yielded to the caller
+    cannot be undone, so a mid-stream failure simply moves to the next tier.
+    """
+    chain = [intended_tier] + FALLBACK_CHAIN.get(intended_tier, [])
+    errors = []
+
+    for tier in chain:
+        breaker = get_breaker(tier)
+        if breaker.is_open():
+            log.info("Circuit OPEN for '%s' — skipping", tier)
+            errors.append(f"{tier}: circuit open")
+            continue
+        try:
+            for item in stream_model(
+                tier, query, user_config.get(tier) if user_config else None,
+                messages=messages, max_tokens=max_tokens, temperature=temperature,
+            ):
+                yield item
+            breaker.record_success()
+            return
+        except Exception as e:
+            breaker.record_failure()
+            if _is_rate_limit_error(e):
+                report_rate_limit_from_error(tier, e)
+            error_detail = f"{tier}: {type(e).__name__}: {e}"
+            errors.append(error_detail)
+            log.warning("streaming tier '%s' failed mid-stream -- %s", tier, error_detail)
+            yield {"type": "failover", "from_tier": tier, "detail": str(e)}
+
+    gemini_breaker = get_breaker("gemini")
+    if not gemini_breaker.is_open():
+        try:
+            result = call_gemini(query)
+            gemini_breaker.record_success()
+            yield result["text"]
+            yield {k: result[k] for k in ("tier", "model_id", "input_tokens", "output_tokens", "cost_usd")}
+            return
+        except Exception as e:
+            gemini_breaker.record_failure()
+            errors.append(f"gemini: {type(e).__name__}: {e}")
+            log.error("streaming Gemini last-resort also failed -- %s", errors[-1])
+    else:
+        errors.append("gemini: circuit open")
+
+    raise AllTiersFailedError(
+        f"All streaming tiers failed for intended_tier='{intended_tier}'. Errors: {errors}"
     )
