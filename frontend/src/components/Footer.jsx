@@ -179,6 +179,11 @@ export default function Footer({ backendOnline }) {
             <p className="font-mono text-[10px] text-muted">
               Built by Devansh Kumar Pandey
             </p>
+            <span className="w-px h-3 bg-line" />
+            <div className="flex items-center gap-3">
+              <Link to="/privacy" className="font-mono text-[10px] text-muted hover:text-signal transition-colors">Privacy</Link>
+              <Link to="/terms" className="font-mono text-[10px] text-muted hover:text-signal transition-colors">Terms</Link>
+            </div>
           </div>
         </div>
       </div>

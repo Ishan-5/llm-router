@@ -25,6 +25,8 @@ const AdminPage = lazy(() => import('./components/AdminPage'))
 const EvaluatePage = lazy(() => import('./components/EvaluatePage'))
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'))
 const Features = lazy(() => import('./components/Features'))
+const PrivacyPage = lazy(() => import('./components/PrivacyPage'))
+const TermsPage = lazy(() => import('./components/TermsPage'))
 
 const TITLES = {
   '/': 'Routewise — Cost-aware LLM routing',
@@ -39,6 +41,8 @@ const TITLES = {
   '/about': 'Routewise — About',
   '/auth': 'Routewise — Sign in',
   '/dashboard': 'Routewise — Dashboard',
+  '/privacy': 'Routewise — Privacy Policy',
+  '/terms': 'Routewise — Terms & Conditions',
 }
 
 function PageSkeleton({ type }) {
@@ -327,6 +331,8 @@ export default function App() {
             <Route path="/guide" element={<GuidePage />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
             <Route path="/get-started" element={<OnboardingWizard />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/admin" element={<AdminPage user={user} />} />
             <Route path="*" element={
               <div className="relative max-w-3xl mx-auto px-6 py-32 text-center">
