@@ -246,6 +246,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
 
   const queryCount = messages.filter((m) => m.role === 'user').length
 
+  const lastAssistantIndex = messages.map((m, i) => m.role === 'assistant' ? i : -1).filter((i) => i >= 0).slice(-1)[0] ?? -1
+
   return (
     <section className="relative overflow-hidden border-b border-line bg-panel">
 
@@ -369,6 +371,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                           logId={msg.result?.request_log_id}
                           onRegenerate={() => handleRegenerate(i)}
                           regenerating={regeneratingIndex === i}
+                          streaming={loading && i === lastAssistantIndex}
                         />
                       )
                 )}
