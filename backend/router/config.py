@@ -35,9 +35,9 @@ DEFAULT_PROVIDER = "groq"
 MODEL_CONFIG = {
     "cheap": {
         "provider": "openrouter",
-        "model_id": "deepseek/deepseek-v4-flash",
-        "price_per_m_input": 0.049,
-        "price_per_m_output": 0.098,
+        "model_id": "deepseek/deepseek-chat",
+        "price_per_m_input": 0.28,
+        "price_per_m_output": 1.10,
     },
     "mid": {
         "provider": "groq",
