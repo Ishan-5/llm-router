@@ -24,7 +24,8 @@ export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
 export async function fetchEnabledProviders() {
   if (!SUPABASE_URL) return {}
   try {
-    const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`)
+    const headers = SUPABASE_ANON_KEY ? { apikey: SUPABASE_ANON_KEY } : {}
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers })
     if (!res.ok) return {}
     const json = await res.json()
     return json.external || {}
