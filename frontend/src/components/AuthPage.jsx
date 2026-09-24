@@ -91,6 +91,10 @@ export default function AuthPage() {
 
   function switchMode(next) {
     setMode(next)
+    setName('')
+    setEmail('')
+    setPassword('')
+    setConfirm('')
     setError(null)
     setMessage(null)
   }
@@ -109,12 +113,49 @@ export default function AuthPage() {
     return true
   }
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setMode('reset')
+        setPassword('')
+        setConfirm('')
+        setError(null)
+        setMessage(null)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
     setMessage(null)
-    if (!validate()) return
+    if (!validate() && mode !== 'reset') return
     setLoading(true)
+
+    if (mode === 'reset') {
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters.')
+        setLoading(false)
+        return
+      }
+      if (password !== confirm) {
+        setError('Passwords do not match.')
+        setLoading(false)
+        return
+      }
+      const { error } = await supabase.auth.updateUser({ password })
+      if (error) setError(error.message)
+      else {
+        setMessage('Password updated — sign in with your new password.')
+        setMode('login')
+        setEmail('')
+        setPassword('')
+        setConfirm('')
+      }
+      setLoading(false)
+      return
+    }
 
     if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({
@@ -142,7 +183,9 @@ export default function AuthPage() {
     setLoading(true)
     setError(null)
     setMessage(null)
-    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth`,
+    })
     if (error) setError(error.message)
     else setMessage('Password reset link sent — check your inbox.')
     setLoading(false)
@@ -283,10 +326,12 @@ export default function AuthPage() {
             </div>
 
             <h2 className="font-display text-xl font-semibold text-primary mb-1">
-              {mode === 'login' ? 'Welcome back' : 'Create your account'}
+              {mode === 'reset' ? 'Set a new password' : mode === 'login' ? 'Welcome back' : 'Create your account'}
             </h2>
             <p className="text-sm text-muted mb-6">
-              {mode === 'login'
+              {mode === 'reset'
+                ? 'Choose a new password for your account.'
+                : mode === 'login'
                 ? 'Sign in to access your dashboard and API keys.'
                 : 'Get started with cost-aware LLM routing.'}
             </p>
@@ -294,7 +339,7 @@ export default function AuthPage() {
             {/* Social */}
             {socialProviders.length > 0 && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className={socialProviders.length > 1 ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
                   {socialProviders.map((provider) => (
                     <button
                       key={provider}
@@ -348,21 +393,23 @@ export default function AuthPage() {
                 </div>
               )}
 
-              <div>
-                <label className="font-mono text-[10px] text-muted uppercase tracking-wide block mb-1.5">Email</label>
-                <div className="relative">
-                  <MailIcon />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="email"
-                    className={inputClass}
-                    placeholder="you@company.com"
-                  />
+              {mode !== 'reset' && (
+                <div>
+                  <label className="font-mono text-[10px] text-muted uppercase tracking-wide block mb-1.5">Email</label>
+                  <div className="relative">
+                    <MailIcon />
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                      className={inputClass}
+                      placeholder="you@company.com"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -412,7 +459,7 @@ export default function AuthPage() {
                 </div>
               </div>
 
-              {mode === 'signup' && (
+              {mode === 'signup' || mode === 'reset' ? (
                 <div>
                   <label className="font-mono text-[10px] text-muted uppercase tracking-wide block mb-1.5">Confirm password</label>
                   <div className="relative">
@@ -428,7 +475,7 @@ export default function AuthPage() {
                     />
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Error / Success */}
               {error && (
@@ -464,7 +511,7 @@ export default function AuthPage() {
                     </svg>
                     Please wait…
                   </span>
-                ) : mode === 'login' ? 'Sign in' : 'Create account'}
+                ) : mode === 'reset' ? 'Update password' : mode === 'login' ? 'Sign in' : 'Create account'}
               </button>
             </form>
           </div>
