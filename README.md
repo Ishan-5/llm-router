@@ -354,10 +354,6 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 
 ## ⚠️ Known limitations
 
-- 🖥️ **Ollama doesn't run in the cloud deployment.** Render has no local GPU — cheap-tier
-  requests there go straight to OpenRouter. Local demos are the only place the local-model path
-  runs.
-- 📊 **Dashboard data is seeded** — see the disclosure under [Screenshots](#screenshots).
 - 🔐 **BYOM is scoped per user, not per-API-key.** Config loads per user
   (`get_active_config(user_id)`), so two keys of the same user share config; script-created
   keys without a `user_id` share the global config.
