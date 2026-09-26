@@ -38,14 +38,20 @@ export default function LiveStatsStrip() {
     return () => clearInterval(id)
   }, [])
 
-  const savedPct = stats && stats.total_hypothetical_cost > 0
-    ? Math.round((1 - stats.total_actual_cost / stats.total_hypothetical_cost) * 100)
-    : 0
+  const savedPct = stats ? Math.round(stats.savings_pct || 0) : 0
 
-  const avgValues = Object.values(stats?.avg_latency_by_tier || {})
-  const avgMs = avgValues.length > 0 ? Math.round(avgValues.reduce((a, b) => a + b, 0) / avgValues.length) : null
+  const avgMs = stats && stats.avg_latency_ms ? Math.round(stats.avg_latency_ms) : null
 
   const cacheRate = stats ? Math.round((stats.cache_hit_rate || 0) * 100) : null
+
+  // /stats is global only when the key behind the deployed site belongs to an
+  // admin; otherwise it covers that one key. Say which, instead of implying
+  // system-wide traffic either way.
+  const scopeLabel = !stats
+    ? 'Live traffic'
+    : stats.is_global
+      ? 'Live across all routed traffic'
+      : 'Live on this API key'
 
   return (
     <section className="border-b border-line bg-panel">
@@ -56,7 +62,7 @@ export default function LiveStatsStrip() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-signal opacity-60" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-signal" />
             </span>
-            <p className="font-mono text-xs text-primary tracking-wide uppercase">Live across all routed traffic</p>
+            <p className="font-mono text-xs text-primary tracking-wide uppercase">{scopeLabel}</p>
           </div>
           <Link
             to="/metrics"
@@ -85,7 +91,7 @@ export default function LiveStatsStrip() {
           <Cell
             label="Cache hit rate"
             node={stats == null ? <Skel /> : cacheRate != null ? <AnimatedCounter value={cacheRate} suffix="%" /> : '—'}
-            sub={stats && stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served instantly` : null}
+            sub={stats && stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served from cache` : null}
             color="text-cool"
           />
           <Cell

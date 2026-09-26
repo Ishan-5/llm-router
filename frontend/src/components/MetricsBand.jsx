@@ -27,12 +27,9 @@ export default function MetricsBand() {
     fetchStats().then(setStats).catch((e) => setError(e.message))
   }, [])
 
-  const savedPct = stats && stats.total_hypothetical_cost > 0
-    ? Math.round((1 - stats.total_actual_cost / stats.total_hypothetical_cost) * 100)
-    : 0
+  const savedPct = stats ? Math.round(stats.savings_pct || 0) : 0
 
-  const avgValues = Object.values(stats?.avg_latency_by_tier || {})
-  const avgMs = avgValues.length > 0 ? Math.round(avgValues.reduce((a, b) => a + b, 0) / avgValues.length) : null
+  const avgMs = stats && stats.avg_latency_ms ? Math.round(stats.avg_latency_ms) : null
 
   const quality = stats?.judged_quality_avg != null && stats.judged_quality_avg > 0
     ? `${(stats.judged_quality_avg * 100).toFixed(0)}%`
@@ -116,7 +113,7 @@ export default function MetricsBand() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <Stat label="Requests routed" value={<AnimatedCounter value={stats.total_requests || 0} />} />
               <Stat label="Cache hit rate" value={`${Math.round((stats.cache_hit_rate || 0) * 100)}%`} color="text-cool"
-                sub={stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served instantly` : null} />
+                sub={stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served from cache` : null} />
               <Stat label="Avg latency" value={avgMs != null ? `${avgMs}ms` : '—'} color="text-signal" sub="across all tiers" />
               <Stat label="Judge quality" value={quality || '—'} color="text-cool"
                 sub={stats.quality_judged_count > 0 ? `${stats.quality_judged_count} responses scored` : 'will appear after first response'} />

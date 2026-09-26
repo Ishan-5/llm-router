@@ -68,17 +68,11 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
     )
   }
 
-  const savedPct = stats.total_hypothetical_cost > 0
-    ? Math.round((1 - stats.total_actual_cost / stats.total_hypothetical_cost) * 100)
-    : 0
+  const savedPct = Math.round(stats.savings_pct || 0)
 
-  const successRate = stats.total_requests > 0
-    ? Math.round(((stats.total_requests - (stats.fallback_count || 0)) / stats.total_requests) * 100)
-    : 100
+  const successRate = Math.round(stats.success_rate_pct ?? 100)
 
-  const avgLatency = stats.avg_latency_by_tier && Object.keys(stats.avg_latency_by_tier).length > 0
-    ? Math.round(Object.values(stats.avg_latency_by_tier).reduce((a, b) => a + b, 0) / Object.values(stats.avg_latency_by_tier).length)
-    : 0
+  const avgLatency = Math.round(stats.avg_latency_ms || 0)
 
   const pieData = TIER_ORDER
     .filter((t) => stats.tier_counts?.[t])
@@ -173,7 +167,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="font-display text-4xl font-bold text-cool">{stats.labeling.agreement_pct ?? '—'}%</span>
                 <span className="font-mono text-[10px] text-muted">
-                  of routing decisions matched an independent LLM judge on difficulty
+                  agreement between the router&apos;s difficulty score and an independent LLM judge
                 </span>
               </div>
               <div className="h-2 rounded-full bg-surface border border-line overflow-hidden">
@@ -215,7 +209,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
           value={`${Math.round((stats.cache_hit_rate || 0) * 100)}%`}
           icon={<CacheIcon />}
           color="cool"
-          sub={stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served instantly` : null}
+          sub={stats.total_requests > 0 ? `${Math.round((stats.cache_hit_rate || 0) * stats.total_requests)} served from cache` : null}
         />
         <StatBox
           label="Avg latency"
@@ -229,7 +223,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
           value={`${successRate}%`}
           icon={<ShieldIcon />}
           color={successRate >= 99 ? 'cool' : successRate >= 95 ? 'signal' : 'danger'}
-          sub={`${stats.fallback_count || 0} fallbacks triggered`}
+          sub={`${stats.failed_count || 0} failed · ${stats.fallback_count || 0} served by fallback`}
         />
         <StatBox
           label="Answer quality"
@@ -455,7 +449,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         <TrustBadge
           icon={<CacheIcon />}
           title={`${Math.round((stats.cache_hit_rate || 0) * 100)}% cache hit rate`}
-          desc="Near-duplicate queries served instantly, zero cost."
+          desc="Near-duplicate queries served from cache, zero cost."
           color="signal"
         />
         <TrustBadge
