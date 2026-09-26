@@ -1,12 +1,12 @@
 """
-Seed script -- fires ~200 varied queries through the router to make the
-dashboard look alive with real data across tiers, cache hits, and multiple days.
+Load test -- fires ~200 varied queries through the router to exercise every
+tier and verify end-to-end behaviour on a deployment.
 
 Usage:
     cd backend
-    python scripts/seed_requests.py --api-key rw_xxx
-    python scripts/seed_requests.py --api-key rw_xxx --url https://llm-router-d2b2.onrender.com
-    python scripts/seed_requests.py --api-key rw_xxx --count 100 --delay 0.5
+    python scripts/load_test_requests.py --api-key rw_xxx
+    python scripts/load_test_requests.py --api-key rw_xxx --url https://llm-router-d2b2.onrender.com
+    python scripts/load_test_requests.py --api-key rw_xxx --count 100 --delay 0.5
 """
 import argparse
 import time
