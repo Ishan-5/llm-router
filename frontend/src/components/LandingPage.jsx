@@ -502,7 +502,7 @@ const PROOF = [
     detail: 'for failover',
   },
   {
-    value: 50,
+    value: 40,
     suffix: '%',
     format: (n) => String(n),
     label: 'Off the frontier tier',
