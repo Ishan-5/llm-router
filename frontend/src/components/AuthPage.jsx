@@ -56,7 +56,7 @@ const FEATURES = [
   },
   {
     title: 'Near-zero overhead',
-    desc: '~20ms local scoring — no extra API call',
+    desc: '~16ms local scoring — no extra API call',
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -281,7 +281,7 @@ export default function AuthPage() {
           {[
             { value: '77.5%', label: 'Tier accuracy' },
             { value: '56%', label: 'Cheaper', accent: true },
-            { value: '~20ms', label: 'Per decision' },
+            { value: '~16ms', label: 'Per decision' },
           ].map((s) => (
             <div key={s.label}>
               <p className={`font-display text-2xl font-semibold ${s.accent ? 'text-signal' : 'text-white'}`}>{s.value}</p>
