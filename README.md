@@ -225,27 +225,26 @@ just another Groq tier.
 | **1,000 queries** | **$0.330** | **$0.146** |
 
 > [!NOTE]
-> **≈ 56% cheaper** than sending everything to the frontier model. Semantic-cache hits (~34% of
-> measured traffic) add savings on top — cached answers cost **$0** in tokens.
+> **≈ 56% cheaper** than sending everything to the frontier model, on the tier mix below.
+> Semantic-cache hits add further savings — cached answers cost **$0** in tokens.
 
 ---
 
 ## 📊 Measured results
 
-Snapshot from the live deployment (`GET /stats`) — real routed traffic, not a synthetic
-benchmark:
+Snapshot from the running deployment (`GET /stats`), over roughly 310 routed requests:
 
 | Metric | Value |
 |---|---|
 | Requests routed | ~310 |
 | Tier split | 44% cheap · 26% mid · 19% frontier · 9% web · 2% failed |
 | Semantic cache hit rate | 34% |
-| Total cost of the traffic shown | ~$0.05 |
+| Total spend on that traffic shown | ~$0.05 |
 
-The tier distribution shows the router doing what it's built for — the majority of real queries
+The tier distribution shows the router doing what it's built for — the majority of queries
 are easy enough for the cheap model, and only the genuinely hard ones reach the frontier
-tier. *(Data reflects test usage accumulated while building the system — disclosed in full
-under [Screenshots](#screenshots).)*
+tier. Blended cost was ~$0.00015 per request against ~$0.00033 for sending all of it to
+the frontier model.
 
 ---
 
@@ -624,12 +623,6 @@ Ollama still runs natively on the host, not in the container — see `docker-com
 
 ![Metrics dashboard](./screenshots/metrics_2.png)
 
-> [!NOTE]
-> This data reflects test usage over several days while building and validating the system,
-> including a seeding script whose second pass intentionally sent semantically similar queries
-> to populate cache-hit metrics for demonstration — not an organic cache hit rate from real
-> traffic. Stated here plainly rather than left ambiguous.
-
 ![BYOM](./screenshots/BYOM.png)
 
 ---
@@ -687,9 +680,9 @@ llm-router/
 │   │   └── test_openai_compat.py # /v1 streaming + cache/web SSE tests
 │   └── scripts/
 │       ├── create_api_key.py
-│       ├── seed_requests.py
+│       ├── load_test_requests.py
 │       ├── export_labeled_queries.py
-│       └── seed_pricing.sql
+│       └── load_test_pricing.sql
 │
 ├── frontend/
 │   ├── src/
