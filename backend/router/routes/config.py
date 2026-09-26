@@ -4,7 +4,7 @@ import httpx
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, HTTPException, Depends, Header
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from router.db import SessionLocal, UserConfig, ModelPricing
 from router.auth import require_user
 from router.config import SUPPORTED_PROVIDERS, SUPABASE_URL, SUPABASE_SERVICE_KEY
@@ -27,6 +27,8 @@ class TierConfig(BaseModel):
     provider: str
     model_id: str
     api_key: str
+    price_per_m_input: float | None = Field(default=None, ge=0.0)
+    price_per_m_output: float | None = Field(default=None, ge=0.0)
 
     @field_validator("provider")
     @classmethod

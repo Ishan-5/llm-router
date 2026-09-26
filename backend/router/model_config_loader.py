@@ -39,6 +39,27 @@ def _get_pricing(session, provider: str, model_id: str) -> tuple[float, float]:
     return None
 
 
+def resolve_tier_pricing(provider: str, model_id: str, fallback_in: float, fallback_out: float) -> tuple[float, float]:
+    """
+    Resolve pricing for a (provider, model_id) pair after a BYOM override.
+    Looks up the model_pricing table by provider AND model_id so we never price a
+    request with another model's rates. Returns the caller's fallback when the
+    model is not in the table (e.g. a user-supplied custom model).
+    """
+    session = SessionLocal()
+    try:
+        row = session.query(ModelPricing).filter(
+            ModelPricing.provider == provider,
+            ModelPricing.model_id == model_id,
+            ModelPricing.is_active == True,
+        ).first()
+        if row:
+            return row.price_per_m_input, row.price_per_m_output
+    finally:
+        session.close()
+    return fallback_in, fallback_out
+
+
 def get_pricing_for_model(model_id: str) -> tuple[float, float]:
     """
     Returns (price_per_m_input, price_per_m_output) for a given model_id.

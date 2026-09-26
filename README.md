@@ -296,6 +296,20 @@ result = client.ask("Design a distributed rate limiter")  # keys attached automa
 - **Saved config** — signed-in users persist it once with `POST /config`. **Keys are never
   stored**, only provider/model selections.
 
+- **Costed at the model's real rate** — an overridden tier is repriced against the model you
+  actually selected, matched on provider *and* model in the `model_pricing` table, so cost and
+  savings are never computed with the tier default's rates. For a model outside the catalog,
+  include its rates in the same block:
+
+```json
+"byom_config": {
+  "cheap": {
+    "provider": "openai", "model_id": "my-fine-tune",
+    "price_per_m_input": 1.5, "price_per_m_output": 6.0
+  }
+}
+```
+
 ### Supported providers
 
 | Provider | In the box |

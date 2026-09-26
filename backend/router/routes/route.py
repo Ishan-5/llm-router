@@ -13,7 +13,7 @@ from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSetting
 from router.auth import require_api_key, check_budget
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
-from router.model_config_loader import get_active_config, get_pricing_for_model
+from router.model_config_loader import get_active_config, get_pricing_for_model, resolve_tier_pricing
 from router.quality_judge import update_quality_score
 from router.difficulty_labeler import update_difficulty_label
 
@@ -22,6 +22,11 @@ log = logging.getLogger("routewise")
 executor = ThreadPoolExecutor()
 
 DEFAULT_THRESHOLD = 1.0
+
+
+def _is_price(v) -> bool:
+    """True only for a real non-negative number (bool is an int subclass, so reject it)."""
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0
 
 
 def load_user_threshold(user_id: str | None) -> float:
@@ -160,6 +165,21 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
                     user_config[t]["provider"] = cfg["provider"]
                 if cfg.get("model_id"):
                     user_config[t]["model_id"] = cfg["model_id"]
+                # Reprice against the effective model. The prices merged in by
+                # get_active_config belong to the tier default, so without this a
+                # BYOM override would be costed as the default model.
+                pin = cfg.get("price_per_m_input")
+                pout = cfg.get("price_per_m_output")
+                if _is_price(pin) and _is_price(pout):
+                    user_config[t]["price_per_m_input"] = float(pin)
+                    user_config[t]["price_per_m_output"] = float(pout)
+                else:
+                    user_config[t]["price_per_m_input"], user_config[t]["price_per_m_output"] = resolve_tier_pricing(
+                        user_config[t]["provider"],
+                        user_config[t]["model_id"],
+                        user_config[t]["price_per_m_input"],
+                        user_config[t]["price_per_m_output"],
+                    )
 
     return {
         "type": "live",
