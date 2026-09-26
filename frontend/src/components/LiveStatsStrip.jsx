@@ -48,10 +48,10 @@ export default function LiveStatsStrip() {
   // admin; otherwise it covers that one key. Say which, instead of implying
   // system-wide traffic either way.
   const scopeLabel = !stats
-    ? 'Live traffic'
+    ? 'Deployment traffic'
     : stats.is_global
-      ? 'Live across all routed traffic'
-      : 'Live on this API key'
+      ? 'Deployment traffic — all keys'
+      : 'Deployment traffic — this key'
 
   return (
     <section className="border-b border-line bg-panel">
