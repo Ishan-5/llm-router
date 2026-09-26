@@ -102,6 +102,9 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).filter(*base_filter).group_by(RequestLog.tier).all()
             if tier and avg is not None
         }
+        # Request-weighted mean across every logged request. Averaging the per-tier
+        # means instead would over-weight a tier with only a handful of requests.
+        avg_latency_ms = float(session.query(func.avg(RequestLog.latency_ms)).filter(*base_filter).scalar() or 0.0)
         daily_actual = session.query(func.date(RequestLog.created_at).label("day"), func.sum(RequestLog.cost_usd)).filter(*base_filter).group_by("day").order_by("day").all()
         daily_costs = [
             {"date": str(day), "actual_cost": float(actual or 0), "hypothetical_cost": hyp_by_day.get(str(day), 0.0)}
@@ -110,6 +113,17 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
         cache_savings_usd = float(session.query(func.sum(RequestLog.tokens_saved_usd)).filter(RequestLog.cache_hit == True, *base_filter).scalar() or 0.0)
         routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
         total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
+        # Cache hits log 0 tokens and $0, so they contribute nothing to either
+        # hypothetical or actual cost. The two savings components are therefore
+        # disjoint, and the percentage is taken against hypothetical + cache
+        # savings so it agrees with total_savings_usd above.
+        savings_baseline = total_hypothetical_cost + cache_savings_usd
+        savings_pct = round((1 - total_actual_cost / savings_baseline) * 100, 1) if savings_baseline > 0 else 0.0
+        # A fallback is a *successful* answer served by another tier, so it must not
+        # count against success. AllTiersFailedError rows are logged as tier
+        # "failed" (see routes/route.py), which is the real failure signal.
+        failed_count = session.query(func.count(RequestLog.id)).filter(RequestLog.tier == "failed", *base_filter).scalar() or 0
+        success_rate_pct = round((total_requests - failed_count) / total_requests * 100, 1) if total_requests else 100.0
         average_quality = float(session.query(func.avg(RequestLog.quality_score)).filter(*base_filter, RequestLog.quality_score.isnot(None)).scalar() or 0.0)
         quality_judged_count = session.query(func.count(RequestLog.id)).filter(*base_filter, RequestLog.quality_judged == True).scalar() or 0
         judged_quality_avg = float(session.query(func.avg(RequestLog.quality_score)).filter(*base_filter, RequestLog.quality_judged == True).scalar() or 0.0)
@@ -149,9 +163,12 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "total_requests": total_requests, "tier_counts": tier_counts, "tier_costs": tier_costs,
             "total_actual_cost": total_actual_cost, "total_hypothetical_cost": total_hypothetical_cost,
             "cache_hit_rate": cache_hit_rate, "fallback_count": fallback_count,
-            "avg_latency_by_tier": avg_latency_by_tier, "daily_costs": daily_costs,
+            "failed_count": failed_count, "success_rate_pct": success_rate_pct,
+            "avg_latency_by_tier": avg_latency_by_tier, "avg_latency_ms": round(avg_latency_ms, 1),
+            "daily_costs": daily_costs,
             "cache_savings_usd": cache_savings_usd, "routing_savings_usd": routing_savings_usd,
-            "total_savings_usd": total_savings_usd, "average_quality": round(average_quality, 4),
+            "total_savings_usd": total_savings_usd, "savings_pct": savings_pct,
+            "average_quality": round(average_quality, 4),
             "quality_judged_count": quality_judged_count, "judged_quality_avg": round(judged_quality_avg, 4),
             "feedback_counts": {"up": int(feedback_counts.get("up", 0)), "down": int(feedback_counts.get("down", 0))},
             "feedback_total": feedback_total,
