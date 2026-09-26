@@ -22,6 +22,7 @@ seed_cache.py
 backend/models/minilm/
 
 ARCHITECTURE.md
+METRICS.md
 production_upgrade_needed.md
 Resume_Devansh_Kumar_Pandey.md
 
