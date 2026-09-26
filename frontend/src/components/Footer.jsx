@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 const STACK = ['FastAPI', 'LightGBM', 'sentence-transformers', 'Groq', 'Ollama', 'Supabase', 'React']
 
 const PRODUCT_LINKS = [
+  { to: '/landing', label: 'Overview' },
   { to: '/', label: 'Live demo' },
   { to: '/metrics', label: 'Metrics' },
   { to: '/models', label: 'Models' },

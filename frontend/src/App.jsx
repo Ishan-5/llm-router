@@ -15,6 +15,7 @@ import { useTheme } from './useTheme'
 import { API_BASE } from './config'
 
 const PricingPage = lazy(() => import('./components/PricingTable'))
+const LandingPage = lazy(() => import('./components/LandingPage'))
 const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPage = lazy(() => import('./components/AuthPage'))
 const DashboardPage = lazy(() => import('./components/DashboardPage'))
@@ -30,6 +31,7 @@ const TermsPage = lazy(() => import('./components/TermsPage'))
 
 const TITLES = {
   '/': 'Routewise — Cost-aware LLM routing',
+  '/landing': 'Routewise — Cost-aware LLM routing',
   '/models': 'Routewise — Models',
   '/pricing': 'Routewise — Models',
   '/metrics': 'Routewise — Live Metrics',
@@ -314,6 +316,7 @@ export default function App() {
         <Suspense fallback={<PageSkeleton type={PAGE_SKELETONS[location.pathname]} />}>
           <Routes location={location}>
             <Route path="/" element={<HomePage configVersion={configVersion} backendOnline={backendOnline} isDark={isDark} />} />
+            <Route path="/landing" element={<LandingPage />} />
             <Route path="/models" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/pricing" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/metrics" element={<MetricsDashboard isDark={isDark} backendOnline={backendOnline} />} />
