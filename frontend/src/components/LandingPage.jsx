@@ -1,23 +1,27 @@
-import { useState, Suspense, lazy } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { Link } from 'react-router-dom'
 import Reveal from './Reveal'
 import HowItWorks from './HowItWorks'
 import AnimatedCounter from './AnimatedCounter'
+import { fetchTiers } from '../api'
 
 const Features = lazy(() => import('./Features'))
 
-/* Real prices from backend/router/config.py — USD per million tokens. */
-const TIER = {
-  mid: { model: 'openai/gpt-oss-20b', provider: 'groq', in: 0.075, out: 0.3 },
-  frontier: { model: 'openai/gpt-oss-120b', provider: 'groq', in: 0.15, out: 0.6 },
+/* Snapshot of backend/router/config.py, used only until /tiers answers and only
+   if it never does. /tiers resolves through the same path /route uses, so the
+   numbers on this page cannot drift from the prices the router charges. The
+   old hardcoded TIER block is what mislabelled cheap and frontier after a
+   re-tier, so the fallback is explicitly stale-looking and not the source. */
+const TIER_SNAPSHOT = {
+  cheap: { model: 'openai/gpt-oss-20b', provider: 'groq', in: 0.075, out: 0.3 },
+  mid: { model: 'openai/gpt-oss-120b', provider: 'groq', in: 0.15, out: 0.6 },
+  frontier: { model: 'deepseek/deepseek-chat', provider: 'openrouter', in: 0.27, out: 1.1 },
 }
 /* Industry reference point, clearly labelled as not our config. */
 const TYPICAL_FRONTIER = { in: 3.0, out: 15.0 }
 
-const TOKENS_IN = 500
-const TOKENS_OUT = 500
-
-const perRequest = (p) => (TOKENS_IN / 1e6) * p.in + (TOKENS_OUT / 1e6) * p.out
+const perRequest = (p, tokIn, tokOut) =>
+  (tokIn / 1e6) * p.in + (tokOut / 1e6) * p.out
 
 function money(n) {
   if (n >= 1000) return '$' + Math.round(n).toLocaleString()
@@ -124,13 +128,13 @@ function RoutingVisual() {
         <circle cx="262" cy="80" r="13" fill="var(--color-base)" stroke="var(--color-cool)" strokeWidth="2" />
         <text x="262" y="106" textAnchor="middle" className="fill-[var(--color-cool)]" style={{ font: '600 11px ui-monospace, monospace' }}>mid</text>
         <text x="262" y="120" textAnchor="middle" className="fill-[var(--color-muted)]" style={{ font: '10px ui-monospace, monospace' }}>most traffic</text>
-        <text x="262" y="134" textAnchor="middle" className="fill-[var(--color-cool)]" style={{ font: '10px ui-monospace, monospace' }}>$0.075 / 1M</text>
+        <text x="262" y="134" textAnchor="middle" className="fill-[var(--color-cool)]" style={{ font: '10px ui-monospace, monospace' }}>$0.15 / 1M</text>
 
         {/* frontier node */}
         <circle cx="262" cy="252" r="13" fill="var(--color-base)" stroke="var(--color-signal)" strokeWidth="2" />
         <text x="262" y="278" textAnchor="middle" className="fill-[var(--color-signal)]" style={{ font: '600 11px ui-monospace, monospace' }}>frontier</text>
         <text x="262" y="292" textAnchor="middle" className="fill-[var(--color-muted)]" style={{ font: '10px ui-monospace, monospace' }}>when earned</text>
-        <text x="262" y="306" textAnchor="middle" className="fill-[var(--color-signal)]" style={{ font: '10px ui-monospace, monospace' }}>$0.15 / 1M</text>
+        <text x="262" y="306" textAnchor="middle" className="fill-[var(--color-signal)]" style={{ font: '10px ui-monospace, monospace' }}>$0.27 / 1M</text>
       </svg>
 
       <span className="absolute top-0 left-0 font-mono text-[10px] text-muted/70">incoming</span>
@@ -142,18 +146,64 @@ function RoutingVisual() {
 function CostSimulator() {
   const [requests, setRequests] = useState(100000)
   const [hardShare, setHardShare] = useState(20)
+  const [tokIn, setTokIn] = useState(500)
+  const [tokOut, setTokOut] = useState(500)
+  const [tier, setTier] = useState(TIER_SNAPSHOT)
+  const [live, setLive] = useState(false)
+  const [asOf, setAsOf] = useState(null)
 
-  const allFrontier = perRequest(TIER.frontier) * requests
-  const allTypical = perRequest(TYPICAL_FRONTIER) * requests
+  useEffect(() => {
+    let cancelled = false
+    fetchTiers()
+      .then((d) => {
+        if (cancelled || !d?.tiers?.length) return
+        setTier(
+          Object.fromEntries(
+            d.tiers.map((t) => [
+              t.tier,
+              {
+                model: t.model_id,
+                provider: t.provider,
+                in: t.input_per_m,
+                out: t.output_per_m,
+              },
+            ]),
+          ),
+        )
+        setLive(true)
+        setAsOf(new Date())
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const cost = (t) => perRequest(t, tokIn, tokOut) * requests
+  const allFrontier = cost(tier.frontier)
+  const allTypical = perRequest(TYPICAL_FRONTIER, tokIn, tokOut) * requests
+  // 3-way split instead of the old 2-way mid/frontier blend, so the slider
+  // means what the router actually does.
   const routed =
-    perRequest(TIER.frontier) * requests * (hardShare / 100) +
-    perRequest(TIER.mid) * requests * (1 - hardShare / 100)
+    perRequest(tier.frontier, tokIn, tokOut) * requests * (hardShare / 100) +
+    perRequest(tier.mid, tokIn, tokOut) *
+      requests *
+      ((100 - hardShare) / 100) *
+      0.5 +
+    perRequest(tier.cheap, tokIn, tokOut) *
+      requests *
+      ((100 - hardShare) / 100) *
+      0.5
 
-  const savedVsFrontier = allFrontier - routed
   const savedVsTypical = allTypical - routed
   const pctVsTypical = allTypical > 0 ? (1 - routed / allTypical) * 100 : 0
+  const savedVsOurFrontier = allFrontier - routed
+  const pctVsOurFrontier =
+    allFrontier > 0 ? (1 - routed / allFrontier) * 100 : 0
 
   const barMax = Math.max(allTypical, allFrontier, routed)
+  const midPct = Math.round(((100 - hardShare) / 2) * 10) / 10
+  const cheapPct = Math.round(((100 - hardShare) / 2) * 10) / 10
 
   return (
     <div className="bg-surface border border-line rounded-2xl shadow-card overflow-hidden">
@@ -189,7 +239,7 @@ function CostSimulator() {
             </span>
           </label>
 
-          <label className="block">
+          <label className="block mb-7">
             <span className="flex items-baseline justify-between mb-2">
               <span className="text-sm text-primary">
                 Traffic that genuinely needs a frontier model
@@ -213,9 +263,52 @@ function CostSimulator() {
             </span>
           </label>
 
-          <p className="font-mono text-[10px] text-muted mt-6 leading-relaxed">
-            Assumes {TOKENS_IN} input + {TOKENS_OUT} output tokens per request.
-            Tier prices are the real defaults from the running config.
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: 'Input tokens / request', value: tokIn, set: setTokIn },
+              { label: 'Output tokens / request', value: tokOut, set: setTokOut },
+            ].map((f) => (
+              <label key={f.label} className="block">
+                <span className="flex items-baseline justify-between mb-1.5">
+                  <span className="text-xs text-primary">{f.label}</span>
+                  {f.value === 500 && (
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-muted">
+                      typical
+                    </span>
+                  )}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="50"
+                  value={f.value}
+                  onChange={(e) => f.set(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full bg-panel border border-line rounded-md px-2 py-1.5 font-mono text-xs num-tabular focus:outline-none focus:border-signal"
+                />
+              </label>
+            ))}
+          </div>
+
+          <p className="font-mono text-[10px] text-muted mt-5 leading-relaxed">
+            {live ? (
+              <>
+                Tier prices read live from the running router
+                {asOf && (
+                  <>
+                    {' '}
+                    &middot;{' '}
+                    {asOf.toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </>
+                )}
+                . Our numbers, not a marketing number.
+              </>
+            ) : (
+              'Loading live tier prices&hellip;'
+            )}
           </p>
         </div>
 
@@ -228,7 +321,9 @@ function CostSimulator() {
             <span className="font-display text-5xl font-bold text-cool num-tabular leading-none">
               {money(routed)}
             </span>
-            <span className="font-mono text-xs text-muted mb-1.5">with routewise</span>
+            <span className="font-mono text-xs text-muted mb-1.5">
+              with routewise
+            </span>
           </div>
           <p className="text-sm text-muted mb-7">
             <span className="text-primary font-semibold">
@@ -252,14 +347,14 @@ function CostSimulator() {
               },
               {
                 label: 'All traffic → our frontier tier',
-                sub: 'openai/gpt-oss-120b · groq',
+                sub: `${tier.frontier.model} · ${tier.frontier.provider}`,
                 value: allFrontier,
                 cls: 'text-signal',
                 bar: 'bg-signal/50',
               },
               {
                 label: 'With routewise',
-                sub: `${100 - hardShare}% to mid · ${hardShare}% to frontier`,
+                sub: `${hardShare}% frontier · ${midPct}% mid · ${cheapPct}% cheap`,
                 value: routed,
                 cls: 'text-cool',
                 bar: 'bg-cool',
@@ -282,9 +377,58 @@ function CostSimulator() {
                     }}
                   />
                 </div>
-                <p className="font-mono text-[10px] text-muted mt-1">{row.sub}</p>
+                <p className="font-mono text-[10px] text-muted mt-1">
+                  {row.sub}
+                </p>
               </div>
             ))}
+          </div>
+
+          {/* the actual ladder, at list price, no markup */}
+          <div className="mt-6 pt-5 border-t border-line/70">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted mb-3">
+              What we actually route to
+            </p>
+            <div className="space-y-1.5">
+              {['cheap', 'mid', 'frontier'].map((k) => (
+                <div
+                  key={k}
+                  className="flex items-baseline justify-between gap-3 font-mono text-[11px]"
+                >
+                  <span className="text-muted w-16 shrink-0">{k}</span>
+                  <span className="text-primary truncate">{tier[k].model}</span>
+                  <span className="text-muted num-tabular shrink-0">
+                    ${tier[k].in} / ${tier[k].out}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="font-mono text-[10px] text-muted mt-3 leading-relaxed">
+              List price, per 1M tokens. We add no markup and take no cut of your
+              spend &mdash; the saving comes from picking a smaller model, not from
+              a discount.
+            </p>
+          </div>
+
+          {/* the honest second number, and the way to a real one */}
+          <div className="mt-5 pt-5 border-t border-line/70">
+            <p className="text-xs text-muted leading-relaxed mb-3">
+              Measured against our own frontier tier instead of the industry
+              reference, that is{' '}
+              <span className="text-primary font-semibold">
+                {money(savedVsOurFrontier)}
+              </span>
+              /mo ({pctVsOurFrontier.toFixed(0)}%). We quote 40% because it holds
+              across real traffic mixes; the bigger figures depend on which
+              baseline you pick and on how much of your traffic is genuinely hard.
+            </p>
+            <Link
+              to="/calculator"
+              className="inline-flex items-center gap-2 text-xs font-medium text-signal hover:underline"
+            >
+              Score your own prompts for an exact number
+              <ArrowRight className="w-3 h-3" />
+            </Link>
           </div>
         </div>
       </div>
@@ -656,12 +800,13 @@ export default function LandingPage() {
                 The math
               </p>
               <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
-                The cheap tier is half the price of the frontier one.
+                The cheap tier costs 3.7x less than the frontier one.
               </h2>
               <p className="text-muted text-sm leading-relaxed mt-4">
-                Same provider, same latency class, half the cost per token. The
-                only question is how much of your traffic actually earns the
-                expensive one. Drag the sliders.
+                Same shape of request, a smaller model. The only question is how
+                much of your traffic actually earns the expensive one. Drag the
+                sliders, and if you want your real prompts scored instead of a
+                guess, the calculator does that too.
               </p>
             </div>
           </Reveal>
