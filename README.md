@@ -31,7 +31,7 @@
 
 <div align="center">
 
-| 💸 **~56% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **9+** providers |
+| 💸 **~52% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **9+** providers |
 |---|---|---|---|---|
 | than frontier-only routing | on held-out Claude-gold | local scoring, no API call | Claude-verified training set | with cross-provider failover |
 
@@ -105,7 +105,7 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 
 > [!IMPORTANT]
 > The average query costs **$0.000144** with RouteWise vs **$0.00033** if you send everything
-> to the frontier model — **~56% cheaper**, before cache hits (which are free) are even counted.
+> to the frontier model — **~52% cheaper**, before cache hits (which are free) are even counted.
 
 ---
 
@@ -114,7 +114,7 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | | | |
 |---|---|---|
 | 🎯 **Difficulty scoring** | 🧠 **Claude-gold trained** | 💰 **Real cost savings** |
-| LightGBM ensemble scores every query 0–10 in <20 ms — locally, no API call just to decide routing | Trained on 8,200 Claude-verified labels (8,783-row gold dataset) · 77.5% exact-tier accuracy | ~56% cheaper than frontier-only; cached answers cost **$0.00** |
+| LightGBM ensemble scores every query 0–10 in <20 ms — locally, no API call just to decide routing | Trained on 8,200 Claude-verified labels (8,783-row gold dataset) · 77.5% exact-tier accuracy | ~52% cheaper than frontier-only; cached answers cost **$0.00** |
 | 🛡️ **Guardrails first** | 🔄 **Cross-provider failover** | ⚖️ **Multi-key load balancing** |
 | Prompt-injection detection + PII sanitization before anything else runs | frontier → mid → cheap → **Gemini last resort** — an outage never 503s you | Round-robin across keys per tier, per-key 429 cooldown |
 | 🔌 **Bring your own model** | 🔍 **Live web search** | ⚡ **Semantic cache** |
@@ -195,7 +195,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (46 tests) · GitHub Actions CI |
+| ✅ Testing | pytest (82 tests) · GitHub Actions CI |
 
 ---
 
@@ -224,14 +224,21 @@ just another Groq tier.
 
 | | Frontier-only baseline | RouteWise routed |
 |---|---|---|
-| Cheap share (~50%) | — | `deepseek-v4-flash` @ $0.049/$0.098 → **$0.000078** |
-| Mid share (~35%) | — | 20B @ $0.075/$0.30 → **$0.000165** |
-| Frontier share (~15%) | gpt-oss-120b → **$0.00033** | gpt-oss-120b → **$0.00033** |
-| **1,000 queries** | **$0.330** | **$0.146** |
+| Cheap share (~50%) | — | `gpt-oss-20b` @ $0.075/$0.30 → **$0.000165** |
+| Mid share (~35%) | — | `gpt-oss-120b` @ $0.15/$0.60 → **$0.000330** |
+| Frontier share (~15%) | `deepseek-chat` @ $0.27/$1.10 → **$0.000600** | `deepseek-chat` @ $0.27/$1.10 → **$0.000600** |
+| **1,000 queries** | **$0.600** | **$0.288** |
 
 > [!NOTE]
-> **≈ 56% cheaper** than sending everything to the frontier model, on the tier mix below.
+> **≈ 52% cheaper** than sending everything to the frontier model, on the tier mix above.
+> The figure moves with the tier mix, the token counts, and which model you treat as
+> frontier — the [savings calculator](/calculator) lets a visitor set all three.
 > Semantic-cache hits add further savings — cached answers cost **$0** in tokens.
+
+> [!WARNING]
+> The landing page advertises a flat **~40%**, not this number. 40% is the
+> conservative figure we hold across real traffic mixes; the 52% above is only
+> true for the specific mix and token counts in that table.
 
 ---
 
