@@ -4,6 +4,7 @@ const STACK = ['FastAPI', 'LightGBM', 'sentence-transformers', 'Groq', 'Ollama',
 
 const PRODUCT_LINKS = [
   { to: '/landing', label: 'Overview' },
+  { to: '/calculator', label: 'Savings calculator' },
   { to: '/', label: 'Live demo' },
   { to: '/metrics', label: 'Metrics' },
   { to: '/models', label: 'Models' },
