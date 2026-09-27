@@ -32,24 +32,33 @@ init_load_balancer(GROQ_KEYS_CHEAP, GROQ_KEYS_MID, GROQ_KEYS_FRONTIER)
 # Default provider used when no user config is set for a tier
 DEFAULT_PROVIDER = "groq"
 
+# Tier prices MUST ascend cheap < mid < frontier. They previously did not:
+# deepseek-chat sat in "cheap" at $0.28/$1.10 while gpt-oss-120b sat in
+# "frontier" at $0.15/$0.60, so every downroute to cheap cost 1.84x MORE than
+# calling frontier and the savings claims inverted. deepseek-chat is the most
+# expensive of these three, so it belongs on the top rung.
+# Per-request cost @ 500 in / 500 out:
+#   cheap    gpt-oss-20b       $0.000188   (1.0x)
+#   mid      gpt-oss-120b      $0.000375   (2.0x)
+#   frontier deepseek-chat     $0.000690   (3.7x)
 MODEL_CONFIG = {
     "cheap": {
-        "provider": "openrouter",
-        "model_id": "deepseek/deepseek-chat",
-        "price_per_m_input": 0.28,
-        "price_per_m_output": 1.10,
-    },
-    "mid": {
         "provider": "groq",
         "model_id": "openai/gpt-oss-20b",
         "price_per_m_input": 0.075,
         "price_per_m_output": 0.30,
     },
-    "frontier": {
+    "mid": {
         "provider": "groq",
         "model_id": "openai/gpt-oss-120b",
         "price_per_m_input": 0.15,
         "price_per_m_output": 0.60,
+    },
+    "frontier": {
+        "provider": "openrouter",
+        "model_id": "deepseek/deepseek-chat",
+        "price_per_m_input": 0.27,
+        "price_per_m_output": 1.10,
     },
 }
 
