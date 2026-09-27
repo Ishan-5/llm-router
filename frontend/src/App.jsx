@@ -26,6 +26,7 @@ const AdminPage = lazy(() => import('./components/AdminPage'))
 const EvaluatePage = lazy(() => import('./components/EvaluatePage'))
 const OnboardingWizard = lazy(() => import('./components/OnboardingWizard'))
 const Features = lazy(() => import('./components/Features'))
+const SavingsCalculator = lazy(() => import('./components/SavingsCalculator'))
 const PrivacyPage = lazy(() => import('./components/PrivacyPage'))
 const TermsPage = lazy(() => import('./components/TermsPage'))
 
@@ -38,6 +39,7 @@ const TITLES = {
   '/playground': 'Routewise — API Playground',
   '/guide': 'Routewise — Developer Guide',
   '/admin': 'Routewise — Admin',
+  '/calculator': 'Routewise - Savings Calculator',
   '/evaluate': 'Routewise — Evaluate',
   '/get-started': 'Routewise — Get Started',
   '/about': 'Routewise — About',
@@ -333,6 +335,7 @@ export default function App() {
             } />
             <Route path="/guide" element={<GuidePage />} />
             <Route path="/evaluate" element={<EvaluatePage />} />
+            <Route path="/calculator" element={<SavingsCalculator />} />
             <Route path="/get-started" element={<OnboardingWizard />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
