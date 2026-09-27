@@ -201,12 +201,17 @@ and are returned in every `/route` response so the frontend diagram can show liv
 
 ## 🎛️ Model tiers
 
-| Tier | Model | $ / 1M input | $ / 1M output | Backend |
-|---|---|---|---|---|
-| 🪙 Cheap | OpenRouter `deepseek/deepseek-v4-flash` | $0.049 | $0.098 | OpenRouter · tries local Ollama first when enabled |
-| ⚖️ Mid | `openai/gpt-oss-20b` | $0.075 | $0.30 | Groq |
-| 💎 Frontier | `openai/gpt-oss-120b` | $0.15 | $0.60 | Groq |
-| 🔎 Web | live search results | — | — | Tavily (time-sensitive only) |
+| Tier | Model | $ / 1M input | $ / 1M output | $/req @ 500+500 | Backend |
+|---|---|---|---|---|---|
+| 🪙 Cheap | `openai/gpt-oss-20b` | $0.075 | $0.30 | $0.000188 | Groq · tries local Ollama first when enabled |
+| ⚖️ Mid | `openai/gpt-oss-120b` | $0.15 | $0.60 | $0.000375 | Groq |
+| 💎 Frontier | OpenRouter `deepseek/deepseek-chat` | $0.27 | $1.10 | $0.000685 | OpenRouter |
+| 🔎 Web | live search results | — | — | — | Tavily (time-sensitive only) |
+
+Prices must ascend cheap < mid < frontier. They previously did not: `deepseek-chat` sat in
+**cheap** at $0.28/$1.10 while `gpt-oss-120b` sat in **frontier** at $0.15/$0.60, so every
+downroute to cheap spent 1.84x *more* than calling frontier and the savings claims inverted.
+`deepseek-chat` is the most expensive of the three, so it now sits on the top rung.
 
 **Last-resort fallback:** `gemini-3.6-flash` via Google — a genuinely independent provider, not
 just another Groq tier.
