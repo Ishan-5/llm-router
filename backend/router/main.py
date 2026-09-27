@@ -22,6 +22,7 @@ from router.routes.admin import router as admin_router
 from router.routes.settings import router as settings_router
 from router.routes.news import router as news_router
 from router.routes.demo import router as demo_router
+from router.routes.calculator import router as calculator_router
 
 log = logging.getLogger("routewise")
 
@@ -134,6 +135,7 @@ app.include_router(admin_router)
 app.include_router(settings_router)
 app.include_router(news_router)
 app.include_router(demo_router)
+app.include_router(calculator_router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])
