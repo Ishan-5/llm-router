@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 from router.main import app
 from router.db import SessionLocal, ApiKey, ModelPricing
+from router.config import MODEL_CONFIG
 
 client = TestClient(app)
 
@@ -93,8 +94,8 @@ def test_byom_pricing_is_matched_on_provider_not_just_model_id():
     # provB/shared-slug is not in the table, so it keeps the cheap default rather
     # than silently adopting provA's price.
     assert cfg["provider"] == "provB"
-    assert cfg["price_per_m_input"] == 0.28
-    assert cfg["price_per_m_output"] == 1.10
+    assert cfg["price_per_m_input"] == MODEL_CONFIG["cheap"]["price_per_m_input"]
+    assert cfg["price_per_m_output"] == MODEL_CONFIG["cheap"]["price_per_m_output"]
 
 
 def test_user_supplied_custom_prices_win_for_unlisted_model():
@@ -117,9 +118,9 @@ def test_repricing_one_tier_leaves_other_tiers_untouched():
     user_config = _route_with_byom(key, {"cheap": {"provider": "byomprov", "model_id": "byom-isolate"}})
 
     assert user_config["cheap"]["price_per_m_input"] == 5.0
-    # mid/frontier must keep their own resolved rates (0.075/0.30, 0.15/0.60)
-    assert user_config["mid"]["price_per_m_input"] == 0.075
-    assert user_config["frontier"]["price_per_m_input"] == 0.15
+    # mid/frontier must keep their own resolved rates
+    assert user_config["mid"]["price_per_m_input"] == MODEL_CONFIG["mid"]["price_per_m_input"]
+    assert user_config["frontier"]["price_per_m_input"] == MODEL_CONFIG["frontier"]["price_per_m_input"]
 
 
 def test_non_numeric_prices_are_ignored_not_crashing():
@@ -131,8 +132,8 @@ def test_non_numeric_prices_are_ignored_not_crashing():
         "price_per_m_input": "free", "price_per_m_output": None,
     }})["cheap"]
 
-    assert cfg["price_per_m_input"] == 0.28
-    assert cfg["price_per_m_output"] == 1.10
+    assert cfg["price_per_m_input"] == MODEL_CONFIG["cheap"]["price_per_m_input"]
+    assert cfg["price_per_m_output"] == MODEL_CONFIG["cheap"]["price_per_m_output"]
 
 
 def test_api_key_only_override_keeps_default_tier_pricing():
@@ -161,5 +162,8 @@ def test_api_key_only_override_keeps_default_tier_pricing():
     assert response.status_code == 200
     cfg = captured["user_config"]["cheap"]
     assert cfg["api_key"] == "sk-user-supplied"
-    assert cfg["model_id"] == "deepseek/deepseek-chat"
-    assert cfg["price_per_m_input"] == 0.28
+    # Supplying only a key must inherit the CURRENT cheap-tier default.
+    # This changed when the tier ladder was un-inverted: cheap is now
+    # gpt-oss-20b, and deepseek-chat moved up to frontier.
+    assert cfg["model_id"] == "openai/gpt-oss-20b"
+    assert cfg["price_per_m_input"] == 0.075
