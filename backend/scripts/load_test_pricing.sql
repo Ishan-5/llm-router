@@ -27,7 +27,8 @@ INSERT INTO model_pricing (provider, model_id, display_name, price_per_m_input, 
 
 -- ─── OpenRouter ──────────────────────────────────────────────────────────────
 INSERT INTO model_pricing (provider, model_id, display_name, price_per_m_input, price_per_m_output, notes) VALUES
-('openrouter', 'deepseek/deepseek-v4-flash',         'DeepSeek V4 Flash (OpenRouter)',        0.049, 0.098, 'Default cheap tier · routed via OpenRouter'),
+('openrouter', 'deepseek/deepseek-v4-flash',         'DeepSeek V4 Flash (OpenRouter)',        0.049, 0.098, 'Routable · not a default tier'),
+('openrouter', 'deepseek/deepseek-chat',             'DeepSeek Chat (OpenRouter)',            0.27,  1.10,  'Default FRONTIER tier · lookup keys on provider+model_id so this row is required');
 ('openrouter', 'deepseek/deepseek-v4-flash-0731',    'DeepSeek V4 Flash 0731 (OpenRouter)',   0.04,  0.13,  'GA snapshot · 1.3M context'),
 ('openrouter', 'deepseek/deepseek-v4-pro-0813',      'DeepSeek V4 Pro 0813 (OpenRouter)',     0.66,  1.98,  NULL),
 ('openrouter', 'google/gemini-3.7-flash',            'Gemini 3.7 Flash (OpenRouter)',         0.375, 1.875, '75% promo pricing — verify before relying on it'),
