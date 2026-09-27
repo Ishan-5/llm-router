@@ -304,7 +304,35 @@ export async function evaluateQueries(queries) {
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || 'Evaluation failed — is the backend running?')
+    throw new Error(err.detail || 'Evaluation failed - is the backend running?')
+  }
+  return res.json()
+}
+
+export async function fetchCatalog() {
+  const res = await fetch(`${API_BASE}/catalog`)
+  if (!res.ok) throw new Error('Could not load the price list')
+  return res.json()
+}
+
+// The tier ladder the running router will actually use. The landing page quotes
+// these instead of hardcoding them, so a re-tier can never leave the marketing
+// copy asserting prices the router no longer charges.
+export async function fetchTiers() {
+  const res = await fetch(`${API_BASE}/tiers`)
+  if (!res.ok) throw new Error('Could not load tier pricing')
+  return res.json()
+}
+
+export async function projectSavings(payload) {
+  const res = await fetch(`${API_BASE}/project`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Projection failed - is the backend running?')
   }
   return res.json()
 }
