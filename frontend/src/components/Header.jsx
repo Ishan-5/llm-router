@@ -119,6 +119,10 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
         className={`px-3 py-1.5 rounded-full transition-all ${isActive('/models') || isActive('/pricing') ? 'text-primary bg-line/60 shadow-card' : 'hover:text-primary hover:bg-line/30'}`}>
         Models
       </Link>
+      <Link to="/calculator"
+        className={`px-3 py-1.5 rounded-full transition-all ${isActive('/calculator') ? 'text-primary bg-line/60 shadow-card' : 'hover:text-primary hover:bg-line/30'}`}>
+        Calculator
+      </Link>
       <Link to="/guide"
         className={`px-3 py-1.5 rounded-full transition-all ${isActive('/guide') ? 'text-primary bg-line/60 shadow-card' : 'hover:text-primary hover:bg-line/30'}`}>
         Guide
@@ -289,6 +293,10 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
               <Link to="/models" onClick={() => setMobileOpen(false)}
                 className="text-sm text-muted hover:text-primary transition-colors py-2.5">
                 Models
+              </Link>
+              <Link to="/calculator" onClick={() => setMobileOpen(false)}
+                className="text-sm text-muted hover:text-primary transition-colors py-2.5">
+                Calculator
               </Link>
               <Link to="/guide" onClick={() => setMobileOpen(false)}
                 className="text-sm text-muted hover:text-primary transition-colors py-2.5">
