@@ -31,6 +31,7 @@ PROVIDERS_REGISTRY = {
             "deepseek/deepseek-v4-flash",
             "deepseek/deepseek-v4-flash-0731",
             "deepseek/deepseek-v4-pro-0813",
+            "deepseek/deepseek-chat",
             "google/gemini-3.7-flash",
             "google/gemini-3.6-flash",
             "google/gemini-3.1-flash-lite",
