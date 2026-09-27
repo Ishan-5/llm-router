@@ -1,7 +1,7 @@
 import logging
 from collections import defaultdict
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func
 from router.db import SessionLocal, RequestLog, ApiKey
 from router.auth import require_api_key, require_any_auth
@@ -295,7 +295,9 @@ def compare(auth=Depends(require_any_auth)):
 
 
 class EvaluateRequest(BaseModel):
-    queries: list[str]
+    # Each query costs a real embedding plus a forward pass, and this route is
+    # unauthenticated, so an unbounded list would be a free compute endpoint.
+    queries: list[str] = Field(..., max_length=50)
 
 
 @router.post("/evaluate")
