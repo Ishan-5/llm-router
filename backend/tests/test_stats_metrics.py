@@ -6,6 +6,7 @@ formula that disagreed with the backend or with the dollar figure beside it.
 from fastapi.testclient import TestClient
 from router.main import app
 from router.db import SessionLocal, ApiKey, RequestLog
+from router.config import MODEL_CONFIG
 from datetime import datetime, timedelta
 
 client = TestClient(app)
@@ -124,15 +125,19 @@ def test_savings_pct_includes_cache_savings():
     """Cache savings count toward the headline percentage, not just the dollars."""
     key = _make_key("savings-includes-cache")
     _clear(key)
+    # Derive the hypothetical from the live frontier rate rather than hardcoding
+    # a price, so re-tiering MODEL_CONFIG does not break this test.
+    frontier_in = MODEL_CONFIG["frontier"]["price_per_m_input"]
+    hypothetical = round(frontier_in * 1_000_000 / 1_000_000, 6)
     _log(key, tier="frontier", latency_ms=100, cost_usd=0.0,
-         input_tokens=1_000_000, output_tokens=0)   # hypothetical $0.15, paid $0
+         input_tokens=1_000_000, output_tokens=0)   # paid $0
     _log(key, tier="cheap", cache_hit=True, latency_ms=5, cost_usd=0.0,
-         input_tokens=0, output_tokens=0, tokens_saved_usd=0.15)
+         input_tokens=0, output_tokens=0, tokens_saved_usd=hypothetical)
 
     s = _stats(key)
-    # baseline = 0.15 hypothetical + 0.15 cache = 0.30, actual 0.0 -> 100%
+    # baseline = hypothetical + cache saving = 2x, actual 0.0 -> 100%
     assert s["savings_pct"] == 100.0
-    assert s["total_savings_usd"] == 0.3
+    assert abs(s["total_savings_usd"] - hypothetical * 2) < 1e-6
 
 
 def test_savings_pct_is_zero_when_no_traffic():
