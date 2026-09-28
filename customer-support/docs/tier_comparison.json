@@ -1,0 +1,115 @@
+{
+  "regressor": {
+    "objective": "regression_l1",
+    "n_estimators": 1200,
+    "learning_rate": 0.02,
+    "num_leaves": 31,
+    "colsample_bytree": 0.8,
+    "subsample": 0.8
+  },
+  "seeds": [
+    18,
+    19
+  ],
+  "n_train_rows": 17600,
+  "eval_protocol": "batch-level 62/13/13 of 88 batches, seed 42",
+  "holdout": {
+    "rows": 2600,
+    "mae": 0.687767110626285,
+    "spearman": 0.8555626380593838
+  },
+  "policies": {
+    "3tier_2.0_4.5": {
+      "thr": {
+        "cheap_ceil": 2.0,
+        "frontier_floor": 4.5
+      },
+      "n_tiers": 3,
+      "holdout": {
+        "n_tiers": 3,
+        "n_cheap": 1388,
+        "recall_cheap": 0.829971181556196,
+        "n_mid": 486,
+        "recall_mid": 0.7386831275720165,
+        "n_frontier": 726,
+        "recall_frontier": 0.8842975206611571,
+        "n_tiers_scored": 3,
+        "balanced_acc": 0.8176506099297898,
+        "tier_acc": 0.828076923076923,
+        "pred_cheap": 0.46,
+        "pred_mid": 0.2423076923076923,
+        "pred_frontier": 0.2976923076923077,
+        "under": 84,
+        "n_frontier_gold": 726,
+        "frontier_escape_rate": 0.11570247933884298,
+        "cheap_escape": 236,
+        "n_cheap_gold": 1388
+      },
+      "fit": {
+        "n_tiers": 3,
+        "n_cheap": 9224,
+        "recall_cheap": 0.815589765828274,
+        "n_mid": 3125,
+        "recall_mid": 0.77024,
+        "n_frontier": 5251,
+        "recall_frontier": 0.8230813178442201,
+        "n_tiers_scored": 3,
+        "balanced_acc": 0.8029703612241647,
+        "tier_acc": 0.8097727272727273,
+        "pred_cheap": 0.4582386363636364,
+        "pred_mid": 0.25085227272727273,
+        "pred_frontier": 0.2909090909090909,
+        "under": 929,
+        "n_frontier_gold": 5251,
+        "frontier_escape_rate": 0.17691868215577986,
+        "cheap_escape": 1701,
+        "n_cheap_gold": 9224
+      }
+    },
+    "2tier_4.0_4.5": {
+      "thr": {
+        "cheap_ceil": 4.0,
+        "frontier_floor": 4.5
+      },
+      "n_tiers": 2,
+      "holdout": {
+        "n_tiers": 2,
+        "n_cheap": 1874,
+        "recall_cheap": 0.8906083244397012,
+        "n_mid": 0,
+        "n_frontier": 726,
+        "recall_frontier": 0.8842975206611571,
+        "n_tiers_scored": 2,
+        "balanced_acc": 0.8874529225504291,
+        "tier_acc": 0.8888461538461538,
+        "pred_cheap": 0.6596153846153846,
+        "pred_mid": 0.04269230769230769,
+        "pred_frontier": 0.2976923076923077,
+        "under": 84,
+        "n_frontier_gold": 726,
+        "frontier_escape_rate": 0.11570247933884298,
+        "cheap_escape": 205,
+        "n_cheap_gold": 1874
+      },
+      "fit": {
+        "n_tiers": 2,
+        "n_cheap": 12349,
+        "recall_cheap": 0.8938375576969795,
+        "n_mid": 0,
+        "n_frontier": 5251,
+        "recall_frontier": 0.8230813178442201,
+        "n_tiers_scored": 2,
+        "balanced_acc": 0.8584594377705999,
+        "tier_acc": 0.8727272727272727,
+        "pred_cheap": 0.6651704545454545,
+        "pred_mid": 0.04392045454545455,
+        "pred_frontier": 0.2909090909090909,
+        "under": 929,
+        "n_frontier_gold": 5251,
+        "frontier_escape_rate": 0.17691868215577986,
+        "cheap_escape": 1311,
+        "n_cheap_gold": 12349
+      }
+    }
+  }
+}

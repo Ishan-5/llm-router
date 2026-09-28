@@ -1,0 +1,43 @@
+{
+  "model": "L1 pair more trees",
+  "params": [
+    {
+      "n_estimators": 1200,
+      "learning_rate": 0.02,
+      "num_leaves": 31,
+      "colsample_bytree": 0.8,
+      "subsample": 0.8,
+      "objective": "regression_l1",
+      "random_state": 18
+    },
+    {
+      "n_estimators": 1200,
+      "learning_rate": 0.02,
+      "num_leaves": 31,
+      "colsample_bytree": 0.8,
+      "subsample": 0.8,
+      "objective": "regression_l1",
+      "random_state": 19
+    }
+  ],
+  "thr": {
+    "cheap_ceil": 2.0,
+    "frontier_floor": 5.0
+  },
+  "test": {
+    "mae": 0.687767110626285,
+    "spearman": 0.8555626380593838,
+    "tier_acc": 0.8215384615384616,
+    "balanced_acc": 0.817780982114034,
+    "recall_cheap": 0.829971181556196,
+    "recall_mid": 0.8106995884773662,
+    "recall_frontier": 0.8126721763085399,
+    "under": 136,
+    "traffic": {
+      "cheap": 0.46,
+      "mid": 0.2784615384615385,
+      "frontier": 0.26153846153846155
+    }
+  },
+  "selection": "cleared the cheap-recall floor and kept all three tiers populated"
+}

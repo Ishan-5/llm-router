@@ -1,0 +1,47 @@
+============================================================================================================
+SUPPORT MODEL: 3-TIER vs 2-TIER, same regressor, same data
+============================================================================================================
+regressor   2 LightGBM, regression_l1, 1200 trees @ lr 0.02, seeds 18/19
+features    388 = MiniLM-L6-v2 384 + 4 handcrafted
+labels      17,600 rows from 88 of 238 batches
+
+3-tier policy   cheap <= 2.0  |  mid 2.0-4.5  |  frontier >= 4.5
+2-tier policy   cheap <= 4.0  |  mid 4.0-4.5  |  frontier >= 4.5
+
+--- GENERALIZATION: batch-level holdout, thresholds fixed, test scored once ---
+    test rows 2,600   MAE 0.688   Spearman 0.856
+
+policy                  bal_acc  tiers      cheap     mid frontier      under tier_acc     c%     m%     f%
+------------------------------------------------------------------------------------------------------------
+3-tier 2.0/4.5            0.818  (3 tiers)   0.830   0.739    0.884     84/726    0.828   46.0   24.2   29.8
+2-tier 4.0/4.5            0.887  (2 tiers)   0.891     nan    0.884     84/726    0.889   66.0    4.3   29.8
+
+--- FIT CHECK on the 17,600 training rows: MEMORIZATION, NOT QUALITY ---
+policy                  bal_acc  tiers      cheap     mid frontier      under tier_acc     c%     m%     f%
+------------------------------------------------------------------------------------------------------------
+3-tier 2.0/4.5            0.803  (3 tiers)   0.816   0.770    0.823   929/5251    0.810   45.8   25.1   29.1
+2-tier 4.0/4.5            0.858  (2 tiers)   0.894     nan    0.823   929/5251    0.873   66.5    4.4   29.1
+
+--- the number that decides the policy ---
+  frontier escape rate = gold-frontier tickets NOT sent to the frontier model
+    3-tier 2.0/4.5       frontier escape 11.6%  (84/726)   cheap escape 236/1388 (17.0%)
+    2-tier 4.0/4.5       frontier escape 11.6%  (84/726)   cheap escape 205/1874 (10.9%)
+
+--- reading this table ---
+  frontier recall  3-tier 88.4%   2-tier 88.4%
+  cheap recall     3-tier 83.0%   2-tier 89.1%
+  traffic cheap    3-tier 46.0%   2-tier 66.0%
+
+  Balanced accuracy is averaged over tiers that have gold rows, and the count is
+  printed. Comparing a 3-tier score against a 2-tier score is only fair when both
+  average the same number of tiers. A mid band that lands between integer scores
+  has zero gold rows and silently drops out, which flatters the result.
+
+--- caveats ---
+  Quote the GENERALIZATION block. The FIT block is the shipped model re-reading
+  its own training rows and is not a quality estimate.
+  Thresholds were fixed before this run and not re-searched, so neither policy is
+  tuned to this test split.
+  Both policies share one regressor. Only the cut points differ.
+  Single-labeler scores: MAE near 0.69 partly measures agreement with one judge.
+  Scores 9-10 are 18 rows total, so the top band is unevidenced.
