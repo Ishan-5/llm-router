@@ -1,0 +1,125 @@
+{
+  "n_train_rows": 17600,
+  "split_seeds": [
+    42,
+    7,
+    2024
+  ],
+  "thresholds": {
+    "cheap_ceil": 2.0,
+    "frontier_floor": 5.0
+  },
+  "winner": "L1 x3 + domain",
+  "results": {
+    "L1 x2 (current)": {
+      "mae_mean": 0.8246485844828514,
+      "mae_worst": 0.9214851097039927,
+      "spearman_mean": 0.7864113327342482,
+      "recall_frontier": 0.7274738552476562,
+      "spec": {
+        "objective": "regression_l1",
+        "seeds": [
+          18,
+          19
+        ],
+        "domain": false
+      }
+    },
+    "L1 x3 seeds": {
+      "mae_mean": 0.8246376997470019,
+      "mae_worst": 0.9214470057493993,
+      "spearman_mean": 0.7861778828844103,
+      "recall_frontier": 0.7260831981662332,
+      "spec": {
+        "objective": "regression_l1",
+        "seeds": [
+          18,
+          19,
+          20
+        ],
+        "domain": false
+      }
+    },
+    "L1 x4 seeds": {
+      "mae_mean": 0.8245102545106727,
+      "mae_worst": 0.9209905427520482,
+      "spearman_mean": 0.7859605589602094,
+      "recall_frontier": 0.7251649245206869,
+      "spec": {
+        "objective": "regression_l1",
+        "seeds": [
+          18,
+          19,
+          20,
+          21
+        ],
+        "domain": false
+      }
+    },
+    "L1 x3 + domain": {
+      "mae_mean": 0.8219524107612611,
+      "mae_worst": 0.9194288014334472,
+      "spearman_mean": 0.7856240823479658,
+      "recall_frontier": 0.7246551183559058,
+      "spec": {
+        "objective": "regression_l1",
+        "seeds": [
+          18,
+          19,
+          20
+        ],
+        "domain": true
+      }
+    },
+    "quantile .65 x2": {
+      "mae_mean": 0.8831610069430966,
+      "mae_worst": 0.9726619854564412,
+      "spearman_mean": 0.7884258792135963,
+      "recall_frontier": 0.7856668547434474,
+      "spec": {
+        "objective": "quantile",
+        "alpha": 0.65,
+        "seeds": [
+          18,
+          19
+        ],
+        "domain": false
+      }
+    },
+    "quantile .65 x3": {
+      "mae_mean": 0.8825496871901838,
+      "mae_worst": 0.9721679825700403,
+      "spearman_mean": 0.7887566741086872,
+      "recall_frontier": 0.7843026908882313,
+      "spec": {
+        "objective": "quantile",
+        "alpha": 0.65,
+        "seeds": [
+          18,
+          19,
+          20
+        ],
+        "domain": false
+      }
+    },
+    "quantile .65 x3+dom": {
+      "mae_mean": 0.8797538475950485,
+      "mae_worst": 0.9726602103055474,
+      "spearman_mean": 0.7897258367698572,
+      "recall_frontier": 0.7834494917529993,
+      "spec": {
+        "objective": "quantile",
+        "alpha": 0.65,
+        "seeds": [
+          18,
+          19,
+          20
+        ],
+        "domain": true
+      }
+    }
+  },
+  "fit_check": {
+    "mae": 0.6273380978205562
+  }
+}

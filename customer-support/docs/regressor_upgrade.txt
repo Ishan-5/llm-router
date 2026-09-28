@@ -1,0 +1,46 @@
+==========================================================================================================================
+REGRESSOR UPGRADE: 7 candidates x 3 independent batch splits
+==========================================================================================================================
+rows 17,600  batches 88  splits (42, 7, 2024)  each 62/13/13 batches
+tier thresholds fixed at cheap <= 2.0, frontier >= 5.0 (not tuned here)
+
+MAE is the ranking key. Worst-split MAE is the tiebreak, and the spread is reported
+because the earlier run's problem was reporting a lucky split as if it were quality.
+
+candidate             MAE mean  MAE worst  spread  rho mean   cheap     mid   front     bal       traffic c/m/f
+--------------------------------------------------------------------------------------------------------------------------
+L1 x2 (current)          0.825      0.921   0.234     0.786   0.795   0.787   0.727   0.770            46/28/25
+L1 x3 seeds              0.825      0.921   0.234     0.786   0.797   0.787   0.726   0.770            46/28/25
+L1 x4 seeds              0.825      0.921   0.234     0.786   0.799   0.786   0.725   0.770            46/28/25
+L1 x3 + domain           0.822      0.919   0.235     0.786   0.799   0.792   0.725   0.772            46/28/25
+quantile .65 x2          0.883      0.973   0.201     0.788   0.727   0.763   0.786   0.758            42/30/28
+quantile .65 x3          0.883      0.972   0.202     0.789   0.731   0.763   0.784   0.759            42/30/28
+quantile .65 x3+dom      0.880      0.973   0.206     0.790   0.728   0.773   0.783   0.762            42/30/28
+
+WINNER: L1 x3 + domain
+  MAE mean 0.822 vs current 0.825   (+0.003)
+  MAE worst 0.919 vs current 0.921   (+0.002)
+  frontier recall 0.725 vs current 0.727   (-0.003)
+  spread 0.235 vs current 0.234
+
+--- per-split detail, winner vs current ---
+  seed    42   winner MAE 0.685 front 0.803   current MAE 0.688 front 0.813
+  seed     7   winner MAE 0.862 front 0.690   current MAE 0.865 front 0.683
+  seed  2024   winner MAE 0.919 front 0.681   current MAE 0.921 front 0.686
+
+--- shipped model, fit check on all 17,600 (MEMORIZATION, NOT quality) ---
+  MAE 0.627   Spearman 0.856
+  balanced 0.796   cheap 0.818   mid 0.834   frontier 0.737
+
+--- caveats ---
+  Quote the MEAN and WORST split rows, never a single split. The whole reason this
+  script exists is that a single split previously overstated the model by 0.14 MAE.
+  Thresholds were held fixed at 2.0/5.0 so candidates differ only by regressor.
+  A quantile objective fits a conditional quantile, not the mean, so its MAE is not
+  directly the same estimand as L1's. It is ranked on routing metrics where it matters.
+  Single labeler: MAE near 0.8 partly measures agreement with one human judge.
+  Scores 9-10 total 18 rows; the top band remains unevidenced.
+  Domain features are tested here as columns. Per-domain thresholds were tried earlier
+  and failed, because narrow per-domain bands collapse to zero gold rows.
+
+wrote D:\llm-router\customer-support\models\support_final_3tier.joblib

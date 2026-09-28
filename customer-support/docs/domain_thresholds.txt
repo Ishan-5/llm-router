@@ -1,0 +1,58 @@
+DOMAIN-AWARE ROUTING: three fixes, one comparison
+============================================================================================
+A  global thresholds 2.0 / 5.0, domain ignored
+B  add a per-domain offset to the score, same thresholds
+C  same score, per-domain thresholds
+
+--- does the model already know the domain? ---
+If mean predicted score already tracks mean gold score by domain, the
+text features have absorbed most of the signal and a bump double-counts it.
+
+domain                    n  gold_mean  pred_mean     gap
+--------------------------------------------------------------------------------------------
+account_access          304       1.90       1.44   -0.47
+delivery_general        692       2.62       2.53   -0.09
+orders_billing          711       2.40       2.13   -0.27
+technical               893       4.77       4.87    0.09
+
+
+--- A: global 2.0 / 5.0 (baseline) ---
+  calib   balanced 0.746  cheap 0.808  mid 0.785  front 0.646
+  TEST    balanced 0.818  cheap 0.830  mid 0.811  front 0.813   under 136/726
+
+--- B: per-domain score bump (tuned on calib) ---
+  account_access       bump +0.0  calib balanced 0.746
+  delivery_general     bump +0.5  calib balanced 0.748
+  orders_billing       bump +0.0  calib balanced 0.746
+  technical            bump +0.5  calib balanced 0.749
+
+  TEST account_access       cheap 0.830  mid 0.811  front 0.813  under 136/726
+  TEST delivery_general     cheap 0.795  mid 0.813  front 0.832  under 122/726
+  TEST orders_billing       cheap 0.830  mid 0.811  front 0.813  under 136/726
+  TEST technical            cheap 0.826  mid 0.770  front 0.851  under 108/726
+
+--- C: per-domain thresholds (tuned on calib) ---
+  account_access       cheap <= 3.0, frontier >= 4.0
+  delivery_general     cheap <= 2.0, frontier >= 4.5
+  orders_billing       cheap <= 3.0, frontier >= 4.0
+  technical            cheap <= 4.0, frontier >= 5.0
+
+  TEST account_access       cheap 1.000  mid 0.000  front 0.000  under 2/2
+  TEST delivery_general     cheap 0.866  mid 0.800  front 0.788  under 25/118
+  TEST orders_billing       cheap 0.926  mid 0.000  front 0.780  under 24/109
+  TEST technical            cheap 0.649  mid 0.000  front 0.869  under 70/533
+
+--- POOLED on all test rows (the comparison that matters) ---
+variant                     bal_acc   cheap     mid   front       under  tier_acc
+--------------------------------------------------------------------------------------------
+A global 2.0/5.0              0.818   0.830   0.811   0.813     136/726     0.822
+B per-domain bump             0.811   0.791   0.772   0.871      94/726     0.810
+C per-domain thresholds       0.836   0.867   0.800   0.841     121/762     0.856
+
+best on test by balanced accuracy: C per-domain  (0.836)
+baseline for reference:          A global  (0.818)
+
+--- caveat ---
+Per-domain thresholds are 8 numbers fitted on 2,600 calibration rows, so the
+calib-to-test drop is the honest signal of whether it generalizes. Read the
+TEST pooled row, not the calib-per-domain rows.

@@ -1,0 +1,39 @@
+{
+  "baseline": {
+    "balanced_acc": 0.817780982114034,
+    "under": 136
+  },
+  "bump": {
+    "bumps": {
+      "account_access": 0.0,
+      "delivery_general": 0.5,
+      "orders_billing": 0.0,
+      "technical": 0.5
+    },
+    "balanced_acc": 0.8110648788901051,
+    "under": 94
+  },
+  "per_domain": {
+    "cuts": {
+      "account_access": [
+        3.0,
+        4.0
+      ],
+      "delivery_general": [
+        2.0,
+        4.5
+      ],
+      "orders_billing": [
+        3.0,
+        4.0
+      ],
+      "technical": [
+        4.0,
+        5.0
+      ]
+    },
+    "balanced_acc": 0.8359710541173545,
+    "under": 121
+  },
+  "best": "C per-domain"
+}
