@@ -1,0 +1,25 @@
+final support training set: 17,600 rows
+
+=== domain ===
+  technical           5,817   33.1%  mean score 4.80
+  orders_billing      4,941   28.1%  mean score 2.19
+  delivery_general    4,750   27.0%  mean score 2.52
+  account_access      2,092   11.9%  mean score 1.57
+
+=== score ===
+   0     382    2.2%  
+   1   5,835   33.2%  ###############
+   2   3,007   17.1%  #######
+   3   1,871   10.6%  ####
+   4   1,254    7.1%  ###
+   5   1,540    8.8%  ####
+   6   2,414   13.7%  ######
+   7   1,093    6.2%  ##
+   8     186    1.1%  
+   9      18    0.1%  
+  10       0    0.0%  
+  mean 3.07
+
+=== integrity ===
+  duplicate query strings: 0
+  empty queries: 0
