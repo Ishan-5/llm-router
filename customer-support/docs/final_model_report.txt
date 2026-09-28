@@ -1,0 +1,59 @@
+======================================================================
+FINAL CUSTOMER-SUPPORT DIFFICULTY MODEL
+======================================================================
+training rows        17,600   (88 of 238 batches labeled)
+features             388   MiniLM-L6-v2 384 + 4 handcrafted, embedding first
+regressors           2 LightGBM, objective regression_l1, 1200 trees @ lr 0.02
+                     seeds 18 and 19, averaged, clipped 0-10
+tier thresholds      cheap <= 2.0, frontier >= 5.0
+
+--- GENERALIZATION: batch-level holdout, thresholds fixed, scored once ---
+    (this is the number to quote)
+  test rows          2,600
+  MAE                0.688
+  Spearman           0.856
+  tier accuracy      82.2%
+  balanced accuracy  81.8%
+  cheap recall       83.0%  (n=1388)
+  mid recall         81.1%  (n=486)
+  frontier recall    81.3%  (n=726)
+  under-routed       136 of 726 gold frontier
+
+--- FIT CHECK: same numbers on the training rows, for contrast only ---
+  MAE                0.629
+  balanced accuracy  79.6%
+  gold tier mix      {'mid': 3125, 'cheap': 9224, 'frontier': 5251}
+  pred tier mix      {'mid': 5121, 'cheap': 8065, 'frontier': 4414}
+
+--- training score distribution ---
+   0     382    2.2%  
+   1   5,835   33.2%  #############
+   2   3,007   17.1%  ######
+   3   1,871   10.6%  ####
+   4   1,254    7.1%  ##
+   5   1,540    8.8%  ###
+   6   2,414   13.7%  #####
+   7   1,093    6.2%  ##
+   8     186    1.1%  
+   9      18    0.1%  
+  10       0    0.0%  
+  mean 3.07
+
+--- by domain ---
+  technical           5,817   33.1%  mean 4.80  frontier  61.2%
+  orders_billing      4,941   28.1%  mean 2.19  frontier  13.4%
+  delivery_general    4,750   27.0%  mean 2.52  frontier  20.4%
+  account_access      2,092   11.9%  mean 1.57  frontier   2.8%
+
+--- caveats ---
+  The fit-check MAE is much lower than the holdout MAE because the shipped model
+  has seen every row. Quote the holdout figure, never the fit figure.
+  Mid recall is the weakest tier and partly measures label noise: on a 1,000-ticket
+  two-labeler overlap, agreement at score 5 was 5.7%, the worst of any score.
+  Labels are from one labeler, so MAE near 0.69 is partly agreement with that judge.
+  Scores 9-10 are 18 rows across 17,600. The top band is unevidenced.
+  A 2-tier split scores higher on router metrics (balanced 0.887 vs 0.818) but sends
+  30% of traffic to frontier versus 26%. The 3-tier choice is a cost-vs-quality bet
+  that needs an answer-quality harness, not just router metrics, to justify.
+
+wrote D:\llm-router\customer-support\models\support_final.joblib
