@@ -1,0 +1,458 @@
+{
+  "n_train_rows": 17600,
+  "regressor": {
+    "objective": "regression_l1",
+    "n_estimators": 1200,
+    "learning_rate": 0.02,
+    "num_leaves": 31,
+    "colsample_bytree": 0.8,
+    "subsample": 0.8
+  },
+  "seeds": [
+    18,
+    19
+  ],
+  "split_seeds": [
+    42,
+    7,
+    2024
+  ],
+  "protocol": "62/13/13 of 88 batches per split",
+  "shipped_cuts": {
+    "3tier": [
+      2.0,
+      4.5
+    ],
+    "2tier": [
+      4.0,
+      4.5
+    ]
+  },
+  "adopted": {
+    "3tier": {
+      "cuts": [
+        2.0,
+        5.0
+      ],
+      "wins": 2,
+      "of": 3,
+      "verdict": "MOVED",
+      "name": "3tier"
+    },
+    "2tier": {
+      "cuts": [
+        2.0,
+        5.0
+      ],
+      "wins": 2,
+      "of": 3,
+      "verdict": "MOVED",
+      "name": "2tier"
+    }
+  },
+  "final_cuts": {
+    "3tier": [
+      2.0,
+      5.0
+    ],
+    "2tier": [
+      2.0,
+      5.0
+    ]
+  },
+  "honest": {
+    "3tier": {
+      "cuts": [
+        2.0,
+        5.0
+      ],
+      "mae": 0.8246485844828514,
+      "spearman": 0.7864113327342482,
+      "recall_cheap": 0.7949408073184142,
+      "recall_mid": 0.7624360094878434,
+      "recall_frontier": 0.7497835665337456,
+      "under": 190,
+      "n_frontier_gold": 755,
+      "traffic": {
+        "cheap": 0.4623076923076923,
+        "mid": 0.2717948717948718,
+        "frontier": 0.2658974358974359
+      }
+    },
+    "2tier": {
+      "cuts": [
+        2.0,
+        5.0
+      ],
+      "mae": 0.8246485844828514,
+      "spearman": 0.7864113327342482,
+      "recall_cheap": 0.7949408073184142,
+      "recall_mid": 0.7624360094878434,
+      "recall_frontier": 0.7497835665337456,
+      "under": 190,
+      "n_frontier_gold": 755,
+      "traffic": {
+        "cheap": 0.4623076923076923,
+        "mid": 0.2717948717948718,
+        "frontier": 0.2658974358974359
+      }
+    }
+  },
+  "fit": {
+    "3tier": {
+      "cuts": [
+        2.0,
+        5.0
+      ],
+      "n_tiers": 3,
+      "lo": 2.0,
+      "hi": 5.0,
+      "n_cheap": 9224,
+      "recall_cheap": 0.8183000867302689,
+      "n_mid": 3125,
+      "recall_mid": 0.83296,
+      "n_frontier": 5251,
+      "recall_frontier": 0.7383355551323557,
+      "n_tiers_scored": 3,
+      "balanced_acc": 0.7965318806208749,
+      "tier_acc": 0.7970454545454545,
+      "under": 1374,
+      "n_frontier_gold": 5251,
+      "cheap_escape": 1676,
+      "n_cheap_gold": 9224,
+      "pred_cheap": 0.45954545454545453,
+      "pred_mid": 0.29005681818181817,
+      "pred_frontier": 0.2503977272727273
+    },
+    "2tier": {
+      "cuts": [
+        2.0,
+        5.0
+      ],
+      "n_tiers": 3,
+      "lo": 2.0,
+      "hi": 5.0,
+      "n_cheap": 9224,
+      "recall_cheap": 0.8183000867302689,
+      "n_mid": 3125,
+      "recall_mid": 0.83296,
+      "n_frontier": 5251,
+      "recall_frontier": 0.7383355551323557,
+      "n_tiers_scored": 3,
+      "balanced_acc": 0.7965318806208749,
+      "tier_acc": 0.7970454545454545,
+      "under": 1374,
+      "n_frontier_gold": 5251,
+      "cheap_escape": 1676,
+      "n_cheap_gold": 9224,
+      "pred_cheap": 0.45954545454545453,
+      "pred_mid": 0.29005681818181817,
+      "pred_frontier": 0.2503977272727273
+    }
+  },
+  "per_split": [
+    {
+      "seed": 42,
+      "test_rows": 2600,
+      "mae": 0.687767110626285,
+      "spearman": 0.8555626380593838,
+      "winner_3tier": {
+        "lo": 2.0,
+        "hi": 5.0,
+        "test": {
+          "lo": 2.0,
+          "hi": 5.0,
+          "n_cheap": 1388,
+          "recall_cheap": 0.829971181556196,
+          "n_mid": 486,
+          "recall_mid": 0.8106995884773662,
+          "n_frontier": 726,
+          "recall_frontier": 0.8126721763085399,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.817780982114034,
+          "tier_acc": 0.8215384615384616,
+          "under": 136,
+          "n_frontier_gold": 726,
+          "cheap_escape": 236,
+          "n_cheap_gold": 1388,
+          "pred_cheap": 0.46,
+          "pred_mid": 0.2784615384615385,
+          "pred_frontier": 0.26153846153846155
+        }
+      },
+      "winner_2tier": {
+        "lo": 2.0,
+        "hi": 5.0,
+        "test": {
+          "lo": 2.0,
+          "hi": 5.0,
+          "n_cheap": 1388,
+          "recall_cheap": 0.829971181556196,
+          "n_mid": 486,
+          "recall_mid": 0.8106995884773662,
+          "n_frontier": 726,
+          "recall_frontier": 0.8126721763085399,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.817780982114034,
+          "tier_acc": 0.8215384615384616,
+          "under": 136,
+          "n_frontier_gold": 726,
+          "cheap_escape": 236,
+          "n_cheap_gold": 1388,
+          "pred_cheap": 0.46,
+          "pred_mid": 0.2784615384615385,
+          "pred_frontier": 0.26153846153846155
+        }
+      },
+      "shipped_3tier": {
+        "lo": 2.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 2.0,
+          "hi": 4.5,
+          "n_cheap": 1388,
+          "recall_cheap": 0.829971181556196,
+          "n_mid": 486,
+          "recall_mid": 0.7386831275720165,
+          "n_frontier": 726,
+          "recall_frontier": 0.8842975206611571,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.8176506099297898,
+          "tier_acc": 0.828076923076923,
+          "under": 84,
+          "n_frontier_gold": 726,
+          "cheap_escape": 236,
+          "n_cheap_gold": 1388,
+          "pred_cheap": 0.46,
+          "pred_mid": 0.2423076923076923,
+          "pred_frontier": 0.2976923076923077
+        }
+      },
+      "shipped_2tier": {
+        "lo": 4.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 4.0,
+          "hi": 4.5,
+          "n_cheap": 1874,
+          "recall_cheap": 0.8906083244397012,
+          "n_mid": 0,
+          "n_frontier": 726,
+          "recall_frontier": 0.8842975206611571,
+          "n_tiers_scored": 2,
+          "balanced_acc": 0.8874529225504291,
+          "tier_acc": 0.8888461538461538,
+          "under": 84,
+          "n_frontier_gold": 726,
+          "cheap_escape": 205,
+          "n_cheap_gold": 1874,
+          "pred_cheap": 0.6596153846153846,
+          "pred_mid": 0.04269230769230769,
+          "pred_frontier": 0.2976923076923077
+        }
+      }
+    },
+    {
+      "seed": 7,
+      "test_rows": 2600,
+      "mae": 0.8646935331182765,
+      "spearman": 0.7781139227202055,
+      "winner_3tier": {
+        "lo": 2.0,
+        "hi": 5.0,
+        "test": {
+          "lo": 2.0,
+          "hi": 5.0,
+          "n_cheap": 1410,
+          "recall_cheap": 0.7865248226950354,
+          "n_mid": 413,
+          "recall_mid": 0.7699757869249395,
+          "n_frontier": 777,
+          "recall_frontier": 0.6833976833976834,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.7466327643392194,
+          "tier_acc": 0.7530769230769231,
+          "under": 246,
+          "n_frontier_gold": 777,
+          "cheap_escape": 301,
+          "n_cheap_gold": 1410,
+          "pred_cheap": 0.4626923076923077,
+          "pred_mid": 0.29346153846153844,
+          "pred_frontier": 0.24384615384615385
+        }
+      },
+      "winner_2tier": {
+        "lo": 2.0,
+        "hi": 5.0,
+        "test": {
+          "lo": 2.0,
+          "hi": 5.0,
+          "n_cheap": 1410,
+          "recall_cheap": 0.7865248226950354,
+          "n_mid": 413,
+          "recall_mid": 0.7699757869249395,
+          "n_frontier": 777,
+          "recall_frontier": 0.6833976833976834,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.7466327643392194,
+          "tier_acc": 0.7530769230769231,
+          "under": 246,
+          "n_frontier_gold": 777,
+          "cheap_escape": 301,
+          "n_cheap_gold": 1410,
+          "pred_cheap": 0.4626923076923077,
+          "pred_mid": 0.29346153846153844,
+          "pred_frontier": 0.24384615384615385
+        }
+      },
+      "shipped_3tier": {
+        "lo": 2.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 2.0,
+          "hi": 4.5,
+          "n_cheap": 1410,
+          "recall_cheap": 0.7865248226950354,
+          "n_mid": 413,
+          "recall_mid": 0.6731234866828087,
+          "n_frontier": 777,
+          "recall_frontier": 0.7683397683397684,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.7426626925725376,
+          "tier_acc": 0.7630769230769231,
+          "under": 180,
+          "n_frontier_gold": 777,
+          "cheap_escape": 301,
+          "n_cheap_gold": 1410,
+          "pred_cheap": 0.4626923076923077,
+          "pred_mid": 0.24615384615384617,
+          "pred_frontier": 0.29115384615384615
+        }
+      },
+      "shipped_2tier": {
+        "lo": 4.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 4.0,
+          "hi": 4.5,
+          "n_cheap": 1823,
+          "recall_cheap": 0.8738343390016456,
+          "n_mid": 0,
+          "n_frontier": 777,
+          "recall_frontier": 0.7683397683397684,
+          "n_tiers_scored": 2,
+          "balanced_acc": 0.821087053670707,
+          "tier_acc": 0.8423076923076923,
+          "under": 180,
+          "n_frontier_gold": 777,
+          "cheap_escape": 230,
+          "n_cheap_gold": 1823,
+          "pred_cheap": 0.6630769230769231,
+          "pred_mid": 0.04576923076923077,
+          "pred_frontier": 0.29115384615384615
+        }
+      }
+    },
+    {
+      "seed": 2024,
+      "test_rows": 2600,
+      "mae": 0.9214851097039927,
+      "spearman": 0.7255574374231553,
+      "winner_3tier": {
+        "lo": 2.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 2.0,
+          "hi": 4.5,
+          "n_cheap": 1446,
+          "recall_cheap": 0.7683264177040111,
+          "n_mid": 392,
+          "recall_mid": 0.7066326530612245,
+          "n_frontier": 762,
+          "recall_frontier": 0.7532808398950132,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.7427466368867496,
+          "tier_acc": 0.7546153846153846,
+          "under": 188,
+          "n_frontier_gold": 762,
+          "cheap_escape": 335,
+          "n_cheap_gold": 1446,
+          "pred_cheap": 0.4642307692307692,
+          "pred_mid": 0.24346153846153845,
+          "pred_frontier": 0.2923076923076923
+        }
+      },
+      "winner_2tier": {
+        "lo": 2.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 2.0,
+          "hi": 4.5,
+          "n_cheap": 1446,
+          "recall_cheap": 0.7683264177040111,
+          "n_mid": 392,
+          "recall_mid": 0.7066326530612245,
+          "n_frontier": 762,
+          "recall_frontier": 0.7532808398950132,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.7427466368867496,
+          "tier_acc": 0.7546153846153846,
+          "under": 188,
+          "n_frontier_gold": 762,
+          "cheap_escape": 335,
+          "n_cheap_gold": 1446,
+          "pred_cheap": 0.4642307692307692,
+          "pred_mid": 0.24346153846153845,
+          "pred_frontier": 0.2923076923076923
+        }
+      },
+      "shipped_3tier": {
+        "lo": 2.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 2.0,
+          "hi": 4.5,
+          "n_cheap": 1446,
+          "recall_cheap": 0.7683264177040111,
+          "n_mid": 392,
+          "recall_mid": 0.7066326530612245,
+          "n_frontier": 762,
+          "recall_frontier": 0.7532808398950132,
+          "n_tiers_scored": 3,
+          "balanced_acc": 0.7427466368867496,
+          "tier_acc": 0.7546153846153846,
+          "under": 188,
+          "n_frontier_gold": 762,
+          "cheap_escape": 335,
+          "n_cheap_gold": 1446,
+          "pred_cheap": 0.4642307692307692,
+          "pred_mid": 0.24346153846153845,
+          "pred_frontier": 0.2923076923076923
+        }
+      },
+      "shipped_2tier": {
+        "lo": 4.0,
+        "hi": 4.5,
+        "test": {
+          "lo": 4.0,
+          "hi": 4.5,
+          "n_cheap": 1838,
+          "recall_cheap": 0.8650707290533188,
+          "n_mid": 0,
+          "n_frontier": 762,
+          "recall_frontier": 0.7532808398950132,
+          "n_tiers_scored": 2,
+          "balanced_acc": 0.809175784474166,
+          "tier_acc": 0.8323076923076923,
+          "under": 188,
+          "n_frontier_gold": 762,
+          "cheap_escape": 248,
+          "n_cheap_gold": 1838,
+          "pred_cheap": 0.6688461538461539,
+          "pred_mid": 0.03884615384615384,
+          "pred_frontier": 0.2923076923076923
+        }
+      }
+    }
+  ]
+}

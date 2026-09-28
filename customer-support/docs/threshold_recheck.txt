@@ -1,0 +1,64 @@
+======================================================================================================================
+THRESHOLD RE-CHECK ON FRESH SPLITS
+======================================================================================================================
+labels 17,600 rows, 88 batches, regressor = 2x LightGBM L1 1200 trees, seeds (18, 19)
+splits 3 independent, seeds (42, 7, 2024), each 62/13/13 batches
+
+Previously shipped cuts were tuned on ONE split using a 12,400-row model. A cut point is
+adopted here only if it wins a majority of independent splits, which is the evidence that
+a boundary is a property of the data rather than of one sample.
+
+--- per split, winner vs currently shipped ---
+  split seed 42   test 2,600   MAE 0.688   Spearman 0.856
+    3tier winner            MAE  0.688 rho  0.856 bal 0.818(3)   0.830   0.811    0.813    136/726   46.0   27.8   26.2
+      winner cuts 2.0/5.0   shipped cuts 2.0/4.5
+    3tier SHIPPED cuts      bal 0.818(3)   0.830   0.739    0.884     84/726   46.0   24.2   29.8
+    2tier winner            MAE  0.688 rho  0.856 bal 0.818(3)   0.830   0.811    0.813    136/726   46.0   27.8   26.2
+      winner cuts 2.0/5.0   shipped cuts 4.0/4.5
+
+  split seed 7   test 2,600   MAE 0.865   Spearman 0.778
+    3tier winner            MAE  0.865 rho  0.778 bal 0.747(3)   0.787   0.770    0.683    246/777   46.3   29.3   24.4
+      winner cuts 2.0/5.0   shipped cuts 2.0/4.5
+    3tier SHIPPED cuts      bal 0.743(3)   0.787   0.673    0.768    180/777   46.3   24.6   29.1
+    2tier winner            MAE  0.865 rho  0.778 bal 0.747(3)   0.787   0.770    0.683    246/777   46.3   29.3   24.4
+      winner cuts 2.0/5.0   shipped cuts 4.0/4.5
+
+  split seed 2024   test 2,600   MAE 0.921   Spearman 0.726
+    3tier winner            MAE  0.921 rho  0.726 bal 0.743(3)   0.768   0.707    0.753    188/762   46.4   24.3   29.2
+      winner cuts 2.0/4.5   shipped cuts 2.0/4.5
+    3tier SHIPPED cuts      bal 0.743(3)   0.768   0.707    0.753    188/762   46.4   24.3   29.2
+    2tier winner            MAE  0.921 rho  0.726 bal 0.743(3)   0.768   0.707    0.753    188/762   46.4   24.3   29.2
+      winner cuts 2.0/4.5   shipped cuts 4.0/4.5
+
+--- verdict on the previously shipped cuts ---
+  3-tier  shipped 2.0/4.5 won 1/3 of 3 sweeps
+  2-tier  shipped 4.0/4.5 won 0/3 of 3 sweeps
+
+--- adopted cuts (winner of the majority of splits) ---
+  3tier  cheap <= 2.0  frontier >= 5.0   verdict MOVED (2/3 splits)
+  2tier  cheap <= 2.0  frontier >= 5.0   verdict MOVED (2/3 splits)
+
+--- SHIPPED MODELS: fit check on all 17,600 (memorization, NOT quality) ---
+model             cuts  tiers     bal   cheap     mid   front       under     c%     m%     f%
+----------------------------------------------------------------------------------------------------------------------
+3tier          2.0/5.0      3   0.797   0.818   0.833   0.738   1374/5251   46.0   29.0   25.0
+2tier          2.0/5.0      3   0.797   0.818   0.833   0.738   1374/5251   46.0   29.0   25.0
+
+--- HONEST METRICS for the shipped models, mean over the 3 splits ---
+model             cuts     MAE     rho   cheap     mid   front         under     c%     m%     f%
+----------------------------------------------------------------------------------------------------------------------
+3tier          2.0/5.0   0.825   0.786   0.795   0.762   0.750       190/755   46.2   27.2   26.6
+2tier          2.0/5.0   0.825   0.786   0.795   0.762   0.750       190/755   46.2   27.2   26.6
+
+--- caveats ---
+  The fit-check block is the shipped model re-reading its own training rows. It is
+  NOT a quality estimate. Quote the HONEST block.
+  Balanced accuracy averages only tiers with gold rows; the tier count is printed, so a
+  dead mid band (lo >= hi - 0.5, i.e. gold scores are integers and the band spans none)
+  is not silently compared against a live one.
+  Thresholds were swept on each split's own calibration rows, then the winner was scored
+  once on that split's test rows, so the reported numbers are not tuned on their own test set.
+  Single labeler: MAE near 0.69 partly measures agreement with one human judge.
+  Scores 9-10 total 18 rows; the top band is unevidenced.
+
+models: D:\llm-router\customer-support\models\support_final_3tier.joblib  |  D:\llm-router\customer-support\models\support_final_2tier.joblib

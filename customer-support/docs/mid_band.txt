@@ -1,0 +1,52 @@
+THE 4.0-4.5 BAND IN THE 2-TIER POLICY
+================================================================================================
+test rows            2,600
+predicted into band  111  (4.3% of traffic)
+
+Gold scores of the tickets the model pushed into that band:
+
+  gold  1      8    7.2%  ##
+  gold  2      8    7.2%  ##
+  gold  3     23   20.7%  ######
+  gold  4     34   30.6%  #########
+  gold  5     25   22.5%  ######
+  gold  6      9    8.1%  ##
+  gold  7      4    3.6%  #
+
+  gold <= 4 (truly easy)      73   65.8%
+  gold >= 5 (truly hard)      38   34.2%
+
+Reading: the band holds tickets the model called borderline. A band made of
+gold-4 tickets is a real mid population being wasted on the cheap model; a band
+leaning gold-5 is hard tickets being held back from the frontier model.
+
+================================================================================================
+CANDIDATE CUTS, frontier floor pinned at 4.5
+label                  lo  bal_acc  tiers   cheap     mid   front   f_esc   c_esc     c%     m%     f%  gold_mid
+------------------------------------------------------------------------------------------------
+2-tier (dead mid)     4.0    0.887      2   0.891     nan   0.884  84/726 205/1874   66.0    4.3   29.8         0
+mid = score 4         3.5    0.727      3   0.902   0.394   0.884  84/726 164/1671   61.8    8.5   29.8       203
+mid = score 4         3.0    0.768      3   0.844   0.576   0.884  84/726 260/1671   56.2   14.0   29.8       203
+3-tier 2.0/4.5        2.0    0.818      3   0.830   0.739   0.884  84/726 236/1388   46.0   24.2   29.8       486
+mid = 3 and 4         2.0    0.818      3   0.830   0.739   0.884  84/726 236/1388   46.0   24.2   29.8       486
+
+--- reading it ---
+  A cut of 4.0 leaves 0 gold mid rows, so the band cannot be measured and
+  balanced accuracy silently averages 2 tiers instead of 3. That is the
+  artefact flagged in tier_comparison.txt, not a real 2-tier advantage.
+
+  Best measurable cut: cheap <= 2.0, mid to 4.5, frontier >= 4.5
+    balanced accuracy 0.818 over 3 tiers
+    frontier escape   84/726    cheap escape   236/1388
+    traffic          46.0% cheap / 24.2% mid / 29.8% frontier
+
+  All candidates share the same frontier floor, so frontier escape is identical
+  across the table. The choice is purely about how much traffic to lift off the
+  cheap model and into a measurable mid band.
+
+--- caveats ---
+  Mid band measurability is a property of the labels, not the model: gold scores
+  are integers, so a band between two consecutive integers has no gold rows.
+  Thresholds were fixed before this run and not re-searched against the test split.
+  Nothing here shows the 120B mid model answers better than the 20B model; the
+  same harness question as before, still open.
