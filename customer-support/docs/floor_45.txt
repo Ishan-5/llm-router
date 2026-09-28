@@ -1,0 +1,56 @@
+======================================================================================================================
+FRONTIER FLOOR 4.5 vs 5.0, measured on the shipped regressor
+======================================================================================================================
+regressor  3x LightGBM L1 1200 trees, seeds (18, 19, 20), 391 features (MiniLM 384 + 4 + 3 domain)
+labels     17,600 rows, 88 batches
+splits     3 independent, seeds (42, 7, 2024), 62/13/13 batches
+cheap cut  fixed at 2.0 so only the frontier floor varies
+
+MAE is identical across floors by construction: cut points change routing, not the
+regressor. What moves is which tickets reach the frontier model.
+
+floor     front_rec   front_esc  cheap_rec   mid_rec   bal_acc       traffic c/m/f   MAE mean
+----------------------------------------------------------------------------------------------------------------------
+4.5           0.804     149/755      0.799     0.709     0.771            46/24/29      0.822
+5.0           0.725     209/755      0.799     0.792     0.772            46/28/25      0.822
+
+--- what moving the floor 5.0 -> 4.5 buys and costs ---
+  frontier recall   0.725 -> 0.804  (+0.079)
+  frontier escape   27.5% -> 19.6%  (-7.9%)
+  cheap recall      0.799 -> 0.799  (+0.000)
+  frontier traffic  25.2% -> 29.4%  (+4.2 pts)
+
+  The escape rate is the number that matters operationally: it is the share of
+  genuinely hard tickets that get answered by a cheaper model than intended.
+
+--- shipped model: floor 4.5, all 17,600 rows ---
+  file support_final_3tier.joblib
+  thresholds cheap <= 2.0, frontier >= 4.5
+  fit check MAE 0.627 (memorization, not quality)
+  fit balanced 0.805
+
+--- honest metrics for the shipped model (mean of 3 splits) ---
+  MAE                    0.822
+  MAE worst              0.919
+  Spearman               0.786
+  cheap recall           0.799
+  mid recall             0.709
+  frontier recall        0.804
+  frontier escape rate   19.6%
+  traffic                46% cheap / 24% mid / 29% frontier
+
+--- slider guidance, if exposed later ---
+  The backend route handler already accepts a per-request threshold override, so a
+  slider needs no new plumbing. Three constraints come out of the label data:
+    1. the cheap cut matters more than the floor for most users, so expose both
+    2. default to the safe end, not the cheap end, so nobody gets weak answers by default
+    3. label mass thins above score 8 (18 rows at 9, none at 10); cap the floor at 8
+       or the slider routes on extrapolation rather than evidence
+
+--- caveats ---
+  Quote the mean and worst split, never a single split.
+  MAE is unaffected by the floor; only routing changes.
+  Single labeler: MAE near 0.82 partly measures agreement with one human judge.
+  Scores 9-10 are 18 rows total; the top band is unevidenced.
+
+wrote D:\llm-router\customer-support\models\support_final_3tier.joblib

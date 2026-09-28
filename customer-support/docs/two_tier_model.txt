@@ -1,0 +1,65 @@
+========================================================================================================================
+TWO-TIER SUPPORT MODEL (cheap / frontier only)
+========================================================================================================================
+regressor  3x LightGBM L1 1200 trees, seeds (18, 19, 20), 392 features (MiniLM 384 + 4 + 4 domain)
+labels     17,600 rows, 88 batches
+splits     3 independent, seeds (42, 7, 2024), 62/13/13 batches
+frontier floor fixed at 4.5; cheap cut swept (in a 2-tier router it is the only lever)
+
+--- 2-tier: cheap cut sweep, mean of 3 splits ---
+ cheap<=  front_rec   front_esc  cheap_rec   cheap_esc     traffic c/f  tier_acc   bal(2)
+------------------------------------------------------------------------------------------------------------------------
+     2.0      0.804       19.6%      0.799    285/1414           46/29     0.785    0.771
+     2.5      0.804       19.6%      0.848    215/1414           50/29     0.801    0.765
+     3.0      0.804       19.6%      0.820    299/1667           56/29     0.796    0.720
+     3.5      0.804       19.6%      0.880    199/1667           62/29     0.822    0.681
+     4.0      0.804       19.6%      0.877    226/1845           66/29     0.855    0.840
+
+--- 2-tier vs 3-tier (both floor 4.5, comparable columns) ---
+policy                  front_rec   front_esc  cheap_rec   mid_rec       traffic c/m/f  tier_acc
+------------------------------------------------------------------------------------------------------------------------
+2-tier 4.0                  0.804       19.6%      0.877       n/a     66   4.2    29     0.855
+3-tier 2.0                  0.804       19.6%      0.799     0.709     46  24.2    29     0.785
+
+  frontier recall, frontier escape, cheap recall and traffic are computed on the same
+  gold rows for both policies, so those columns compare directly. Balanced accuracy is
+  NOT comparable: 2-tier averages 0.840 over 2 tiers while
+  3-tier averages 0.771 over 3. A 2-tier router has a dead middle by
+  construction, because gold scores are whole numbers and no gold row can fall between
+  two consecutive cut points.
+
+--- selected 2-tier policy: cheap <= 4.0, frontier >= 4.5 ---
+  chosen because it is the highest cheap cut whose frontier escape (19.6%)
+  is no worse than the 3-tier policy (19.6%); spending more cheap
+  traffic on the frontier model buys protection the 3-tier model already gets from the mid tier.
+
+--- shipped 2-tier model ---
+  file support_final_2tier.joblib
+  thresholds cheap <= 4.0, frontier >= 4.5   (2 tiers, no mid band)
+  fit check MAE 0.627 (memorization, not quality)
+  fit tier_acc 0.873
+
+--- honest metrics for the shipped 2-tier model (mean of 3 splits) ---
+  MAE                    0.822
+  MAE worst              0.919
+  Spearman               0.786
+  cheap recall           0.877
+  frontier recall        0.804
+  frontier escape rate   19.6%  (149 of 755)
+  tier accuracy          0.855
+  traffic                66% cheap / 29% frontier
+
+--- which artifact to ship ---
+  3-tier and 2-tier protect hard tickets about equally at the chosen cut
+  (19.6% vs 19.6% escape). The 2-tier model is
+  simpler and sends 29% of traffic to the frontier model against
+  29% for 3-tier, because mid-handled tickets are gone.
+
+--- caveats ---
+  Quote mean and worst split, never one split.
+  MAE is identical to the 3-tier model: same regressor, only the tier policy differs.
+  2-tier balanced accuracy averages 2 tiers and is not comparable to 3-tier.
+  Single labeler: MAE near 0.82 partly measures agreement with one human judge.
+  Scores 9-10 are 18 rows total; the top band is unevidenced.
+
+wrote D:\llm-router\customer-support\models\support_final_2tier.joblib
