@@ -11,6 +11,8 @@ const VALUE_FLAGS = new Set([
   "base-url",
   "base_url",
   "model",
+  "model-name",
+  "support-mode",
   "provider",
   "max-tokens",
   "temperature",
@@ -73,6 +75,20 @@ export function flagBool(flags: Record<string, string | boolean>, name: string):
 
 export function validTier(value: string | null): "cheap" | "mid" | "frontier" | null {
   if (value === "cheap" || value === "mid" || value === "frontier") {
+    return value;
+  }
+  return null;
+}
+
+export function validModel(value: string | null): "emma" | "lisa" | "kate" | null {
+  if (value === "emma" || value === "lisa" || value === "kate") {
+    return value;
+  }
+  return null;
+}
+
+export function validSupportMode(value: string | null): "generic" | "2tier" | "3tier" | null {
+  if (value === "generic" || value === "2tier" || value === "3tier") {
     return value;
   }
   return null;

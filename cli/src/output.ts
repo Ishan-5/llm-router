@@ -51,7 +51,9 @@ export function metaLine(res: JsonRecord): string {
   const latencyPart = latency !== null ? ` · ${latency}ms` : "";
   const tags = metaTags(res);
   const tagPart = tags.length > 0 ? ` ${tags.join(", ")}` : "";
-  return `[${str(res["routed_to"]) || "-"}${scorePart} ${money(res["cost_usd"])}${latencyPart}${tagPart}]`;
+  const policy = str(res["support_mode"]);
+  const policyPart = policy && policy !== "generic" ? ` · ${policy}` : "";
+  return `[${str(res["routed_to"]) || "-"}${scorePart} ${money(res["cost_usd"])}${latencyPart}${policyPart}${tagPart}]`;
 }
 
 export function printStats(res: JsonRecord): string[] {

@@ -18,7 +18,7 @@ import {
   type ByomTierConfig,
 } from "./config.js";
 import { RouteWiseClient, RouteWiseError, type AskOptions, type JsonRecord } from "./client.js";
-import { flagBool, flagValue, parseArgs, validTier, type ParsedArgs } from "./parse.js";
+import { flagBool, flagValue, parseArgs, validTier, validModel, validSupportMode, type ParsedArgs } from "./parse.js";
 import {
   metaLine,
   money,
@@ -58,6 +58,7 @@ Usage:
   routewise stream "<query>"         stream tokens as they arrive
   routewise chat                     interactive multi-turn REPL
   echo "…" | routewise ask           pipe a query via stdin
+  routewise models                   list available routing models + policies
   routewise stats                    usage, cost and savings summary
   routewise logs [--limit N]         recent request log lines
   routewise log <id>                 full detail (incl. response) for one log entry
@@ -78,7 +79,10 @@ Usage:
   routewise version                  print version
   routewise help                     show this help
 
-Flags (on ask/stream):
+Flags (on ask/stream/chat):
+  --model emma|lisa|kate       difficulty policy: emma=generic (default),
+                               lisa=3-tier support, kate=2-tier support
+  --support-mode generic|2tier|3tier   raw policy id (overrides --model)
   --tier cheap|mid|frontier   force a tier instead of auto-routing
   --threshold <0..2>          routing sensitivity: 0=economy, 1=balanced, 2=quality
   --bypass-cache              skip the semantic cache
@@ -89,7 +93,8 @@ Flags (on ask/stream):
   --base-url <url>            override the API base URL for this call
   --key <key>                 use an API key for this call only
 
-Bring your own model (saved once locally, auto-applied to every ask/stream):
+Bring your own model (saved once locally, auto-applied to every ask/stream).
+Add one, two, or all three tiers — tiers you don't configure use the defaults:
   routewise byom set <cheap|mid|frontier> --provider <p> --model <m> [--key <k>]
   routewise byom list
   routewise byom remove <tier> | routewise byom remove --all
@@ -159,6 +164,16 @@ async function askOptionsFrom(
   if (tierRaw && !tier) {
     throw new Error("--tier must be cheap, mid, or frontier");
   }
+  const modelRaw = flagValue(flags, "model");
+  const model = validModel(modelRaw);
+  if (modelRaw && !model) {
+    throw new Error("--model must be emma, lisa, or kate");
+  }
+  const supportModeRaw = flagValue(flags, "support-mode");
+  const supportMode = validSupportMode(supportModeRaw);
+  if (supportModeRaw && !supportMode) {
+    throw new Error("--support-mode must be generic, 2tier, or 3tier");
+  }
   let threshold: number | undefined;
   const thresholdRaw = flagValue(flags, "threshold");
   if (thresholdRaw) {
@@ -173,6 +188,8 @@ async function askOptionsFrom(
     overrideTier: tier ?? undefined,
     threshold,
     bypassCache: flagBool(flags, "bypass-cache"),
+    model: model ?? undefined,
+    supportMode: supportMode ?? undefined,
   };
   if (!flagBool(flags, "no-byom")) {
     const byomConfig: Record<string, unknown> = {};
@@ -258,10 +275,15 @@ async function cmdChat(
   if (tierRaw && !tier) {
     throw new Error("--tier must be cheap, mid, or frontier");
   }
+  const modelRaw = flagValue(flags, "model");
+  const model = validModel(modelRaw);
+  if (modelRaw && !model) {
+    throw new Error("--model must be emma, lisa, or kate");
+  }
   const initialQuery = queryFrom(positionals);
   return startRepl({
     client,
-    model: tier ?? "auto",
+    model: model ?? tier ?? "auto",
     json: flagBool(flags, "json"),
     color: formatOptionsFor(flags).color,
     initialQuery: initialQuery || undefined,
@@ -597,6 +619,10 @@ async function cmdEvaluate(client: RouteWiseClient, flags: ParsedArgs["flags"], 
     for (const mode of ["economy", "balanced", "quality"]) {
       console.log(`  ${mode.padEnd(9)}→ ${str(r[`tier_${mode}`])}`);
     }
+    for (const [modelName, mode] of [["emma", "generic"], ["lisa", "3tier"], ["kate", "2tier"]] as const) {
+      const tier = str(r[`mode_${mode}`]);
+      console.log(`  ${modelName.padEnd(6)} ${mode.padEnd(7)}→ ${tier || "-"}`);
+    }
     console.log("");
   }
   const thresholds = (res["thresholds"] as Array<JsonRecord> | null) ?? [];
@@ -753,6 +779,44 @@ async function cmdProviders(client: RouteWiseClient, flags: ParsedArgs["flags"])
   console.log(printProviders(res).join("\n"));
 }
 
+const MODEL_META: Array<{ name: string; mode: string; tagline: string }> = [
+  { name: "emma", mode: "generic", tagline: "general-purpose routing (default)" },
+  { name: "lisa", mode: "3tier", tagline: "customer support · cheap/mid/frontier" },
+  { name: "kate", mode: "2tier", tagline: "customer support · cheap/frontier only" },
+];
+
+async function cmdModels(client: RouteWiseClient, flags: ParsedArgs["flags"]): Promise<void> {
+  const res = await client.models();
+  if (flagBool(flags, "json")) {
+    printJson(res);
+    return;
+  }
+  const policies = (res["policies"] as Array<JsonRecord> | null) ?? [];
+  for (const meta of MODEL_META) {
+    const pol = policies.find((p) => str(p["id"]) === meta.mode);
+    const cuts = pol
+      ? meta.mode === "2tier"
+        ? `cut at ${str(pol["cheap_ceil"])}`
+        : `cuts at ${str(pol["cheap_ceil"])} and ${str(pol["frontier_floor"])}`
+      : "—";
+    console.log(`${meta.name.padEnd(6)} ${meta.mode.padEnd(8)} ${meta.tagline}`);
+    console.log(`        tiers:  ${pol ? str(pol["tiers"]) : "cheap, mid, frontier"}`);
+    console.log(`        cuts:   ${cuts}`);
+    if (pol) {
+      const parts: string[] = [];
+      if (pol["mae_mean"] !== null && pol["mae_mean"] !== undefined) parts.push(`MAE ${str(pol["mae_mean"])}`);
+      if (pol["recall_frontier"] !== null && pol["recall_frontier"] !== undefined) parts.push(`frontier recall ${str(pol["recall_frontier"])}`);
+      if (pol["traffic"] !== null && pol["traffic"] !== undefined) parts.push(`traffic ${str(pol["traffic"])}`);
+      if (parts.length > 0) console.log(`        evals:   ${parts.join(" · ")}`);
+    }
+    console.log("");
+  }
+  const modes = res["available_modes"] as string[] | null;
+  if (modes) {
+    console.log(`Policies available: ${modes.join(", ")}`);
+  }
+}
+
 async function cmdFeedback(client: RouteWiseClient, flags: ParsedArgs["flags"], positionals: string[]): Promise<void> {
   requireKey(client);
   const id = Number(positionals[0]);
@@ -828,6 +892,9 @@ export async function run(argv: string[]): Promise<number> {
         break;
       case "providers":
         await cmdProviders(client, flags);
+        break;
+      case "models":
+        await cmdModels(client, flags);
         break;
       case "compare":
       case "calibrate":
