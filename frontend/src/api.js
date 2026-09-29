@@ -37,7 +37,32 @@ let _sharedThreshold = (() => {
 export function getSharedThreshold() { return _sharedThreshold }
 export function setSharedThreshold(v) { _sharedThreshold = v; localStorage.setItem(THRESHOLD_KEY, String(v)) }
 
-export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null, messages = null) {
+const MODEL_ID_KEY = 'model_id'
+let _sharedModelId = (() => {
+  try { return localStorage.getItem(MODEL_ID_KEY) || null } catch { return null }
+})()
+
+export function getSharedModelId() { return _sharedModelId }
+export function setSharedModelId(v) {
+  _sharedModelId = v
+  try { v ? localStorage.setItem(MODEL_ID_KEY, String(v)) : localStorage.removeItem(MODEL_ID_KEY) } catch {}
+}
+
+// Which difficulty policies the backend can actually load right now, so the
+// selector never offers a policy whose artifact failed to validate.
+export async function fetchRoutePolicies() {
+  try {
+    const res = await fetch(`${API_BASE}/route/policies`, {
+      headers: { 'Authorization': `Bearer ${API_KEY}` },
+    })
+    if (!res.ok) return { default: 'generic', available_modes: ['generic'], policies: [] }
+    return await res.json()
+  } catch {
+    return { default: 'generic', available_modes: ['generic'], policies: [] }
+  }
+}
+
+export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null, messages = null, supportMode = null) {
   const userKeys = _getUserKeys()
   const byomConfig = _getByomConfig()
 
@@ -46,8 +71,13 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
   if (Object.keys(byomConfig).length > 0) body.byom_config = byomConfig
-  const t = threshold ?? _sharedThreshold
-  if (t != null) body.threshold = t
+  // Lisa and Kate have fixed cuts, so threshold is meaningless for them. Send it
+  // only for Emma, otherwise the router gets two conflicting band instructions.
+  if (supportMode && supportMode !== 'generic') body.support_mode = supportMode
+  else {
+    const t = threshold ?? _sharedThreshold
+    if (t != null) body.threshold = t
+  }
   if (messages && messages.length > 0) body.messages = messages
 
   const res = await fetch(`${API_BASE}/route/stream`, {
@@ -85,7 +115,7 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   }
 }
 
-export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null, messages = null) {
+export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null, messages = null, supportMode = null) {
   const userKeys = _getUserKeys()
   const byomConfig = _getByomConfig()
 
@@ -94,8 +124,12 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
   if (bypassCache) body.bypass_cache = true
   if (Object.keys(userKeys).length > 0) body.user_api_keys = userKeys
   if (Object.keys(byomConfig).length > 0) body.byom_config = byomConfig
-  const t = threshold ?? _sharedThreshold
-  if (t != null) body.threshold = t
+  // Same rule as the streaming path: fixed-cut models ignore threshold.
+  if (supportMode && supportMode !== 'generic') body.support_mode = supportMode
+  else {
+    const t = threshold ?? _sharedThreshold
+    if (t != null) body.threshold = t
+  }
   if (messages && messages.length > 0) body.messages = messages
 
   const res = await fetch(`${API_BASE}/route`, {
