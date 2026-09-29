@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from router.classifier import get_tier
+from router.support_policy import get_tier_with_mode, available_support_modes, SUPPORT_MODES
 from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings, compute_quality_score
@@ -47,6 +48,10 @@ class QueryRequest(BaseModel):
     byom_config: dict | None = None
     bypass_cache: bool = False
     threshold: float | None = None
+    # Opt-in customer-support difficulty policy. None/"generic" keeps the live
+    # production path exactly as it was; "2tier"/"3tier" score with the
+    # support models instead. Costs no extra LLM call.
+    support_mode: str | None = None
     messages: list[dict] | None = None  # multi-turn: [{"role": "user"|"assistant", "content": str}]
 
     @field_validator("query")
@@ -57,6 +62,13 @@ class QueryRequest(BaseModel):
             raise ValueError("Query cannot be empty")
         if len(v) > 1000:
             raise ValueError("Query cannot exceed 1000 characters")
+        return v
+
+    @field_validator("support_mode")
+    @classmethod
+    def validate_support_mode(cls, v):
+        if v is not None and v not in SUPPORT_MODES:
+            raise ValueError(f"support_mode must be one of {list(SUPPORT_MODES)}")
         return v
 
     @field_validator("override_tier")
@@ -113,10 +125,34 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             return None
         return await loop.run_in_executor(_executor, check_cache, req.query, api_key.id)
 
-    cached, (difficulty_score, tier, cheap_ceil, frontier_floor) = await asyncio.gather(
-        _maybe_check_cache(),
-        loop.run_in_executor(_executor, get_tier, req.query, threshold),
-    )
+    def _score_sync() -> tuple:
+        """Run in the executor thread. Raises HTTPException-free errors; the
+        caller converts them, because HTTPException is not meaningful off-loop."""
+        if req.support_mode and req.support_mode != "generic":
+            return get_tier_with_mode(req.query, threshold, support_mode=req.support_mode)
+        # Live path, unchanged.
+        return (*get_tier(req.query, threshold), "generic")
+
+    # Scoring and the cache lookup are independent, so run them together as
+    # the live path always did. A support-policy failure must surface as 503
+    # rather than silently falling back to a model that did not score.
+    try:
+        _cache_result, scored = await asyncio.gather(
+            _maybe_check_cache(),
+            loop.run_in_executor(_executor, _score_sync),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if req.support_mode and req.support_mode != "generic":
+            log.error("support policy %s failed: %s", req.support_mode, e)
+            raise HTTPException(
+                status_code=503,
+                detail=f"support policy {req.support_mode!r} unavailable: {e}",
+            )
+        raise
+    cached = _cache_result
+    difficulty_score, tier, cheap_ceil, frontier_floor, resolved_mode = scored
 
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
@@ -136,6 +172,18 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         })
         return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "quality_score": quality_score, "log_id": log_id}
 
+    if req.override_tier and req.override_tier not in ("cheap", "mid", "frontier"):
+        raise HTTPException(status_code=400, detail="invalid override_tier")
+    # A 2-tier support policy has no mid band, so forcing mid is incoherent.
+    if (
+        req.override_tier == "mid"
+        and resolved_mode == "2tier"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="override_tier 'mid' is not available under the 2tier support policy",
+        )
+
     routing_tier = req.override_tier if req.override_tier else tier
     over_budget = not check_budget(api_key)
     if over_budget:
@@ -146,6 +194,16 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         route_reason = f"override: forced to {req.override_tier}"
     elif over_budget:
         route_reason = f"budget exceeded — forced to cheap (score {difficulty_score:.2f})"
+    elif resolved_mode != "generic":
+        if routing_tier == "cheap":
+            route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} ≤ cheap ceiling {cheap_ceil:.2f}"
+        elif routing_tier == "frontier":
+            if resolved_mode == "2tier":
+                route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} > cheap ceiling {cheap_ceil:.2f} → frontier"
+            else:
+                route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} ≥ frontier floor {frontier_floor:.2f}"
+        else:
+            route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} → mid"
     elif routing_tier == "cheap":
         route_reason = f"score {difficulty_score:.2f} ≤ cheap ceiling {cheap_ceil:.2f}"
     elif routing_tier == "frontier":
@@ -191,6 +249,10 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         "threshold": threshold,
         "cheap_ceil": cheap_ceil,
         "frontier_floor": frontier_floor,
+        "support_mode": resolved_mode,
+        "available_tiers": (
+            ["cheap", "frontier"] if resolved_mode == "2tier" else ["cheap", "mid", "frontier"]
+        ),
         "messages": req.messages,
         "route_reason": route_reason,
     }
@@ -271,10 +333,25 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
         "latency_ms": latency_ms, "quality_score": quality_score,
         "cheap_ceil": pre["cheap_ceil"], "frontier_floor": pre["frontier_floor"],
+        "support_mode": pre["support_mode"], "available_tiers": pre["available_tiers"],
         "model_id": result["model_id"],
         "route_reason": pre["route_reason"] if not result["fallback_used"] else f"{pre['route_reason']} (fallback to {result['tier']})",
         "request_log_id": log_id,
     }
+
+
+@router.get("/route/policies")
+async def list_route_policies(api_key: ApiKey = Depends(require_api_key)):
+    """Available difficulty policies and their routing tradeoffs.
+
+    Lets the frontend render a selector without hardcoding tier counts, and
+    report a policy as unavailable if its artifact fails to validate.
+    """
+    from router.support_policy import preload_support_policies
+    import feature_builder as _fb
+
+    available = preload_support_policies()
+    return {"default": "generic", "available_modes": available, "policies": _fb.policy_manifest()}
 
 
 @router.post("/route/stream")
@@ -316,6 +393,26 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         full_text = []
         meta = None
         queue = asyncio.Queue()
+
+        # Routing is decided before the first token. Emit it now so the diagram
+        # lights up the instant the answer starts streaming, instead of only
+        # after the whole response has finished arriving.
+        early_meta = {
+            "type": "meta",
+            "routed_to": pre["tier"],
+            "intended_tier": pre["tier"],
+            "predicted_tier": pre["predicted_tier"],
+            "override_used": req.override_tier is not None,
+            "budget_capped": over_budget,
+            "difficulty_score": difficulty_score,
+            "support_mode": pre["support_mode"],
+            "available_tiers": pre["available_tiers"],
+            "n_tiers": len(pre["available_tiers"]),
+            "cheap_ceil": pre["cheap_ceil"],
+            "frontier_floor": pre["frontier_floor"],
+            "route_reason": pre["route_reason"],
+        }
+        yield f"data: {json.dumps(early_meta)}\n\n"
 
         def _run_generator():
             try:
@@ -370,7 +467,34 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), full_response, meta["tier"], meta["model_id"])
             loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
 
-        yield f"data: {json.dumps({'type': 'done', 'routed_to': meta['tier'], 'intended_tier': routing_tier, 'predicted_tier': pre['predicted_tier'], 'override_used': req.override_tier is not None, 'budget_capped': over_budget, 'fallback_used': fallback_used, 'cross_provider_fallback': cross_provider_fallback, 'cache_hit': False, 'difficulty_score': difficulty_score, 'cost_usd': meta['cost_usd'], 'latency_ms': latency_ms, 'quality_score': quality_score, 'model_id': meta['model_id'], 'request_log_id': log_id})}\n\n"
+        done_event = {
+            "type": "done",
+            "routed_to": meta["tier"],
+            "intended_tier": routing_tier,
+            "predicted_tier": pre["predicted_tier"],
+            "override_used": req.override_tier is not None,
+            "budget_capped": over_budget,
+            "fallback_used": fallback_used,
+            "cross_provider_fallback": cross_provider_fallback,
+            "cache_hit": False,
+            "difficulty_score": difficulty_score,
+            "cost_usd": meta["cost_usd"],
+            "latency_ms": latency_ms,
+            "quality_score": quality_score,
+            "model_id": meta["model_id"],
+            "request_log_id": log_id,
+            "support_mode": pre["support_mode"],
+            "available_tiers": pre["available_tiers"],
+            "n_tiers": len(pre["available_tiers"]),
+            "cheap_ceil": pre["cheap_ceil"],
+            "frontier_floor": pre["frontier_floor"],
+            "route_reason": (
+                pre["route_reason"]
+                if not fallback_used
+                else f"{pre['route_reason']} (fallback to {meta['tier']})"
+            ),
+        }
+        yield f"data: {json.dumps(done_event)}\n\n"
 
     return StreamingResponse(_live_stream(), media_type="text/event-stream")
 
