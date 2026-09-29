@@ -9,7 +9,6 @@ import SettingsPanel from './components/SettingsPanel'
 import CommandPalette from './components/CommandPalette'
 import Reveal from './components/Reveal'
 import LiveStatsStrip from './components/LiveStatsStrip'
-import LiveTicker from './components/LiveTicker'
 import MetricsBand from './components/MetricsBand'
 import { useTheme } from './useTheme'
 import { API_BASE } from './config'
@@ -143,7 +142,6 @@ function HomePage({ configVersion, backendOnline, isDark, onNavigate }) {
     <>
       <RoutingDiagram configVersion={configVersion} backendOnline={backendOnline} />
       <LiveStatsStrip />
-      <LiveTicker />
       <Reveal>
         <HowItWorks />
       </Reveal>
