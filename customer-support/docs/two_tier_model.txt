@@ -7,52 +7,55 @@ splits     3 independent, seeds (42, 7, 2024), 62/13/13 batches
 frontier floor fixed at 4.5; cheap cut swept (in a 2-tier router it is the only lever)
 
 --- 2-tier: cheap cut sweep, mean of 3 splits ---
- cheap<=  front_rec   front_esc  cheap_rec   cheap_esc     traffic c/f  tier_acc   bal(2)
+  mid traffic must be 0.0 for every cut; a nonzero value means the artifact is not 2-tier
+ cheap<=  front_rec   front_esc  cheap_rec   cheap_esc           c/m/f  tier_acc   bal(2)
 ------------------------------------------------------------------------------------------------------------------------
-     2.0      0.804       19.6%      0.799    285/1414           46/29     0.785    0.771
-     2.5      0.804       19.6%      0.848    215/1414           50/29     0.801    0.765
-     3.0      0.804       19.6%      0.820    299/1667           56/29     0.796    0.720
-     3.5      0.804       19.6%      0.880    199/1667           62/29     0.822    0.681
-     4.0      0.804       19.6%      0.877    226/1845           66/29     0.855    0.840
+     2.0      0.935        6.5%      0.799    285/1414       46/0.0/54     0.861    0.867
+     2.5      0.908        9.2%      0.848    215/1414       50/0.0/50     0.875    0.878
+     3.0      0.914        8.6%      0.820    299/1667       56/0.0/44     0.854    0.867
+     3.5      0.850       15.0%      0.880    199/1667       62/0.0/38     0.869    0.865
+     4.0      0.860       14.0%      0.877    226/1845       66/0.0/34     0.872    0.868
 
 --- 2-tier vs 3-tier (both floor 4.5, comparable columns) ---
 policy                  front_rec   front_esc  cheap_rec   mid_rec       traffic c/m/f  tier_acc
 ------------------------------------------------------------------------------------------------------------------------
-2-tier 4.0                  0.804       19.6%      0.877       n/a     66   4.2    29     0.855
+2-tier 4.0                  0.860       14.0%      0.877       n/a     66   0.0    34     0.872
 3-tier 2.0                  0.804       19.6%      0.799     0.709     46  24.2    29     0.785
 
   frontier recall, frontier escape, cheap recall and traffic are computed on the same
   gold rows for both policies, so those columns compare directly. Balanced accuracy is
-  NOT comparable: 2-tier averages 0.840 over 2 tiers while
+  NOT comparable: 2-tier averages 0.868 over 2 tiers while
   3-tier averages 0.771 over 3. A 2-tier router has a dead middle by
   construction, because gold scores are whole numbers and no gold row can fall between
   two consecutive cut points.
 
---- selected 2-tier policy: cheap <= 4.0, frontier >= 4.5 ---
-  chosen because it is the highest cheap cut whose frontier escape (19.6%)
+--- selected 2-tier policy: cheap <= 4.0, everything above -> frontier ---
+  chosen because it is the highest cheap cut whose frontier escape (14.0%)
   is no worse than the 3-tier policy (19.6%); spending more cheap
   traffic on the frontier model buys protection the 3-tier model already gets from the mid tier.
 
 --- shipped 2-tier model ---
   file support_final_2tier.joblib
-  thresholds cheap <= 4.0, frontier >= 4.5   (2 tiers, no mid band)
+  tier rule  tier2_single_cut: cheap <= 4.0, everything above -> frontier
+  gold frontier floor 4.5 (gold is whole-numbered, so no gold row lands in the gap)
+  0% of predicted traffic lands in a mid band; the script asserts this before writing
   fit check MAE 0.627 (memorization, not quality)
-  fit tier_acc 0.873
+  fit tier_acc 0.889
 
 --- honest metrics for the shipped 2-tier model (mean of 3 splits) ---
   MAE                    0.822
   MAE worst              0.919
   Spearman               0.786
   cheap recall           0.877
-  frontier recall        0.804
-  frontier escape rate   19.6%  (149 of 755)
-  tier accuracy          0.855
-  traffic                66% cheap / 29% frontier
+  frontier recall        0.860
+  frontier escape rate   14.0%  (107 of 755)
+  tier accuracy          0.872
+  traffic                66% cheap / 0.0% mid / 34% frontier
 
 --- which artifact to ship ---
   3-tier and 2-tier protect hard tickets about equally at the chosen cut
-  (19.6% vs 19.6% escape). The 2-tier model is
-  simpler and sends 29% of traffic to the frontier model against
+  (19.6% vs 14.0% escape). The 2-tier model is
+  simpler and sends 34% of traffic to the frontier model against
   29% for 3-tier, because mid-handled tickets are gone.
 
 --- caveats ---

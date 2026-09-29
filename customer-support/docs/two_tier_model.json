@@ -8,101 +8,101 @@
   "frontier_floor": 4.5,
   "cheap_cut_sweep": {
     "2.0": {
-      "recall_frontier": 0.8037357375224232,
-      "frontier_escape_rate": 0.1962642624775767,
+      "recall_frontier": 0.9349816310002904,
+      "frontier_escape_rate": 0.06501836899970964,
       "recall_cheap": 0.7989415328750278,
       "cheap_escape": 285,
       "n_cheap_gold": 1414,
-      "under": 149,
-      "n_frontier_gold": 755,
-      "tier_acc": 0.785,
-      "balanced_acc": 0.7705650566491967,
+      "under": 76,
+      "n_frontier_gold": 1185,
+      "tier_acc": 0.860897435897436,
+      "balanced_acc": 0.8669615819376592,
       "traffic": {
         "cheap": 0.463974358974359,
-        "mid": 0.2417948717948718,
-        "frontier": 0.29423076923076924
+        "mid": 0.0,
+        "frontier": 0.536025641025641
       }
     },
     "2.5": {
-      "recall_frontier": 0.8037357375224232,
-      "frontier_escape_rate": 0.1962642624775767,
+      "recall_frontier": 0.9077913938081252,
+      "frontier_escape_rate": 0.09220860619187472,
       "recall_cheap": 0.8482891199215383,
       "cheap_escape": 215,
       "n_cheap_gold": 1414,
-      "under": 149,
-      "n_frontier_gold": 755,
-      "tier_acc": 0.8006410256410256,
-      "balanced_acc": 0.7647112249615292,
+      "under": 109,
+      "n_frontier_gold": 1185,
+      "tier_acc": 0.8752564102564103,
+      "balanced_acc": 0.8780402568648317,
       "traffic": {
         "cheap": 0.5032051282051282,
-        "mid": 0.20256410256410254,
-        "frontier": 0.29423076923076924
+        "mid": 0.0,
+        "frontier": 0.4967948717948718
       }
     },
     "3.0": {
-      "recall_frontier": 0.8037357375224232,
-      "frontier_escape_rate": 0.1962642624775767,
+      "recall_frontier": 0.913980102203019,
+      "frontier_escape_rate": 0.08601989779698112,
       "recall_cheap": 0.8203116676696744,
       "cheap_escape": 299,
       "n_cheap_gold": 1667,
-      "under": 149,
-      "n_frontier_gold": 755,
-      "tier_acc": 0.7957692307692308,
-      "balanced_acc": 0.7203615109397443,
+      "under": 80,
+      "n_frontier_gold": 932,
+      "tier_acc": 0.8538461538461538,
+      "balanced_acc": 0.8671458849363466,
       "traffic": {
         "cheap": 0.556923076923077,
-        "mid": 0.14884615384615385,
-        "frontier": 0.29423076923076924
+        "mid": 0.0,
+        "frontier": 0.4430769230769231
       }
     },
     "3.5": {
-      "recall_frontier": 0.8037357375224232,
-      "frontier_escape_rate": 0.1962642624775767,
+      "recall_frontier": 0.8499316471269781,
+      "frontier_escape_rate": 0.1500683528730218,
       "recall_cheap": 0.88027272082403,
       "cheap_escape": 199,
       "n_cheap_gold": 1667,
-      "under": 149,
-      "n_frontier_gold": 755,
-      "tier_acc": 0.822051282051282,
-      "balanced_acc": 0.680947453619125,
+      "under": 140,
+      "n_frontier_gold": 932,
+      "tier_acc": 0.8693589743589744,
+      "balanced_acc": 0.8651021839755041,
       "traffic": {
         "cheap": 0.6183333333333333,
-        "mid": 0.08743589743589746,
-        "frontier": 0.29423076923076924
+        "mid": 0.0,
+        "frontier": 0.38166666666666665
       }
     },
     "4.0": {
-      "recall_frontier": 0.8037357375224232,
-      "frontier_escape_rate": 0.1962642624775767,
+      "recall_frontier": 0.8596885239691252,
+      "frontier_escape_rate": 0.14031147603087474,
       "recall_cheap": 0.877064954465491,
       "cheap_escape": 226,
       "n_cheap_gold": 1845,
-      "under": 149,
+      "under": 107,
       "n_frontier_gold": 755,
-      "tier_acc": 0.8553846153846153,
-      "balanced_acc": 0.8404003459939572,
+      "tier_acc": 0.8716666666666666,
+      "balanced_acc": 0.8683767392173082,
       "traffic": {
         "cheap": 0.6635897435897435,
-        "mid": 0.042179487179487184,
-        "frontier": 0.29423076923076924
+        "mid": 0.0,
+        "frontier": 0.33641025641025646
       }
     }
   },
   "selected": {
     "cheap_ceil": 4.0,
-    "recall_frontier": 0.8037357375224232,
-    "frontier_escape_rate": 0.1962642624775767,
+    "recall_frontier": 0.8596885239691252,
+    "frontier_escape_rate": 0.14031147603087474,
     "recall_cheap": 0.877064954465491,
     "cheap_escape": 226,
     "n_cheap_gold": 1845,
-    "under": 149,
+    "under": 107,
     "n_frontier_gold": 755,
-    "tier_acc": 0.8553846153846153,
-    "balanced_acc": 0.8404003459939572,
+    "tier_acc": 0.8716666666666666,
+    "balanced_acc": 0.8683767392173082,
     "traffic": {
       "cheap": 0.6635897435897435,
-      "mid": 0.042179487179487184,
-      "frontier": 0.29423076923076924
+      "mid": 0.0,
+      "frontier": 0.33641025641025646
     }
   },
   "three_tier_for_comparison": {
