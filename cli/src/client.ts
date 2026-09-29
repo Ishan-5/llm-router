@@ -1,5 +1,17 @@
 export type RouteTier = "cheap" | "mid" | "frontier";
 
+export type ModelName = "emma" | "lisa" | "kate";
+
+export type SupportMode = "generic" | "2tier" | "3tier";
+
+// Friendly product names → backend support_mode. "emma" (generic) is the
+// default; "lisa" is the 3-tier support policy; "kate" is the 2-tier policy.
+export const MODEL_TO_SUPPORT_MODE: Record<ModelName, SupportMode> = {
+  emma: "generic",
+  lisa: "3tier",
+  kate: "2tier",
+};
+
 export type JsonRecord = Record<string, unknown>;
 
 export type RouteWiseErrorKind =
@@ -55,6 +67,8 @@ export interface AskOptions {
   byomConfig?: Record<string, unknown>;
   messages?: Array<{ role: string; content: string }>;
   timeoutMs?: number;
+  model?: ModelName;
+  supportMode?: SupportMode;
 }
 
 export interface ChatOptions {
@@ -235,7 +249,7 @@ export class RouteWiseClient {
     throw new RouteWiseError(res.status, `[${res.status}] ${message}`, raw);
   }
 
-  async ask(options: AskOptions): Promise<JsonRecord> {
+  private routeBody(options: AskOptions): JsonRecord {
     const body: JsonRecord = { query: options.query };
     if (options.overrideTier) {
       body["override_tier"] = options.overrideTier;
@@ -255,6 +269,15 @@ export class RouteWiseClient {
     if (options.messages && options.messages.length > 0) {
       body["messages"] = options.messages;
     }
+    const supportMode = options.supportMode ?? (options.model ? MODEL_TO_SUPPORT_MODE[options.model] : undefined);
+    if (supportMode && supportMode !== "generic") {
+      body["support_mode"] = supportMode;
+    }
+    return body;
+  }
+
+  async ask(options: AskOptions): Promise<JsonRecord> {
+    const body = this.routeBody(options);
     const res = await this.request("POST", "/route", body, undefined, options.timeoutMs);
     return (await res.json()) as JsonRecord;
   }
@@ -262,22 +285,7 @@ export class RouteWiseClient {
   async *askStream(
     options: AskOptions,
   ): AsyncGenerator<string | JsonRecord, void, unknown> {
-    const body: JsonRecord = { query: options.query };
-    if (options.overrideTier) {
-      body["override_tier"] = options.overrideTier;
-    }
-    if (options.threshold !== undefined && options.threshold !== null) {
-      body["threshold"] = options.threshold;
-    }
-    if (options.bypassCache) {
-      body["bypass_cache"] = true;
-    }
-    if (options.userApiKeys && Object.keys(options.userApiKeys).length > 0) {
-      body["user_api_keys"] = options.userApiKeys;
-    }
-    if (options.byomConfig && Object.keys(options.byomConfig).length > 0) {
-      body["byom_config"] = options.byomConfig;
-    }
+    const body = this.routeBody(options);
     const res = await this.request("POST", "/route/stream", body, undefined, options.timeoutMs ?? 300_000);
     let meta: JsonRecord | null = null;
     for await (const event of readJsonSse(res)) {
@@ -388,6 +396,11 @@ export class RouteWiseClient {
 
   async providers(): Promise<JsonRecord> {
     const res = await this.request("GET", "/providers");
+    return (await res.json()) as JsonRecord;
+  }
+
+  async models(): Promise<JsonRecord> {
+    const res = await this.request("GET", "/route/policies");
     return (await res.json()) as JsonRecord;
   }
 

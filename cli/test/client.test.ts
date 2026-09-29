@@ -57,6 +57,32 @@ test("ask passes override tier, threshold and bypass cache", async () => {
   assert.equal(body["bypass_cache"], true);
 });
 
+test("ask maps model names to support_mode", async () => {
+  const capture = async (model?: "emma" | "lisa" | "kate", supportMode?: "generic" | "2tier" | "3tier" | undefined) => {
+    let capturedBody = "";
+    const client = new RouteWiseClient({
+      apiKey: "rw_test",
+      baseUrl: "https://example.com",
+      fetchImpl: (async (_url: RequestInfo | URL, init?: RequestInit) => {
+        capturedBody = String(init?.body ?? "");
+        return jsonResponse({ response: "x", routed_to: "frontier" });
+      }) as typeof fetch,
+    });
+    await client.ask({ query: "q", model, supportMode });
+    return JSON.parse(capturedBody);
+  };
+
+  // named models map to their backend policies
+  assert.equal((await capture("lisa"))["support_mode"], "3tier");
+  assert.equal((await capture("kate"))["support_mode"], "2tier");
+  // emma is the default, so nothing is sent
+  assert.equal((await capture("emma"))["support_mode"], undefined);
+  assert.equal((await capture(undefined))["support_mode"], undefined);
+  // explicit raw support mode wins over the model map
+  assert.equal((await capture("lisa", "generic"))["support_mode"], undefined);
+  assert.equal((await capture(undefined, "2tier"))["support_mode"], "2tier");
+});
+
 test("ask forwards byom config and user api keys", async () => {
   let capturedBody = "";
   const client = new RouteWiseClient({
@@ -191,6 +217,21 @@ test("evaluate rejects empty query list", async () => {
     fetchImpl: (async () => jsonResponse({})) as typeof fetch,
   });
   await assert.rejects(() => client.evaluate(["  "]), /needs at least one query/);
+});
+
+test("models fetches /route/policies", async () => {
+  let capturedUrl = "";
+  const client = new RouteWiseClient({
+    apiKey: "rw_test",
+    baseUrl: "https://example.com",
+    fetchImpl: (async (url: RequestInfo | URL) => {
+      capturedUrl = String(url);
+      return jsonResponse({ default: "generic", available_modes: ["generic", "2tier", "3tier"], policies: [] });
+    }) as typeof fetch,
+  });
+  const res = await client.models();
+  assert.equal(capturedUrl, "https://example.com/route/policies");
+  assert.deepEqual(res["available_modes"], ["generic", "2tier", "3tier"]);
 });
 
 test("health resolves true on 200 and false on failure", async () => {
