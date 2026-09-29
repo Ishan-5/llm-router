@@ -32,6 +32,12 @@ cat questions.txt | routewise ask --json
 # interactive multi-turn chat
 routewise chat
 
+# pick a difficulty policy: emma (generic), lisa (3-tier support), kate (2-tier support)
+routewise ask "I want a refund" --model lisa
+
+# list available models + their policies, cuts and evals
+routewise models
+
 # see who you are + how much you've spent
 routewise whoami
 
@@ -94,9 +100,10 @@ or redirected, the markdown markup is stripped but **no ANSI codes are emitted**
 
 | Command | What it does |
 |---|---|
-| `routewise ask "<q>"` | Route one query. Flags: `--tier`, `--threshold`, `--bypass-cache`, `--no-byom`, `--json`, `--quiet`, `--stream` |
+| `routewise ask "<q>"` | Route one query. Flags: `--model`, `--support-mode`, `--tier`, `--threshold`, `--bypass-cache`, `--no-byom`, `--json`, `--quiet`, `--stream` |
 | `routewise stream "<q>"` | Stream tokens as they arrive |
 | `routewise chat` | Multi-turn REPL. `/tier cheap`, `/json on`, `/reset`, `/exit` |
+| `routewise models` | List available models + policies (cuts, tiers, evals) |
 | `routewise stats` | Usage, cost, savings, cache rate, tier split |
 | `routewise logs [--limit N]` | Recent request log lines |
 | `routewise log <id>` | Full detail (incl. response) for one log entry |
@@ -128,12 +135,36 @@ routewise config                        # view current effective config
 routewise config unset key              # clear the saved key
 ```
 
+## Pick a model / policy
+
+Every request is scored for difficulty and routed to the cheapest tier that can
+handle it. You can also choose which **difficulty policy** drives the routing:
+
+| `--model` | Policy | Who it's for |
+|---|---|---|
+| `emma` (default) | generic | General-purpose routing |
+| `lisa` | 3-tier support | Customer support — cheap / mid / frontier (cuts at 2.0 / 4.5) |
+| `kate` | 2-tier support | Customer support — cheap / frontier only (single cut) |
+
+```bash
+routewise ask "My order hasn't arrived" --model lisa      # support, 3 tiers
+routewise ask "I was charged twice"    --model kate       # support, 2 tiers
+routewise chat --model lisa                                # REPL under the same policy
+routewise evaluate "I want a refund"                       # shows what each model picks
+```
+
+`--support-mode generic|2tier|3tier` sets the raw policy id directly (wins over
+`--model`). The routing metadata line on stderr now includes the policy, and the
+stream/done JSON includes `support_mode`.
+
 ## Bring your own model
 
 Force a specific provider/model (and optionally **your own API key**) for a tier.
 Set it once — it is saved locally and attached to every `ask`/`stream`
-automatically. No re-entry per call. Keys are stored only in your local config
-file and sent per-request; they are never stored on the RouteWise server.
+automatically. Configure **one, two, or all three tiers**; tiers you don't
+configure keep the router's defaults. No re-entry per call. Keys are stored only
+in your local config file and sent per-request; they are never stored on the
+RouteWise server.
 
 ```bash
 # use openai/gpt-5 with your own key for tricky queries
@@ -149,7 +180,9 @@ routewise ask "…" --no-byom           # one call without the overrides
 ```
 
 Saved overrides are applied only when the server routes to that tier; if no
-override is saved for a tier, it uses the router's defaults.
+override is saved for a tier, it uses the router's defaults. A 2-model setup?
+Just set `cheap` and `frontier`. A single-model setup? Set only `cheap` — every
+query routes there, still scored but never up-scaled.
 
 ## Using it in scripts
 
@@ -169,7 +202,7 @@ substitution behave the way any Unix tool would.
 cd cli
 npm install
 npm run build        # tsc -> dist/src
-npm test             # 46 unit tests, mock-fetch (no network)
+npm test             # 48 unit tests, mock-fetch (no network)
 node dist/src/cli.js --help
 ```
 
