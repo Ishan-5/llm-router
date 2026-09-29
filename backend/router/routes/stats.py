@@ -303,13 +303,22 @@ class EvaluateRequest(BaseModel):
 @router.post("/evaluate")
 def evaluate(req: EvaluateRequest):
     from predict_difficulty import predict_difficulty, score_to_tier
+    from router.support_policy import get_tier_with_mode
     margins = [("economy", 0.0), ("balanced", 1.0), ("quality", 2.0)]
+    support_modes = [("emma", None), ("lisa", "3tier"), ("kate", "2tier")]
     results = []
     for q in req.queries:
         score = predict_difficulty(q)
         entry = {"query": q, "difficulty_score": round(score, 4)}
         for mode_name, margin in margins:
             entry[f"tier_{mode_name}"] = score_to_tier(score, margin=margin)[0]
+        for model_name, support_mode in support_modes:
+            mode = support_mode or "generic"
+            try:
+                tier = get_tier_with_mode(q, margin=1.0, support_mode=support_mode or "generic")[1]
+                entry[f"mode_{mode}"] = tier
+            except Exception:
+                entry[f"mode_{mode}"] = "unavailable"
         results.append(entry)
     thresholds = [
         {
