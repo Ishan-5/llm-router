@@ -21,6 +21,40 @@ print(result["response"])
 print(result["routed_to"], result["cost_usd"])
 ```
 
+## Pick a model (difficulty policy)
+
+`ask()` accepts a product name that chooses which routing policy to use:
+
+| `model` | Policy | Who it's for |
+|---|---|---|
+| `emma` | generic | General-purpose routing (default) |
+| `lisa` | 3-tier support | Customer support — cheap / mid / frontier |
+| `kate` | 2-tier support | Customer support — cheap / frontier only |
+
+```python
+# customer support, scored by the support-specific difficulty model
+result = client.ask("I want a refund", model="lisa")
+
+# 2-tier support policy — no mid tier
+result = client.ask("I was charged twice", model="kate")
+
+# raw policy id wins over the name
+result = client.ask("My order is late", support_mode="3tier")
+
+# ask_stream works the same way; the final meta dict includes support_mode
+for item in client.ask_stream("Where is my order?", model="lisa"):
+    if isinstance(item, str):
+        print(item, end="", flush=True)
+    else:
+        print(f"\n--- {item['tier']} {item['support_mode']} ---")
+
+# the OpenAI-compatible chat path accepts the same names
+client.chat([{"role": "user", "content": "Refund please"}], model="kate")
+
+# discover all models + their cuts/evals
+client.get_models()
+```
+
 ## Bring your own model
 
 Override any tier with your own provider and model. Unset tiers fall back to defaults automatically.
@@ -47,11 +81,13 @@ print(result["response"])
 # routing
 client.ask("query")                          # auto-route by difficulty
 client.ask("query", override_tier="frontier") # force a specific tier
+client.ask("query", model="lisa")             # use the 3-tier support policy
 client.ask("query", user_api_keys={"frontier": "sk-..."})  # per-request key override
 
-# byom config
+# byom config — set one, two, or all three tiers; unset tiers keep defaults
 client.configure(cheap={...}, mid={...}, frontier={...})  # set custom models
 client.get_config()     # see currently active config (no keys returned)
+client.get_models()     # list available models + policies (cuts, tiers, evals)
 client.get_providers()  # list all supported providers + models
 client.reset()          # revert all tiers to defaults, clears in-memory keys
 
