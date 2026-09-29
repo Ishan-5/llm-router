@@ -1,9 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchStats, fetchConfig, fetchSettings, fetchChaosStatus, setSharedThreshold, getSharedThreshold } from '../api'
+import {
+  fetchStats, fetchConfig, fetchSettings, fetchChaosStatus,
+  setSharedThreshold, getSharedThreshold,
+  fetchRoutePolicies, getSharedModelId, setSharedModelId,
+} from '../api'
 import TierCircuit from './TierCircuit'
 import ThresholdSlider from './ThresholdSlider'
-import QueryForm, { ChatSuggestions } from './QueryForm'
+import ModelPicker from './ModelPicker'
+import { getModel, policyBandsFor, DEFAULT_MODEL_ID } from '../models'
+import QueryForm from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
+
+const TIER_DEFAULTS = {
+  cheap: { label: 'Cheap', sub: 'deepseek/deepseek-v4-flash · openrouter (default)', y: 60 },
+  mid: { label: 'Mid', sub: 'openai/gpt-oss-20b · groq', y: 160 },
+  frontier: { label: 'Frontier', sub: 'openai/gpt-oss-120b · groq', y: 260 },
+}
 
 
 function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading, chaosActive, crossProviderFallback }) {
@@ -19,7 +31,7 @@ function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading, cha
     return () => clearInterval(id)
   }, [loading, tiers.length])
 
-  const isScanning = loading && scanIndex >= 0
+  const isScanning = loading && scanIndex >= 0 && !activeTier
   const scanTier = isScanning ? tiers[scanIndex]?.key : null
   const isWeb = !loading && activeTier === 'web'
   const isGemini = !loading && (activeTier === 'gemini' || crossProviderFallback)
@@ -34,18 +46,18 @@ function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading, cha
         </svg>
         <span className="flex-1 relative h-1.5 rounded-full bg-line overflow-hidden">
           <span
-            className={`absolute inset-y-0 left-0 rounded-full bg-signal transition-all duration-700 ${score == null || loading ? 'opacity-40' : ''}`}
-            style={{ width: score != null && !loading ? `${Math.max(2, (score / 10) * 100)}%` : '12%' }}
+            className={`absolute inset-y-0 left-0 rounded-full bg-signal transition-all duration-700 ${score == null ? 'opacity-40' : ''}`}
+            style={{ width: score != null ? `${Math.max(2, (score / 10) * 100)}%` : '12%' }}
           />
         </span>
         <span className="shrink-0 text-signal font-semibold">
-          {score != null && !loading ? score.toFixed(1) : '—'}
+          {score != null ? score.toFixed(1) : '—'}
         </span>
       </div>
 
       <div className="flex items-center gap-1.5">
         {tiers.map((t) => {
-          const active = !loading && activeTier === t.key
+          const active = activeTier === t.key
           const scanning = isScanning && scanTier === t.key
           const on = active || scanning
           const cl = active && cacheHit
@@ -86,14 +98,21 @@ function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading, cha
   )
 }
 
-export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {
-  const [messages, setMessages] = useState([])
+export default function RoutingDiagram({ configVersion = 0, backendOnline = true }) {  const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [regeneratingIndex, setRegeneratingIndex] = useState(null)
   const [error, setError] = useState(null)
   const [ticker, setTicker] = useState(null)
   const [activeConfig, setActiveConfig] = useState({})
   const [threshold, setThreshold] = useState(() => getSharedThreshold() ?? 1.0)
+  const [modelId, setModelId] = useState(() => getSharedModelId() ?? DEFAULT_MODEL_ID)
+  // Start with every model visible. Only a successful backend response saying a
+  // policy is unavailable should hide it — a failed policies fetch must not
+  // silently remove Lisa and Kate.
+  const [availableModes, setAvailableModes] = useState(['generic', '3tier', '2tier'])
+  // The chat does not exist until the user picks a model. Selecting a card from
+  // the picker flips this on and opens the chat for that model.
+  const [started, setStarted] = useState(false)
   const [chaosActive, setChaosActive] = useState(false)
   const abortRef = useRef(null)
   const scrollRef = useRef(null)
@@ -107,6 +126,22 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     fetchConfig().then(setActiveConfig).catch(() => {})
     fetchSettings().then((s) => { const v = s.router_threshold ?? 1.0; setThreshold(v); setSharedThreshold(v) }).catch(() => {})
     fetchChaosStatus().then((s) => setChaosActive(s?.active ?? false)).catch(() => {})
+    fetchRoutePolicies().then((p) => {
+      // Only narrow the list when the backend explicitly reports modes. If it
+      // returns nothing usable, keep showing everything.
+      if (!p) return
+      const modes = p.available_modes?.length ? p.available_modes : null
+      if (!modes) return
+      setAvailableModes(modes)
+      // If the saved model's policy is not servable here, fall back to the
+      // default rather than rendering a model the backend cannot score.
+      setModelId((cur) => {
+        const m = getModel(cur)
+        if (m.supportMode === 'generic' || modes.includes(m.supportMode)) return cur
+        setSharedModelId(DEFAULT_MODEL_ID)
+        return DEFAULT_MODEL_ID
+      })
+    }).catch(() => {})
     return () => abortRef.current?.abort()
   }, [configVersion, backendOnline])
 
@@ -115,12 +150,35 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     if (el) el.scrollTop = el.scrollHeight
   }, [messages, loading])
 
-  const TIERS = ['cheap', 'mid', 'frontier'].map((key) => {
-    const defaults = {
-      cheap: { label: 'Cheap', sub: 'deepseek/deepseek-v4-flash · openrouter (default)', y: 60 },
-      mid: { label: 'Mid', sub: 'openai/gpt-oss-20b · groq', y: 160 },
-      frontier: { label: 'Frontier', sub: 'openai/gpt-oss-120b · groq', y: 260 },
-    }[key]
+  function handleSelectModel(id) {
+    setModelId(id)
+    setSharedModelId(id)
+  }
+
+  function handleStartModel(id) {
+    setModelId(id)
+    setSharedModelId(id)
+    setStarted(true)
+  }
+
+  // Clicking an example question on a model starts that model's chat and sends
+  // the example immediately, so the demo shows itself working.
+  function handleStartWithExample(id, example) {
+    handleStartModel(id)
+    handleSubmit(example, 'auto', false)
+  }
+
+  const model = getModel(modelId)
+  const supportMode = model.supportMode
+
+  // Tier list follows the selected model, and defers to the backend's
+  // available_tiers for the last response, so the diagram can never show a
+  // tier the router did not actually use.
+  const lastTierKeys = latestResult?.available_tiers || null
+  const tierKeys = lastTierKeys?.length ? lastTierKeys : model.tiers
+
+  const TIERS = tierKeys.map((key) => {
+    const defaults = TIER_DEFAULTS[key] || { label: key, sub: '', y: 60 }
     const cfg = activeConfig[key]
     const sub = cfg ? `${cfg.model_id} · ${cfg.provider}` : defaults.sub
     return { key, label: defaults.label, sub, y: defaults.y }
@@ -183,6 +241,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         controller.signal,
         threshold,
         conversationMessages,
+        supportMode,
       )
       fetchStats().then(setTicker).catch(() => {})
       fetchConfig().then(setActiveConfig).catch(() => {})
@@ -225,24 +284,32 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   function handleExitChat() {
     if (abortRef.current) abortRef.current.abort()
     setMessages([])
+    setStarted(false)
     setLoading(false)
     setError(null)
   }
 
-  const activeTier = loading ? null : latestResult?.routed_to
-  const score = loading ? null : latestResult?.difficulty_score
+  const activeTier = latestResult?.routed_to
+  const score = latestResult?.difficulty_score
+  const streaming = loading && activeTier != null
 
+  // Emma has economy/balanced/quality, so her cuts move with the threshold
+  // slider. Lisa and Kate ship fixed cuts, so their bands come from the policy
+  // itself. Showing the generic bands for a fixed-cut model would be a lie.
   const t = threshold - 1
-  const defaultCheapCeil = +(4.5 - t * 0.75).toFixed(3)
-  const defaultFrontierFloor = +(6.0 - t * 0.75).toFixed(3)
-  const cheapCeil = loading ? null : (latestResult?.cheap_ceil ?? defaultCheapCeil)
-  const frontierFloor = loading ? null : (latestResult?.frontier_floor ?? defaultFrontierFloor)
+  const emmaCheapCeil = +(4.5 - t * 0.75).toFixed(3)
+  const emmaFrontierFloor = +(6.0 - t * 0.75).toFixed(3)
+  // Live response values win. Before the first response, fall back to whatever
+  // the selected model actually uses.
+  const policyBands = policyBandsFor(modelId)
+  const cheapCeil = latestResult?.cheap_ceil ?? (model.adjustable ? emmaCheapCeil : policyBands.cheap)
+  const frontierFloor = latestResult?.frontier_floor ?? (model.adjustable ? emmaFrontierFloor : policyBands.frontier)
 
   const savedPct = ticker && ticker.total_hypothetical_cost > 0
     ? Math.round((1 - ticker.total_actual_cost / ticker.total_hypothetical_cost) * 100)
     : null
 
-  const isEmpty = messages.length === 0 && !loading
+  const isEmpty = !started && messages.length === 0 && !loading
 
   const queryCount = messages.filter((m) => m.role === 'user').length
 
@@ -251,15 +318,13 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   return (
     <section className="relative overflow-hidden border-b border-line bg-panel">
 
-      {/* ambient glow */}
+      {/* site hero theme — same background layers as the landing page */}
       <div aria-hidden className="pointer-events-none absolute -top-40 -right-32 w-[36rem] h-[36rem] rounded-full opacity-[0.15] dark:opacity-[0.18]"
         style={{ background: 'radial-gradient(circle, var(--color-signal) 0%, transparent 65%)' }} />
       <div aria-hidden className="pointer-events-none absolute -bottom-48 -left-32 w-[32rem] h-[32rem] rounded-full opacity-[0.10] dark:opacity-[0.14]"
         style={{ background: 'radial-gradient(circle, var(--color-cool) 0%, transparent 65%)' }} />
       <div aria-hidden className="pointer-events-none absolute inset-0"
         style={{ background: 'radial-gradient(ellipse at center, transparent 55%, var(--color-base) 100%)' }} />
-
-      {/* dot matrix pattern */}
       <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-[40%] overflow-hidden [mask-image:radial-gradient(ellipse_at_center,black_10%,transparent_70%)]"
         style={{ backgroundImage: 'radial-gradient(var(--color-muted) 0.6px, transparent 0.6px)', backgroundSize: '22px 22px', opacity: 0.18 }} />
 
@@ -279,36 +344,35 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
         </div>
       )}
 
-      <div className="hidden lg:block absolute left-6 top-1/2 -translate-y-1/2 -rotate-90 origin-left">
-        <span className="font-mono text-[10px] tracking-[0.3em] text-muted/70 whitespace-nowrap">
-          LIVE · AUTO-ROUTED · REAL COST
-        </span>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 lg:pl-16 pt-10 sm:pt-12 pb-10 sm:pb-12 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 items-start">
+      <div className="max-w-6xl mx-auto px-6 lg:pl-16 pt-10 sm:pt-14 pb-10 sm:pb-14 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-12 items-start">
         {/* left column */}
         <div className="flex flex-col min-h-0">
-          {/* empty state: hero text */}
+          {/* landing state: hero + model picker */}
           {isEmpty && (
             <>
-              <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4 flex items-center gap-2">
+              <p className="font-mono text-xs text-signal tracking-wide uppercase mb-5 flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-signal opacity-60" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-signal" />
                 </span>
                 Difficulty-scored request routing
               </p>
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.05] tracking-tight mb-6">
-                Most queries<br />don't need your<br />{' '}
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.03] tracking-tight mb-8">
+                Most queries don't need your{' '}
                 <span className="bg-gradient-to-r from-[var(--color-signal)] to-[var(--color-cool)] bg-clip-text text-transparent">
                   most expensive
                 </span>{' '}
                 model.
               </h1>
-              <p className="text-muted text-base leading-relaxed max-w-md mb-6">
-                A regression model trained on 8,200 Claude-gold labels predicts how hard each
-                request actually is, then routes it to the cheapest tier that can handle it.
-              </p>
+
+              <ModelPicker
+                value={modelId}
+                onSelect={handleSelectModel}
+                onStart={handleStartModel}
+                onExample={handleStartWithExample}
+                availableModes={availableModes}
+              />
+
               {savedPct !== null && ticker && (
                 <div className="flex items-stretch gap-px mb-8 rounded-xl border border-line bg-base shadow-card overflow-hidden max-w-md">
                   <div className="px-5 py-3.5 bg-base">
@@ -325,58 +389,101 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                   </div>
                 </div>
               )}
-              <div className="mb-8">
-                <ChatSuggestions onSelect={(q) => handleSubmit(q, 'auto', false)} />
-              </div>
             </>
           )}
 
-          {/* chat state: header + messages */}
+          {/* chat state: header + welcome/messages */}
           {!isEmpty && (
             <>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <span className="relative flex h-2 w-2">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-signal opacity-40 animate-ping" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-signal" />
-                  </span>
-                  <h2 className="font-display text-lg font-semibold">Routing demo</h2>
+                  <h2 className="font-display text-xl font-semibold">Chat with {model.name}</h2>
                   <span className="font-mono text-[10px] text-muted px-2 py-0.5 rounded-full bg-base border border-line num-tabular">
                     {queryCount} {queryCount === 1 ? 'query' : 'queries'}
                   </span>
                 </div>
-                <button
-                  onClick={handleExitChat}
-                  className="flex items-center gap-1.5 font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-primary hover:border-signal/50 hover:shadow-card transition-all"
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <line x1="1" y1="1" x2="9" y2="9" />
-                    <line x1="9" y1="1" x2="1" y2="9" />
-                  </svg>
-                  Exit chat
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="hidden md:flex items-center gap-1.5 font-mono text-[10px] text-muted">
+                    <span className={`h-1.5 w-1.5 rounded-full ${model.accent === 'danger' ? 'bg-danger' : model.accent === 'signal' ? 'bg-signal' : 'bg-cool'}`} />
+                    <span className="text-primary">{model.name}</span> · {model.tagline}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleExitChat}
+                    title={model.description}
+                    className="flex items-center gap-1.5 font-mono text-[11px] text-muted border border-line rounded-full px-3 py-1.5 hover:text-primary hover:border-signal/50 hover:shadow-card transition-all"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <line x1="1" y1="1" x2="9" y2="9" />
+                      <line x1="9" y1="1" x2="1" y2="9" />
+                    </svg>
+                    Change model
+                  </button>
+                </div>
               </div>
 
-              <div
-                ref={scrollRef}
-                className="flex flex-col max-h-[46vh] lg:max-h-[42vh] overflow-y-auto mb-4 scroll-smooth chat-scroll"
-              >
-                {messages.map((msg, i) =>
-                  msg.role === 'user'
-                    ? <UserBubble key={i} text={msg.text} />
-                    : (
-                        <AssistantBubble
-                          key={i}
-                          result={msg.result}
-                          logId={msg.result?.request_log_id}
-                          onRegenerate={() => handleRegenerate(i)}
-                          regenerating={regeneratingIndex === i}
-                          streaming={loading && i === lastAssistantIndex}
-                        />
-                      )
-                )}
-                {showTyping && <TypingIndicator />}
-              </div>
+              {messages.length === 0 && (
+                <div className="mb-4 rounded-2xl border border-line bg-panel p-5">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span
+                      style={{
+                        backgroundColor: `color-mix(in srgb, ${model.accent === 'danger' ? 'var(--color-danger)' : model.accent === 'signal' ? 'var(--color-signal)' : 'var(--color-cool)'} 10%, transparent)`,
+                        borderColor: model.accent === 'danger' ? 'var(--color-danger)' : model.accent === 'signal' ? 'var(--color-signal)' : 'var(--color-cool)',
+                        color: model.accent === 'danger' ? 'var(--color-danger)' : model.accent === 'signal' ? 'var(--color-signal)' : 'var(--color-cool)',
+                      }}
+                      className={`h-9 w-9 rounded-xl grid place-items-center font-display text-base font-semibold border`}
+                    >
+                      {model.name[0]}
+                    </span>
+                    <div>
+                      <p style={{ color: 'var(--color-primary)' }} className="font-display text-base font-semibold leading-none">{model.name}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted mt-1">{model.tagline}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs leading-relaxed font-medium mb-4" style={{ color: 'var(--color-primary)' }}>
+                    {model.description}
+                  </p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted mb-2">
+                    What you can ask
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {model.examples.map((ex) => (
+                      <button
+                        key={ex}
+                        type="button"
+                        onClick={() => handleSubmit(ex, 'auto', false)}
+                        className="font-mono text-[11px] rounded-full px-3.5 py-1.5 border transition-all hover:border-signal"
+                        style={{ color: 'var(--color-primary)', borderColor: 'var(--color-line)', backgroundColor: 'var(--color-base)' }}
+                      >
+                        {ex}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {messages.length > 0 && (
+                <div
+                  ref={scrollRef}
+                  className="flex flex-col max-h-[46vh] lg:max-h-[42vh] overflow-y-auto mb-4 scroll-smooth chat-scroll"
+                >
+                  {messages.map((msg, i) =>
+                    msg.role === 'user'
+                      ? <UserBubble key={i} text={msg.text} />
+                      : (
+                          <AssistantBubble
+                            key={i}
+                            result={msg.result}
+                            logId={msg.result?.request_log_id}
+                            onRegenerate={() => handleRegenerate(i)}
+                            regenerating={regeneratingIndex === i}
+                            streaming={loading && i === lastAssistantIndex}
+                          />
+                        )
+                  )}
+                  {showTyping && <TypingIndicator />}
+                </div>
+              )}
 
               {error && !loading && (
                 <p className="font-mono text-xs text-danger mb-3 px-1">{error}</p>
@@ -393,22 +500,44 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 score={score}
                 cacheHit={latestResult?.cache_hit}
                 loading={loading}
+                streaming={streaming}
                 chaosActive={chaosActive}
                 crossProviderFallback={latestResult?.cross_provider_fallback}
               />
             </div>
           )}
 
-          {/* input — always visible */}
-          <QueryForm
-            onSubmit={handleSubmit}
-            loading={loading}
-            tiers={TIERS}
-            activeConfig={activeConfig}
-          />
-          <div className="mt-2 px-1 flex items-center gap-2 flex-wrap">
-            <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
-          </div>
+          {/* input — only after a model is chosen */}
+          {!isEmpty && (
+            <>
+              <QueryForm
+                onSubmit={handleSubmit}
+                loading={loading}
+                tiers={TIERS}
+                activeConfig={activeConfig}
+              />
+              {/* Emma is the only model with economy/balanced/quality. Lisa and Kate
+                  ship fixed cuts, so a threshold slider would be a control that does
+                  nothing. Show their actual bands instead. */}
+              {model.adjustable ? (
+                <div className="mt-2 px-1">
+                  <ThresholdSlider value={threshold} onChange={(v) => { setThreshold(v); setSharedThreshold(v) }} compact />
+                </div>
+              ) : (
+                <div className="mt-2 px-1 font-mono text-[10px] text-muted flex items-center gap-2 flex-wrap">
+                  <span className="text-primary">{model.name} routing</span>
+                  <span aria-hidden>·</span>
+                  {model.tiers.includes('mid') ? (
+                    <span>cut at {model.cuts.cheap} and {model.cuts.frontier}</span>
+                  ) : (
+                    <span>cut at {model.cuts.cheap}</span>
+                  )}
+                  <span aria-hidden>·</span>
+                  <span>fixed, tuned on 17,600 support labels</span>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* right column: SVG diagram — always visible */}
@@ -419,6 +548,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
             score={score}
             cacheHit={latestResult?.cache_hit}
             loading={loading}
+            streaming={streaming}
             cheapCeil={cheapCeil}
             frontierFloor={frontierFloor}
             chaosActive={chaosActive}

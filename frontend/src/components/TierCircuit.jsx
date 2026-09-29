@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react'
 
-const SCAN_ORDER = ['cheap', 'mid', 'frontier']
+// Layout is derived from the tier list so a 2-tier policy renders two nodes
+// instead of a 3-node diagram with a hole in it. tierKeys comes from the policy
+// the backend actually used, so the diagram cannot disagree with the router.
+function tierKeysFrom(tiers) {
+  const keys = (tiers || []).map((t) => t.key)
+  return keys.length ? keys : ['cheap', 'mid', 'frontier']
+}
 
-export default function TierCircuit({ tiers, activeTier, score, cacheHit, loading, cheapCeil, frontierFloor, chaosActive = false, crossProviderFallback = false, intendedTier = null }) {
+export default function TierCircuit({ tiers, activeTier, score, cacheHit, loading, streaming = false, cheapCeil, frontierFloor, chaosActive = false, crossProviderFallback = false, intendedTier = null }) {
   const [scanIndex, setScanIndex] = useState(-1)
+  const tierKeys = tierKeysFrom(tiers)
+  const scanOrder = tierKeys
 
   useEffect(() => {
     if (!loading) {
@@ -12,52 +20,57 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
     }
     setScanIndex(0)
     const id = setInterval(() => {
-      setScanIndex((i) => (i + 1) % SCAN_ORDER.length)
+      setScanIndex((i) => (i + 1) % scanOrder.length)
     }, 400)
     return () => clearInterval(id)
-  }, [loading])
+  }, [loading, scanOrder.length])
 
-  const isScanning = loading && scanIndex >= 0
-  const scanTier = isScanning ? SCAN_ORDER[scanIndex] : null
+  const isScanning = loading && scanIndex >= 0 && !activeTier
+  const scanTier = isScanning ? scanOrder[scanIndex] : null
 
   const Q = { x: 200, y: 50 }
-  const T = {
-    cheap:    { x: 65,  y: 190 },
-    mid:      { x: 200, y: 205 },
-    frontier: { x: 335, y: 190 },
-  }
+  // Spread 2 or 3 tier nodes evenly across the same horizontal band.
+  const T = tierKeys.reduce((acc, k, i) => {
+    const n = tierKeys.length
+    const x = n === 1 ? Q.x : 65 + (i * (335 - 65)) / (n - 1)
+    acc[k] = { x, y: n === 3 && k === 'mid' ? 205 : 190 }
+    return acc
+  }, {})
   const W = { x: 200, y: 350 }
   const G = { x: 200, y: 475 }
 
-  const qPath = {
-    cheap:    `M${Q.x},${Q.y} C${Q.x},${Q.y + 55} ${T.cheap.x},${T.cheap.y - 50} ${T.cheap.x},${T.cheap.y}`,
-    mid:      `M${Q.x},${Q.y} C${Q.x},${Q.y + 55} ${Q.x},${T.mid.y - 45} ${Q.x},${T.mid.y}`,
-    frontier: `M${Q.x},${Q.y} C${Q.x},${Q.y + 55} ${T.frontier.x},${T.frontier.y - 50} ${T.frontier.x},${T.frontier.y}`,
-  }
+  const qPath = tierKeys.reduce((acc, k) => {
+    const p = T[k]
+    acc[k] = `M${Q.x},${Q.y} C${Q.x},${Q.y + 55} ${p.x},${p.y - 50} ${p.x},${p.y}`
+    return acc
+  }, {})
 
-  const tWeb = {
-    cheap:    `M${T.cheap.x},${T.cheap.y} C${T.cheap.x},${T.cheap.y + 55} ${W.x},${W.y - 50} ${W.x},${W.y}`,
-    mid:      `M${T.mid.x},${T.mid.y} C${T.mid.x},${T.mid.y + 50} ${W.x},${W.y - 45} ${W.x},${W.y}`,
-    frontier: `M${T.frontier.x},${T.frontier.y} C${T.frontier.x},${T.frontier.y + 55} ${W.x},${W.y - 50} ${W.x},${W.y}`,
-  }
+  const tWeb = tierKeys.reduce((acc, k) => {
+    const p = T[k]
+    acc[k] = `M${p.x},${p.y} C${p.x},${p.y + 55} ${W.x},${W.y - 50} ${W.x},${W.y}`
+    return acc
+  }, {})
 
-  const tGemini = {
-    cheap:    `M${T.cheap.x},${T.cheap.y} C${T.cheap.x},${T.cheap.y + 135} ${G.x},${G.y - 60} ${G.x},${G.y}`,
-    mid:      `M${T.mid.x},${T.mid.y} C${T.mid.x},${T.mid.y + 130} ${G.x},${G.y - 60} ${G.x},${G.y}`,
-    frontier: `M${T.frontier.x},${T.frontier.y} C${T.frontier.x},${T.frontier.y + 135} ${G.x},${G.y - 60} ${G.x},${G.y}`,
-  }
+  const tGemini = tierKeys.reduce((acc, k) => {
+    const p = T[k]
+    acc[k] = `M${p.x},${p.y} C${p.x},${p.y + 135} ${G.x},${G.y - 60} ${G.x},${G.y}`
+    return acc
+  }, {})
 
   const qWeb = `M${Q.x},${Q.y} C${Q.x},${Q.y + 110} ${W.x},${W.y - 80} ${W.x},${W.y}`
 
   const hc = cacheHit ? 'var(--color-cool)' : 'var(--color-signal)'
-  const isWeb = activeTier === 'web' && !loading
-  const isGemini = !loading && (activeTier === 'gemini' || crossProviderFallback)
+  const isWeb = activeTier === 'web'
+  const isGemini = activeTier === 'gemini' || crossProviderFallback
 
   const GX = 75, GW = 250, GY = 120
   const gx = (s) => GX + (Math.min(10, Math.max(0, s)) / 10) * GW
-  // use actual thresholds from last response, fall back to balanced defaults
+  // Actual thresholds from the last response when we have them, otherwise the
+  // caller has already substituted the selected model's own bands.
   const cheapTick = cheapCeil ?? 4.5
   const frontierTick = frontierFloor ?? 6.0
+  // Vega has one cut: no mid band, so there is no second boundary to draw.
+  const showMidBand = tiers.length > 2 && frontierTick > cheapTick
 
   return (
     <div className="relative">
@@ -68,7 +81,7 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
             <span className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${loading ? 'animate-ping bg-signal' : 'bg-cool'}`} />
             <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${loading ? 'bg-signal' : 'bg-cool'}`} />
           </span>
-          {loading ? 'routing…' : 'live'}
+          {loading ? (streaming ? 'streaming…' : 'routing…') : 'live'}
         </span>
       </div>
       <div className="bg-base/60 backdrop-blur-sm border border-line rounded-2xl shadow-card p-4">
@@ -110,9 +123,10 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
           </g>
 
       {/* paths: query → tier */}
-      {Object.entries(qPath).map(([k, d]) => {
+      {tierKeys.map((k) => {
+        const d = qPath[k]
         const scanning = isScanning && scanTier === k
-        const active = !loading && activeTier === k
+        const active = activeTier === k
         const on = scanning || active
         return (
           <path key={k} d={d} fill="none"
@@ -125,8 +139,8 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
       })}
 
       {/* paths: tier → web */}
-      {Object.entries(tWeb).map(([k, d]) => (
-        <path key={k} d={d} fill="none"
+      {tierKeys.map((k) => (
+        <path key={k} d={tWeb[k]} fill="none"
           stroke={isWeb ? 'var(--color-cool)' : 'var(--color-line)'}
           strokeWidth={isWeb ? 2 : 1}
           strokeDasharray={isWeb ? 'none' : '4 3'}
@@ -136,8 +150,8 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
       ))}
 
       {/* paths: tier → gemini last resort */}
-      {Object.entries(tGemini).map(([k, d]) => (
-        <path key={k} d={d} fill="none"
+      {tierKeys.map((k) => (
+        <path key={k} d={tGemini[k]} fill="none"
           stroke={isGemini ? 'var(--color-danger)' : 'var(--color-line)'}
           strokeWidth={isGemini ? 2 : 1}
           strokeDasharray={isGemini ? 'none' : '4 3'}
@@ -155,7 +169,7 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
 
       {isGemini && (
         <circle r="4" fill="var(--color-danger)" filter="url(#glow-sm)">
-          <animateMotion dur="1.1s" repeatCount="indefinite" path={tGemini[intendedTier] || tGemini.mid} />
+          <animateMotion dur="1.1s" repeatCount="indefinite" path={tGemini[intendedTier] || tGemini[tierKeys[0]]} />
         </circle>
       )}
 
@@ -180,7 +194,7 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
           DIFFICULTY
         </text>
         <rect x={GX} y={GY - 1.5} width={GW} height="3" rx="1.5" fill="var(--color-line)" />
-        {score != null && !loading && (
+        {score != null && (
           <>
             <rect x={GX} y={GY - 1.5} width={GW} height="3" rx="1.5" fill="none" opacity="0.25" />
             <rect x={GX} y={GY - 1.5}
@@ -200,18 +214,39 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
         )}
         <line x1={gx(cheapTick)} y1={GY - 5} x2={gx(cheapTick)} y2={GY + 5}
           stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
-        <line x1={gx(frontierTick)} y1={GY - 5} x2={gx(frontierTick)} y2={GY + 5}
-          stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
-        {score != null && !loading && (
+        {showMidBand && (
+          <line x1={gx(frontierTick)} y1={GY - 5} x2={gx(frontierTick)} y2={GY + 5}
+            stroke="var(--color-muted)" strokeWidth="1" opacity="0.4" />
+        )}
+        {/* Shade the mid band only when the selected model actually has one. */}
+        {showMidBand && (
+          <rect
+            x={gx(cheapTick)} y={GY - 1.5}
+            width={Math.max(0, gx(frontierTick) - gx(cheapTick))} height="3"
+            fill="var(--color-signal)" opacity="0.22" rx="1.5"
+          />
+        )}
+        {score != null && (
           <text x={GX + GW + 10} y={GY + 3} textAnchor="start"
             className="font-mono" fontSize="10" fontWeight="600" fill="var(--color-signal)">
             {score.toFixed(1)}
           </text>
         )}
-        <text x={gx(cheapTick)} y={GY + 14} textAnchor="middle"
-          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">c:{cheapTick.toFixed(1)}</text>
-        <text x={gx(frontierTick)} y={GY + 14} textAnchor="middle"
-          className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">f:{frontierTick.toFixed(1)}</text>
+        {showMidBand ? (
+          <>
+            <text x={gx(cheapTick)} y={GY + 14} textAnchor="middle"
+              className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">c:{cheapTick.toFixed(1)}</text>
+            <text x={(gx(cheapTick) + gx(frontierTick)) / 2} y={GY + 14} textAnchor="middle"
+              className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">mid</text>
+            <text x={gx(frontierTick)} y={GY + 14} textAnchor="middle"
+              className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">f:{frontierTick.toFixed(1)}</text>
+          </>
+        ) : (
+          // Single-cut model: one boundary at exactly one spot. Render only the
+          // cut label here, or the c: and cut: text overlap.
+          <text x={gx(cheapTick)} y={GY + 14} textAnchor="middle"
+            className="font-mono" fontSize="7" fill="var(--color-muted)" opacity="0.5">cut:{cheapTick.toFixed(1)}</text>
+        )}
       </g>
 
       {/* query node */}
@@ -247,13 +282,14 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
       </g>
 
       {/* tier nodes */}
-      {tiers.map((t) => {
-        const p = T[t.key]
-        const scanning = isScanning && scanTier === t.key
-        const active = !loading && activeTier === t.key
+      {tierKeys.map((k) => {
+        const p = T[k]
+        const t = (tiers || []).find((x) => x.key === k) || { label: k, sub: '' }
+        const scanning = isScanning && scanTier === k
+        const active = activeTier === k
         const on = scanning || active
         return (
-          <g key={t.key}>
+          <g key={k}>
             <circle cx={p.x} cy={p.y} r={on ? (active ? 13 : 11) : 9}
               fill={active ? hc : 'var(--color-base)'}
               stroke={on ? hc : 'var(--color-line)'}
