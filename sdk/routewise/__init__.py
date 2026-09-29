@@ -8,6 +8,32 @@ from typing import Optional
 
 DEFAULT_BASE_URL = "https://llm-router-d2b2.onrender.com"
 
+# Friendly product names → backend support_mode. "emma" is the generic router
+# (the default), "lisa" is the 3-tier customer-support policy, "kate" is the
+# 2-tier customer-support policy.
+MODELS = {
+    "emma": None,      # generic — regular difficulty routing
+    "lisa": "3tier",   # support · cheap / mid / frontier
+    "kate": "2tier",   # support · cheap / frontier only
+}
+
+
+class _ModelMapping:
+    """Validates the product names accepted by ask()/ask_stream()."""
+
+    @staticmethod
+    def resolve(model: str | None, support_mode: str | None) -> str | None:
+        if support_mode:
+            if support_mode not in ("generic", "2tier", "3tier"):
+                raise ValidationError(f"[400] support_mode must be one of generic, 2tier, 3tier")
+            return None if support_mode == "generic" else support_mode
+        if model:
+            key = model.strip().lower()
+            if key not in MODELS:
+                raise ValidationError(f"[400] model must be one of {', '.join(MODELS)}")
+            return MODELS[key]
+        return None
+
 
 class RouteWiseError(Exception):
     """Raised when the API returns a non-2xx response."""
@@ -83,6 +109,8 @@ class RouteWiseClient:
         override_tier: Optional[str] = None,
         bypass_cache: bool = False,
         user_api_keys: Optional[dict] = None,
+        model: Optional[str] = None,
+        support_mode: Optional[str] = None,
     ) -> dict:
         """
         Send a query through the router. Returns the full response dict
@@ -93,12 +121,20 @@ class RouteWiseClient:
         user_api_keys: { "cheap": "key", "mid": "key", "frontier": "key" }
                        overrides keys for this single request only.
                        If not passed, uses keys set via configure().
+        model: product name to pick a difficulty policy —
+               "emma" (generic, default), "lisa" (3-tier support), "kate" (2-tier support)
+        support_mode: raw policy id ("generic", "2tier", "3tier"). If given it
+                      wins over model.
         """
         payload = {"query": query}
         if override_tier:
             payload["override_tier"] = override_tier
         if bypass_cache:
             payload["bypass_cache"] = True
+
+        resolved = _ModelMapping.resolve(model, support_mode)
+        if resolved:
+            payload["support_mode"] = resolved
 
         self._apply_byom(payload, user_api_keys)
 
@@ -117,10 +153,15 @@ class RouteWiseClient:
         override_tier: Optional[str] = None,
         bypass_cache: bool = False,
         user_api_keys: Optional[dict] = None,
+        model: Optional[str] = None,
+        support_mode: Optional[str] = None,
     ):
         """
         Streaming version of ask(). Yields text chunks, then a final dict
         with metadata (tier, cost, model_id, tokens).
+
+        model: "emma" (generic), "lisa" (3-tier support), "kate" (2-tier support), or None.
+        support_mode: raw policy id ("generic", "2tier", "3tier"); wins over model.
 
         Usage:
             for item in client.ask_stream("Explain quantum computing"):
@@ -134,6 +175,10 @@ class RouteWiseClient:
             payload["override_tier"] = override_tier
         if bypass_cache:
             payload["bypass_cache"] = True
+
+        resolved = _ModelMapping.resolve(model, support_mode)
+        if resolved:
+            payload["support_mode"] = resolved
 
         self._apply_byom(payload, user_api_keys)
 
@@ -162,11 +207,12 @@ class RouteWiseClient:
             elif event.get("type") == "done":
                 yield {
                     "tier": event.get("routed_to"),
-                    "model_id": event.get("routed_to"),
+                    "model_id": event.get("model_id", event.get("routed_to")),
                     "cost_usd": event.get("cost_usd", 0),
                     "latency_ms": event.get("latency_ms", 0),
                     "cache_hit": event.get("cache_hit", False),
                     "difficulty_score": event.get("difficulty_score"),
+                    "support_mode": event.get("support_mode"),
                 }
                 return
             elif event.get("type") == "error":
@@ -186,7 +232,9 @@ class RouteWiseClient:
         OpenAI-compatible /v1/chat/completions endpoint.
         Drop-in replacement for openai.ChatCompletion.create().
 
-        model: "auto" for ML routing, or "cheap"/"mid"/"frontier" to force tier
+        model: "auto" for ML routing, "cheap"/"mid"/"frontier" to force a tier,
+               or a product name ("emma"/"lisa"/"kate") to use that difficulty
+               policy (generic / 3-tier support / 2-tier support).
         messages: [{"role": "user", "content": "..."}] (same as OpenAI format)
         stream: if True, returns an iterator of chunk dicts
         max_tokens: optional token limit
@@ -240,7 +288,9 @@ class RouteWiseClient:
     ) -> dict:
         """
         Set custom provider/model/api_key for any tier (Bring Your Own Model).
-        Omit a tier to leave it at its current config.
+        Configure one, two, or all three tiers — tiers you omit keep the server
+        defaults (e.g. only frontier for a one-model setup, or cheap+frontier
+        for a two-tier stack).
 
         Each tier dict: { "provider": "openai", "model_id": "gpt-4o", "api_key": "sk-..." }
 
@@ -296,6 +346,15 @@ class RouteWiseClient:
         Useful for discovering what you can pass to configure().
         """
         response = requests.get(f"{self.base_url}/providers", headers=self._headers(), timeout=self.timeout)
+        _raise_for_status(response)
+        return response.json()
+
+    def get_models(self) -> dict:
+        """
+        Lists the available routing models (emma / lisa / kate) with their
+        policies, tier cuts and evaluation metrics.
+        """
+        response = requests.get(f"{self.base_url}/route/policies", headers=self._headers(), timeout=self.timeout)
         _raise_for_status(response)
         return response.json()
 
