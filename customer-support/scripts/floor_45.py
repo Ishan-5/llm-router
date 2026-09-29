@@ -277,11 +277,12 @@ def main() -> int:
             "seeds": list(SEEDS),
             "params": {k: v for k, v in BASE.items() if k != "verbose"},
             "feature_count": int(X_all.shape[1]),
-            "feature_order": "minilm384_then_handcrafted4_then_domain3",
+            "feature_order": "minilm384_then_handcrafted4_then_domain4",
             "domain_order": list(DOMAINS),
             "embedder": str(EMBED_DIR),
             "thr": {"cheap_ceil": CHEAP_CEIL, "frontier_floor": 4.5},
             "n_tiers": 3,
+            "tier_rule": "tier3_two_cuts",
             "n_train_rows": n,
             "source": "customer_support",
             "honest_eval": {

@@ -5,11 +5,18 @@ win, so support_final_2tier.joblib held the same config as the 3-tier model
 under a 2-tier filename. This run produces an actual 2-tier policy and labels
 it honestly.
 
-A 2-tier policy has a dead middle by construction. Gold scores are whole
-numbers, so any band between two consecutive integers contains no gold rows and
-cannot be measured. A 2-tier cut is therefore cheap <= C, frontier >= 4.5, with
-nothing between. Cheap cut is swept because in a 2-tier router it is the only
-lever that exists: it decides where the frontier model starts covering traffic.
+A 2-tier policy has exactly one cut: cheap <= C, and everything above it goes
+to frontier. There is no middle band at all. The cheap cut is swept because in a
+2-tier router it is the only lever that exists: it decides where the frontier
+model starts covering traffic.
+
+Gold scores are whole numbers, so gold tiering is identical whether we evaluate
+with a 3-way or 2-way rule: gold <= 4.0 is cheap, gold >= 5.0 is frontier, and
+the gap (4.0, 4.5) holds no gold rows. PREDICTIONS are continuous, so this
+matters at inference time: a 2-tier router must route every score above the cut
+to frontier, including scores like 4.2 that fall in the gap. Routing those to a
+mid band would make the artifact a 3-tier policy with a dead tier, which is the
+bug an earlier version of this script had.
 
 Comparability note: balanced accuracy averages only tiers that have gold rows,
 so the 2-tier number averages two tiers and the 3-tier number averages three.
@@ -115,6 +122,18 @@ def tier3(s: float, lo: float, hi: float = FLOOR) -> str:
     return "mid"
 
 
+def tier2(s: float, lo: float, hi: float = FLOOR) -> str:
+    """True 2-tier rule: one cut, no middle band.
+
+    Every score above the cut goes to frontier, including scores that fall in the
+    (lo, hi) gap. Gold is whole-numbered so this matches tier3 on gold, but on
+    continuous predictions it does not, which is the whole point.
+    """
+    if s <= lo:
+        return "cheap"
+    return "frontier"
+
+
 def spearman(a, b) -> float:
     def rank(x):
         x = np.asarray(x, float)
@@ -134,8 +153,9 @@ def spearman(a, b) -> float:
 
 
 def score(y, p, lo: float, n_tiers: int) -> dict:
-    gold = [tier3(v, lo) for v in y]
-    pred = [tier3(v, lo) for v in np.clip(p, 0, 10)]
+    rule = tier2 if n_tiers == 2 else tier3
+    gold = [rule(v, lo) for v in y]
+    pred = [rule(v, lo) for v in np.clip(p, 0, 10)]
     out = {"n_tiers": n_tiers, "cheap_ceil": lo, "frontier_floor": FLOOR}
     recs = []
     for t in ("cheap", "mid", "frontier"):
@@ -218,8 +238,9 @@ def main() -> int:
         f"frontier floor fixed at {FLOOR}; cheap cut swept (in a 2-tier router it is the only lever)",
         "",
         "--- 2-tier: cheap cut sweep, mean of 3 splits ---",
+        "  mid traffic must be 0.0 for every cut; a nonzero value means the artifact is not 2-tier",
         f"{'cheap<=':>8}{'front_rec':>11}{'front_esc':>12}{'cheap_rec':>11}{'cheap_esc':>12}"
-        f"{'traffic c/f':>16}{'tier_acc':>10}{'bal(2)':>9}",
+        f"{'c/m/f':>16}{'tier_acc':>10}{'bal(2)':>9}",
         "-" * 120,
     ]
     agg2 = {}
@@ -242,7 +263,10 @@ def main() -> int:
             },
         }
         agg2[c] = a
-        tf = f"{100 * a['traffic']['cheap']:.0f}/{100 * a['traffic']['frontier']:.0f}"
+        tf = (
+            f"{100 * a['traffic']['cheap']:.0f}/{a['traffic']['mid'] * 100:.1f}"
+            f"/{100 * a['traffic']['frontier']:.0f}"
+        )
         lines.append(
             f"{c:>8.1f}{a['recall_frontier']:>11.3f}{a['frontier_escape_rate']:>12.1%}"
             f"{a['recall_cheap']:>11.3f}{str(a['cheap_escape']) + '/' + str(a['n_cheap_gold']):>12}"
@@ -291,7 +315,7 @@ def main() -> int:
         "  construction, because gold scores are whole numbers and no gold row can fall between",
         "  two consecutive cut points.",
         "",
-        f"--- selected 2-tier policy: cheap <= {chosen}, frontier >= {FLOOR} ---",
+        f"--- selected 2-tier policy: cheap <= {chosen}, everything above -> frontier ---",
         f"  chosen because it is the highest cheap cut whose frontier escape ({a['frontier_escape_rate']:.1%})",
         f"  is no worse than the 3-tier policy ({a3['frontier_escape_rate']:.1%}); spending more cheap",
         "  traffic on the frontier model buys protection the 3-tier model already gets from the mid tier.",
@@ -313,6 +337,7 @@ def main() -> int:
             "domain_order": list(DOMAINS),
             "embedder": str(EMBED_DIR),
             "thr": {"cheap_ceil": chosen, "frontier_floor": FLOOR},
+            "tier_rule": "tier2_single_cut",
             "n_tiers": 2,
             "n_train_rows": n,
             "source": "customer_support",
@@ -345,7 +370,9 @@ def main() -> int:
         "",
         "--- shipped 2-tier model ---",
         f"  file {path.name}",
-        f"  thresholds cheap <= {chosen}, frontier >= {FLOOR}   (2 tiers, no mid band)",
+        f"  tier rule  tier2_single_cut: cheap <= {chosen}, everything above -> frontier",
+        f"  gold frontier floor {FLOOR} (gold is whole-numbered, so no gold row lands in the gap)",
+        "  0% of predicted traffic lands in a mid band; the script asserts this before writing",
         f"  fit check MAE {float(np.mean(np.abs(y_all - p_fit))):.3f} (memorization, not quality)",
         f"  fit tier_acc {fit['tier_acc']:.3f}",
         "",
@@ -357,7 +384,8 @@ def main() -> int:
         f"  frontier recall        {a['recall_frontier']:.3f}",
         f"  frontier escape rate   {a['frontier_escape_rate']:.1%}  ({a['under']} of {a['n_frontier_gold']})",
         f"  tier accuracy          {a['tier_acc']:.3f}",
-        f"  traffic                {100 * a['traffic']['cheap']:.0f}% cheap / {100 * a['traffic']['frontier']:.0f}% frontier",
+        f"  traffic                {100 * a['traffic']['cheap']:.0f}% cheap / "
+        f"{100 * a['traffic']['mid']:.1f}% mid / {100 * a['traffic']['frontier']:.0f}% frontier",
         "",
         "--- which artifact to ship ---",
         f"  3-tier and 2-tier protect hard tickets about equally at the chosen cut",
@@ -392,6 +420,21 @@ def main() -> int:
         + "\n",
         encoding="utf-8",
     )
+    print()
+    # A 2-tier artifact with a live mid band is the exact bug this script exists
+    # to prevent, so fail loudly rather than shipping a mislabelled artifact.
+    for c in CHEAP_CUTS:
+        if agg2[c]["traffic"]["mid"] > 1e-9:
+            raise SystemExit(
+                f"2-tier invariant violated at cut {c}: "
+                f"{agg2[c]['traffic']['mid']:.2%} of traffic routed to mid"
+            )
+    if a["traffic"]["mid"] > 1e-9:
+        raise SystemExit(
+            f"2-tier invariant violated at selected cut {chosen}: "
+            f"{a['traffic']['mid']:.2%} of traffic routed to mid"
+        )
+    print("2-tier invariant OK: 0% of traffic routed to a mid band at every cut")
     print()
     print("\n".join(lines))
     return 0
