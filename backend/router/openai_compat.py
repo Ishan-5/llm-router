@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 log = logging.getLogger("routewise.openai_compat")
 
 from router.classifier import get_tier
+from router.support_policy import get_tier_with_mode
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, ApiKey
 from router.auth import require_api_key, check_budget
@@ -40,20 +41,34 @@ def _generate_id() -> str:
     return f"chatcmpl-{uuid.uuid4().hex}"
 
 
-def _resolve_tier(model: str) -> tuple[str | None, str]:
+# Friendly product names for the difficulty policies. "emma" is the generic
+# router, "lisa" is the 3-tier support policy, "kate" is the 2-tier support
+# policy. All three are also accepted in /route and /route/stream.
+MODEL_TO_POLICY: dict[str, str | None] = {
+    "emma": "generic",
+    "lisa": "3tier",
+    "kate": "2tier",
+}
+
+
+def _resolve_tier(model: str) -> tuple[str | None, str, str | None]:
     """
-    Maps the model field to a tier.
-    Returns (override_tier, mode) where:
+    Maps the model field to a tier and a difficulty policy.
+    Returns (override_tier, mode, support_mode) where:
       - mode="auto" means use the ML classifier
       - mode="force" means the user explicitly chose a tier
+      - support_mode is "generic", "2tier", "3tier", or None (auto)
     """
     model_lower = model.strip().lower()
     if model_lower in ("auto", "", "auto-routing"):
-        return None, "auto"
+        return None, "auto", None
     if model_lower in ("cheap", "mid", "frontier"):
-        return model_lower, "force"
+        return model_lower, "force", None
+    # Named policies: emma = generic, lisa = 3-tier support, kate = 2-tier support
+    if model_lower in MODEL_TO_POLICY:
+        return None, "auto", MODEL_TO_POLICY[model_lower]
     # Default to auto-routing if the model parameter is unrecognized.
-    return None, "auto"
+    return None, "auto", None
 
 
 def _extract_user_query(messages: list[ChatMessage]) -> str:
@@ -137,9 +152,10 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         raise HTTPException(status_code=400, detail="Prompt injection detected")
 
     # --- resolve tier ---
-    override_tier, mode = _resolve_tier(req.model)
+    override_tier, mode, support_mode = _resolve_tier(req.model)
     start = time.time()
     chat_id = _generate_id()
+    response.headers["x-routewise-support-mode"] = support_mode or ""
 
     # --- web search check ---
     from router.guardrails import needs_web_search
@@ -206,9 +222,15 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         finally:
             session.close()
 
+    def _score():
+        if support_mode and support_mode != "generic":
+            score, tier, _c, _f, _ = get_tier_with_mode(user_query, _load_threshold(), support_mode=support_mode)
+            return score, tier, _c, _f
+        return get_tier(user_query, _load_threshold())
+
     cached, (difficulty_score, tier, _, _) = await asyncio.gather(
         _maybe_check_cache(),
-        loop.run_in_executor(executor, lambda: get_tier(user_query, _load_threshold())),
+        loop.run_in_executor(executor, _score),
     )
 
     if cached is not None:
@@ -244,6 +266,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     over_budget = not check_budget(api_key)
     if over_budget:
         routing_tier = "cheap"
+    if support_mode == "2tier" and routing_tier == "mid":
+        raise HTTPException(status_code=400, detail="override_tier 'mid' is not available under the 2tier support policy")
 
     user_config = get_active_config(api_key.user_id)
 

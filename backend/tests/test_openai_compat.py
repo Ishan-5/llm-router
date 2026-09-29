@@ -40,6 +40,24 @@ def _basic_body(query="What is 2+2?", model="auto"):
     return {"model": model, "messages": [{"role": "user", "content": query}]}
 
 
+# --- Model-name mapping (emma / lisa / kate) ---
+
+def test_resolve_tier_maps_product_names_to_policies():
+    from router.openai_compat import _resolve_tier
+    assert _resolve_tier("auto") == (None, "auto", None)
+    assert _resolve_tier("") == (None, "auto", None)
+    assert _resolve_tier("cheap") == ("cheap", "force", None)
+    assert _resolve_tier("frontier") == ("frontier", "force", None)
+    # product names → support_mode (emma = generic = no-op policy)
+    assert _resolve_tier("emma") == (None, "auto", "generic")
+    assert _resolve_tier("lisa") == (None, "auto", "3tier")
+    assert _resolve_tier("kate") == (None, "auto", "2tier")
+    # case-insensitive
+    assert _resolve_tier("LISA") == (None, "auto", "3tier")
+    # unknown model → auto routing
+    assert _resolve_tier("gpt-5") == (None, "auto", None)
+
+
 # --- Auth ---
 
 
