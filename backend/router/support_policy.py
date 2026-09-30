@@ -17,14 +17,32 @@ did not produce it.
 
 import os
 import sys
+from pathlib import Path
 
 import numpy as np
 
-# Append src/ for predict_difficulty and the repo root for the support package,
-# following the same path convention classifier.py already uses.
+# Append src/ for predict_difficulty, following the same path convention
+# classifier.py already uses.
 _HERE = os.path.dirname(__file__)
 sys.path.append(os.path.join(_HERE, "..", "src"))
-sys.path.append(os.path.join(_HERE, "..", "..", "customer-support", "routing"))
+
+
+def _find_support_root() -> Path:
+    """Locate the customer-support package regardless of where this file runs.
+
+    The local repo nests this file at <root>/backend/router/ while the Docker
+    image flattens backend/ to /app/router, so walk up from this file until the
+    sibling customer-support/routing directory is found instead of assuming a
+    fixed depth.
+    """
+    here = Path(_HERE).resolve()
+    for parent in here.parents:
+        if (parent / "customer-support" / "routing").is_dir():
+            return parent
+    raise RuntimeError("could not locate customer-support/routing from " + str(here))
+
+
+sys.path.append(str(_find_support_root() / "customer-support" / "routing"))
 
 from predict_difficulty import get_embedder, score_to_tier  # noqa: E402
 
