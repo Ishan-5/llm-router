@@ -6,6 +6,7 @@ const COPY_RESET_MS = 2000
 
 const TABS = [
   { id: 'quickstart', label: 'Quick Start' },
+  { id: 'policies', label: 'Policies' },
   { id: 'sdk', label: 'Python SDK' },
   { id: 'openai', label: 'OpenAI SDK' },
   { id: 'cli', label: 'Terminal CLI' },
@@ -38,8 +39,8 @@ const AUDIENCES = [
   {
     id: 'ops',
     title: 'Team lead / ops',
-    desc: 'Self-host the router, wire the MCP gateway, tune config, and control cost per person.',
-    tab: 'config',
+    desc: 'Self-host the router, wire the MCP gateway, pick the right difficulty policy, and control cost per person.',
+    tab: 'policies',
   },
 ]
 
@@ -65,7 +66,11 @@ print(result["response"])
 
 print(f"Routed to: {result['routed_to']}")
 print(f"Cost: $" + f"{result['cost_usd']:.4f}")
-print(f"Latency: {result['latency_ms']:.0f}ms")`,
+print(f"Latency: {result['latency_ms']:.0f}ms")
+
+# Support traffic? Pick a policy: lisa (3-tier) or kate (2-tier)
+result = client.ask("I want a refund", model="lisa")
+# Three policies — emma · lisa · kate — see the Policies tab.`,
         lang: 'python',
       },
       {
@@ -75,6 +80,78 @@ print(f"Latency: {result['latency_ms']:.0f}ms")`,
   -H "Authorization: Bearer ${API_KEY || 'rw_your_key_here'}" \\
   -d '{"query": "What is the capital of France?"}'`,
         lang: 'bash',
+      },
+    ],
+  },
+  policies: {
+    title: 'Policies — emma · lisa · kate',
+    description: 'Three routing personalities, each with its own difficulty model and thresholds. Switch per request across every surface.',
+    sections: [
+      {
+        label: 'Pick a policy',
+        code: `emma   — generic routing (default): cheap / mid / frontier, slider-movable cuts
+lisa   — customer support, 3-tier:  cheap / mid / frontier, fixed cuts ≤ 2.0 / ≥ 4.5
+kate   — customer support, 2-tier:  cheap / frontier, single fixed cut ≤ 4.0
+
+Pick by what you route for:
+  general chat / agents           → emma
+  support tickets, balanced cost   → lisa
+  support where a hard ticket      → kate
+  slipping through is expensive`,
+        lang: 'bash',
+      },
+      {
+        label: 'Python SDK',
+        code: `from routewise import RouteWiseClient
+client = RouteWiseClient(api_key="rw_your_key_here")
+
+client.ask("What is the capital of France?")     # emma (default)
+client.ask("I want a refund", model="lisa")      # 3-tier support policy
+client.ask("I was charged twice", model="kate")  # 2-tier support policy
+
+client.get_models()    # list all three: tiers, cutoffs, honest eval numbers`,
+        lang: 'python',
+      },
+      {
+        label: 'Terminal CLI',
+        code: `routewise ask "I want a refund" --model lisa
+routewise stream "where is my order?" --model kate
+routewise chat --model lisa
+
+routewise models       # browse the policies: tiers, cuts, evals`,
+        lang: 'bash',
+      },
+      {
+        label: 'OpenAI-compatible endpoint',
+        code: `from openai import OpenAI
+client = OpenAI(api_key="...", base_url="${API_BASE}")
+
+resp = client.chat.completions.create(
+    model="lisa",          # emma · lisa · kate — mapped server-side
+    messages=[{"role": "user", "content": "Refund please"}],
+)
+print(resp.choices[0].message.content)`,
+        lang: 'python',
+      },
+      {
+        label: 'REST',
+        code: `curl -X POST ${API_BASE}/route \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer rw_your_key_here" \\
+  -d '{"query": "Refund please", "support_mode": "3tier"}'
+
+# support_mode: "generic" (emma) | "2tier" (kate) | "3tier" (lisa)`,
+        lang: 'bash',
+      },
+      {
+        label: 'Honest eval (shipped artifacts)',
+        code: `lisa — 3-tier (≤ 2.0 / ≥ 4.5)   MAE 0.822 · Spearman 0.786 · frontier recall 80.4% · traffic 46/24/29
+kate — 2-tier (single ≤ 4.0)     frontier recall 86.0% · escapes 14.0% · traffic 66/0/34
+
+Both policies reuse the MiniLM embedder already in memory — support routing
+costs no extra embedding pass and no extra LLM call. Same 392-feature LightGBM
+regressor (seeds 18/19/20, 17,600 tickets, 4 domains), different cuts.`,
+        lang: 'text',
       },
     ],
   },
@@ -270,7 +347,8 @@ routewise ask "..."      # auto-applies your saved models; unset tiers keep defa
   -d '{
     "query": "Explain the difference between TCP and UDP",
     "override_tier": "auto",
-    "bypass_cache": false
+    "bypass_cache": false,
+    "support_mode": "generic"        # emma generic · "2tier" kate · "3tier" lisa
   }'
 
 # Response:
