@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/React-frontend-61DAFB" />
   <img src="https://img.shields.io/badge/LightGBM-difficulty%20model-orange" />
   <img src="https://img.shields.io/badge/Docker-containerized-2496ED" />
-  <img src="https://img.shields.io/badge/tests-46%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-163%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
@@ -31,9 +31,9 @@
 
 <div align="center">
 
-| 💸 **~52% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **9+** providers |
-|---|---|---|---|---|
-| than frontier-only routing | on held-out Claude-gold | local scoring, no API call | Claude-verified training set | with cross-provider failover |
+| 💸 **~52% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **9+** providers | 🧭 **3 policies** · emma · lisa · kate |
+|---|---|---|---|---|---|
+| than frontier-only routing | on held-out Claude-gold | local scoring, no API call | Claude-verified training set | with cross-provider failover | generic, 3-tier & 2-tier support routing |
 
 </div>
 
@@ -94,6 +94,7 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | | ❌ Calling a provider directly | ⚡ RouteWise |
 |---|---|---|
 | Difficulty-based routing | Always the same model | **Auto — cheap/mid/frontier by score** |
+| Support-style queries | Fit one general classifier to tickets | **emma · lisa · kate — a policy scored and tuned per product** |
 | Provider outage | Manual switching | **Auto failover + Gemini last resort** |
 | Repeat queries | Billed every time | **Semantic cache → $0.00** |
 | Prompt injection / PII | Your problem | **Screened before anything runs** |
@@ -128,6 +129,67 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 
 ---
 
+## 🧭 Meet emma, lisa & kate — three routing policies
+
+A router that scores *every* query with one general-difficulty model is a good start. But a
+support ticket is not "general chat" — a hard refund dispute and a hard coding question are
+different kinds of hard. So RouteWise ships **three routing personalities**, each with its own
+difficulty model and thresholds, and you switch between them **per request** across every
+surface — REST, OpenAI-compatible, SDK, CLI, and the dashboard picker.
+
+| | 🍋 **emma** · general-purpose | 💠 **lisa** · support · balanced | 🛡️ **kate** · support · max care |
+|---|---|---|---|
+| **Best for** | General chat, dev tools, agents | Customer support, default | Support where a miss is expensive |
+| **Trained on** | 8,200 Claude-gold queries | 17,600 labeled support tickets | 17,600 labeled support tickets |
+| **Difficulty model** | General | Support-scored, domain-aware | Support-scored, domain-aware |
+| **Tier ladder** | cheap · mid · frontier | cheap · mid · frontier | cheap · frontier (no mid) |
+| **Cutoffs** | ≤4.5 / ≥6.0 — slider-movable | ≤2.0 / ≥4.5 — fixed | ≤4.0 — fixed, single cut |
+| **Frontier recall** | 58% | **80.4%** | **86.0%** |
+| **Escapes** | 110 / 261 gold | 19.6% | **14.0%** |
+| **Expected traffic** | ~44 / 26 / 19 | 46 / 24 / 29 | 66 / 0 / 34 |
+
+> [!IMPORTANT]
+> Scoring support queries with a model tuned on support queries is the difference between
+> **58% and 86% frontier recall** on the queries that matter. And **kate** shows the real
+> trade-off: drop the mid band and the ~14% of tickets that need a frontier model *get one —
+> every time* — instead of 4 in 10 slipping through on generic scoring. Same embedder, same
+> regressor, no extra LLM call — only the cuts change.
+
+```python
+# one router, three policies — switch per request
+client.ask("What is the capital of France?")       # emma — generic routing (default)
+client.ask("I want a refund", model="lisa")        # 3-tier support policy
+client.ask("I was charged twice", model="kate")    # 2-tier support policy (no mid)
+
+client.get_models()    # list all three: tiers, cutoffs, honest eval numbers
+```
+
+```bash
+routewise ask "I want a refund" --model lisa   # CLI takes the same names
+routewise models                               # or browse the policies
+```
+
+The OpenAI-compatible `/v1/chat/completions` endpoint accepts the names directly as
+`model` (`"emma"`, `"lisa"`, `"kate"`) and routes to the right support policy automatically.
+Raw REST bodies use `"support_mode": "generic" | "2tier" | "3tier"` for the exact policy id
+(`2tier` = kate, `3tier` = lisa). The live demo's home screen is a picker — **Emma / Lisa /
+Kate** — each with its own tier diagram, cutoff tick marks, and example prompts.
+
+### The numbers behind lisa & kate
+
+Both policies reuse the MiniLM embedder already resident in memory, so a support-scored
+request costs **no extra embedding pass and no extra LLM call** — only the score's mapping
+to a tier changes. Same 392-feature LightGBM regressor (3× L1, seeds 18/19/20, 17,600
+tickets, 4 support domains), different cuts (honest eval on the shipped `.joblib`
+artifacts, exposed live via `routewise models` / `GET /route/policies`):
+
+| Policy | MAE | Spearman | Cheap recall | Mid recall | Frontier recall | Traffic share |
+|---|---|---|---|---|---|---|
+| **lisa · 3-tier** (≤2.0 / ≥4.5) | 0.822 | 0.786 | 79.9% | 70.9% | **80.4%** | 46 / 24 / 29 |
+| **kate · 2-tier** (single cut ≤4.0) | — | — | — | — | **86.0%** | 66 / 0 / 34 |
+
+---
+
 ## 🔄 How it works
 
 | Step | What happens |
@@ -144,6 +206,9 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | 🪙 Economy | ≤ 5.25 | ≥ 6.75 | Max cheap, min frontier spend |
 | ⚖️ Balanced | ≤ 4.5 | ≥ 6.0 | Default |
 | 💎 Quality | ≤ 3.75 | ≥ 5.25 | Max frontier quality |
+
+This slider tunes **emma** (generic routing). **lisa** and **kate** ship fixed,
+support-tuned cuts (≤ 2.0 / ≥ 4.5 and ≤ 4.0) — see [the policies section](#meet-emma-lisa--kate--three-routing-policies).
 
 <img src="./screenshots/tier-slider.svg" alt="Animated: the cheap and frontier boundary knobs slide together between economy, balanced, and quality" />
 
@@ -195,7 +260,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (82 tests) · GitHub Actions CI |
+| ✅ Testing | pytest (115 tests) · node:test (48 CLI) · GitHub Actions CI |
 
 ---
 
@@ -419,6 +484,11 @@ client.ask("query")
 client.ask("query", override_tier="frontier")
 client.ask("query", user_api_keys={"frontier": "sk-..."})
 
+# Pick a policy: emma (generic, default) · lisa (3-tier) · kate (2-tier)
+client.ask("I want a refund", model="lisa")
+client.ask("I was charged twice", model="kate")
+client.get_models()     # every policy: tiers, cutoffs, honest eval numbers
+
 # BYOM config (client-side, keys never stored)
 client.configure(cheap={...}, mid={...}, frontier={...})
 client.get_config()     # active config, no keys returned
@@ -442,6 +512,7 @@ npm install -g routewise
 routewise login                                        # create + save your key (hidden paste)
 routewise ask "what is the capital of france"           # one query, answered instantly
 routewise ask "design a rate limiter" --tier frontier   # force a tier, or --threshold 0|1|2
+routewise ask "i want a refund" --model lisa            # pick a policy: emma (default) · lisa · kate
 routewise stream "write a haiku about routing"          # tokens as they arrive
 routewise chat                                          # multi-turn REPL
 ```
@@ -458,6 +529,7 @@ markup stripped with **zero ANSI codes** (`--no-color` / `NO_COLOR` forces plain
 |---|---|
 | `login` / `whoami` | Create + save a key via masked paste / verify identity, spend & cache rate |
 | `ask` / `stream` / `chat` | Route a query · stream tokens as they arrive · multi-turn conversation |
+| `models` | List the three policies (emma · lisa · kate) with tiers, cutoffs & evals |
 | `stats` / `logs` / `analytics` | Usage, cost, savings, request log lines, cost analytics |
 | `byom` | Bring your own model per tier — set once, auto-attached to every call |
 | `doctor` | End-to-end self-check: config → backend → providers → live ask |
@@ -567,6 +639,18 @@ MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy at balanced thresholds on h
 Trained on a 7,488-query pool where every label is Claude-gold, plus 712 gold-only extras — an
 8,200-row training set drawn from an 8,783-row Claude-verified gold dataset. Scoring runs
 locally in <20 ms — no API call just to decide routing. Full comparison: [Model accuracy](#model-accuracy).
+
+</details>
+
+<details>
+<summary><b>Which routing policy should I use — emma, lisa, or kate?</b></summary>
+
+**emma** is the default: general-difficulty routing, thresholds movable with the slider.
+For customer-support traffic, switch to **lisa** (3-tier, support-scored) — or **kate**
+(2-tier) when the cost of a hard ticket slipping through outweighs the extra frontier spend.
+Pick per request: `client.ask(..., model="lisa")`, `routewise ask "..." --model lisa`, or
+`model="lisa"` on the OpenAI-compatible endpoint. See the
+[three-policies section](#meet-emma-lisa--kate--three-routing-policies).
 
 </details>
 
