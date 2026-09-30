@@ -108,6 +108,22 @@ result = client.ask("hello", user_api_keys={"frontier": "sk-..."})`,
         lang: 'python',
       },
       {
+        label: 'Pick a routing model',
+        code: `# Generic difficulty routing (default)
+result = client.ask("What is the capital of France?")
+
+# Customer support — 3-tier policy (lisa)
+result = client.ask("I want a refund", model="lisa")
+
+# Customer support — 2-tier policy (kate)
+result = client.ask("I was charged twice", model="kate")
+
+# List available models + their cuts and evals
+models = client.get_models()
+print(models)`,
+        lang: 'python',
+      },
+      {
         label: 'Streaming',
         code: `for item in client.ask_stream("Explain how transformers work"):
     if isinstance(item, str):
@@ -151,7 +167,7 @@ client = OpenAI(
       {
         label: 'Chat completion',
         code: `response = client.chat.completions.create(
-    model="auto",          # "auto" = ML routing, or "cheap"/"mid"/"frontier"
+    model="auto",          # "auto" routing, "cheap"/"mid"/"frontier", or emma/lisa/kate
     messages=[
         {"role": "user", "content": "Explain the CAP theorem"}
     ]
@@ -202,7 +218,21 @@ routewise ask "What is 2+2?"
 routewise stream "Explain how transformers work"
 
 # interactive multi-turn chat
-routewise chat`,
+routewise chat
+
+# pick a routing model: emma (generic, default), lisa (3-tier support), kate (2-tier support)
+routewise ask "I want a refund" --model lisa
+routewise stream "Where is my order?" --model kate
+routewise chat --model lisa
+
+# raw policy id overrides --model
+routewise ask "I was charged twice" --support-mode 2tier`,
+        lang: 'bash',
+      },
+      {
+        label: 'Discover models',
+        code: `# list all routing models: emma/lisa/kate, their tiers, cuts and evals
+routewise models`,
         lang: 'bash',
       },
       {
@@ -218,11 +248,12 @@ routewise feedback <log_id> up --reason "great answer"`,
       },
       {
         label: 'Bring your own model',
-        code: `# save a custom model for any tier, once
-routewise byom set frontier --provider openrouter --model deepseek/deepseek-v4-flash --key sk-or-v1-...
+        code: `# save a custom model for any tier, once — set just one, two, or all three tiers
+routewise byom set cheap --provider openrouter --model deepseek/deepseek-v4-flash --key sk-or-v1-...
+routewise byom set frontier --provider openrouter --model claude-3.7-sonnet --key sk-or-v1-...
 
 routewise byom list      # see saved config
-routewise ask "..."      # auto-applies your saved models`,
+routewise ask "..."      # auto-applies your saved models; unset tiers keep defaults`,
         lang: 'bash',
       },
     ],
