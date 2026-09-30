@@ -357,9 +357,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 </span>
                 Difficulty-scored request routing
               </p>
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.03] tracking-tight mb-8">
+              <h1 className="font-display text-4xl sm:text-6xl md:text-7xl font-semibold leading-[1.03] tracking-tight mb-8">
                 Most queries don't need your{' '}
-                <span className="bg-gradient-to-r from-[var(--color-signal)] to-[var(--color-cool)] bg-clip-text text-transparent">
+                <span className="whitespace-nowrap bg-gradient-to-r from-[var(--color-signal)] to-[var(--color-cool)] bg-clip-text text-transparent">
                   most expensive
                 </span>{' '}
                 model.
