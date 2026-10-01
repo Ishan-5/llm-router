@@ -294,6 +294,140 @@ def compare(auth=Depends(require_any_auth)):
         session.close()
 
 
+# Honest eval numbers for the generic (emma) model. These live in MODEL_SPEC.md
+# as prose, not in a loadable artifact, so they are pinned here rather than
+# pretending lisa/kate's train-on-17,600-tickets numbers are comparable -- they
+# are measured on a different holdout (783 Claude-gold general rows).
+GENERIC_EVAL = {
+    "mae": 1.018,
+    "spearman": 0.861,
+    "exact_acc_pct": 77.5,
+    "recall_frontier_pct": 58.0,
+    "cheap_precision_pct": 94.0,
+    "holdout_rows": 783,
+    "source": "MODEL_SPEC.md — 783 held-out Claude-gold general rows, balanced thresholds (cheap ≤ 4.5 / frontier ≥ 6.0)",
+}
+
+
+@router.get("/policy-analytics")
+def policy_analytics(auth=Depends(require_any_auth)):
+    """Per-policy cost & frontier-escape comparison over real logged traffic.
+
+    request_logs has no support_mode column, so this is a replay estimate: the
+    stored difficulty_score of each non-cache, non-web request is handed to each
+    policy's own tier rule under today's pricing. It answers "what would my last
+    500 requests have cost under emma vs lisa vs kate, and how much traffic
+    would each have sent to the frontier?" -- the same trick /compare and
+    /calibrate use for the three sliders.
+    """
+    import feature_builder as _fb  # same path dance route.py uses
+
+    session = SessionLocal()
+    try:
+        if auth["type"] == "api_key" and auth["record"]:
+            base_filter = [RequestLog.api_key_id == auth["record"].id, RequestLog.cache_hit == False, RequestLog.tier != "web", RequestLog.difficulty_score.isnot(None)]
+        else:
+            key_ids = [k.id for k in session.query(ApiKey.id).filter(ApiKey.user_id == auth["user_id"], ApiKey.is_active == True).all()]
+            if not key_ids:
+                return {"message": "No API keys found.", "analyzed_requests": 0, "models": []}
+            base_filter = [RequestLog.api_key_id.in_(key_ids), RequestLog.cache_hit == False, RequestLog.tier != "web", RequestLog.difficulty_score.isnot(None)]
+        rows = session.query(RequestLog.difficulty_score, RequestLog.input_tokens, RequestLog.output_tokens).filter(*base_filter).order_by(RequestLog.created_at.desc()).limit(500).all()
+        if not rows:
+            return {"message": "Not enough data yet. Send some routed requests first.", "analyzed_requests": 0, "models": []}
+
+        def _cost(tier, in_tok, out_tok):
+            prices = MODEL_CONFIG["frontier"] if tier == "frontier" else MODEL_CONFIG["cheap"] if tier == "cheap" else MODEL_CONFIG["mid"]
+            return (in_tok or 0) / 1_000_000 * prices["price_per_m_input"] + (out_tok or 0) / 1_000_000 * prices["price_per_m_output"]
+
+        # (product id, support_mode, generic margin for emma only)
+        specs = [
+            ("emma", "generic", None),
+            ("lisa", "3tier", None),
+            ("kate", "2tier", None),
+        ]
+        policies = {}
+        for pid in ("3tier", "2tier"):
+            try:
+                policies[pid] = _fb.load_policy(pid)
+            except Exception:
+                policies[pid] = None
+
+        frontier_baseline = sum(_cost("frontier", in_tok, out_tok) for _, in_tok, out_tok in rows)
+        models = []
+        for model_id, support_mode, _margin in specs:
+            policy = None if support_mode == "generic" else policies.get(support_mode)
+            if support_mode != "generic" and policy is None:
+                models.append({"id": model_id, "support_mode": support_mode, "available": False})
+                continue
+
+            counts = {"cheap": 0, "mid": 0, "frontier": 0}
+            cost = 0.0
+            for score, in_tok, out_tok in rows:
+                if support_mode == "generic":
+                    tier = score_to_tier(score, margin=1.0)[0]
+                else:
+                    tier = policy.tier_for(score)
+                counts[tier] = counts.get(tier, 0) + 1
+                cost += _cost(tier, in_tok, out_tok)
+
+            n = len(rows)
+            traffic = {t: round(cnt / n, 4) for t, cnt in counts.items() if cnt}
+            saved = round((1 - cost / frontier_baseline) * 100, 1) if frontier_baseline > 0 else 0.0
+
+            if support_mode == "generic":
+                _, cheap_ceil, frontier_floor = score_to_tier(0.0, margin=1.0)
+                cuts = {"cheap": round(cheap_ceil, 1), "frontier": round(frontier_floor, 1)}
+                tiers = ["cheap", "mid", "frontier"]
+                eval_block = dict(GENERIC_EVAL)
+            else:
+                ev = policy.honest_eval
+                cuts = {"cheap": round(policy.cheap_ceil, 1), "frontier": round(policy.frontier_floor, 1)}
+                tiers = list(policy.tiers)
+                recall_frontier = ev.get("recall_frontier")
+                eval_block = {
+                    "mae": ev.get("mae_mean"),
+                    "mae_worst": ev.get("mae_worst"),
+                    "spearman": ev.get("spearman_mean"),
+                    "recall_frontier_pct": round(recall_frontier * 100, 1) if recall_frontier is not None else None,
+                    # Escape rate = complement of frontier recall: the share of
+                    # gold-frontier requests the policy would have let slip.
+                    "frontier_escape_pct": round((1 - recall_frontier) * 100, 1) if recall_frontier is not None else None,
+                    "traffic": ev.get("traffic"),
+                    "source": f"{policy.n_tiers}-tier policy on 17,600 labeled support tickets, mean of 3 batch-level splits",
+                }
+
+            models.append(
+                {
+                    "id": model_id,
+                    "support_mode": support_mode,
+                    "available": True,
+                    "tiers": tiers,
+                    "cuts": cuts,
+                    "traffic": traffic,
+                    "counts": counts,
+                    "cost_usd": round(cost, 6),
+                    "cost_per_request": round(cost / n, 6),
+                    "frontier_baseline_cost_usd": round(frontier_baseline, 6),
+                    "savings_pct": saved,
+                    "eval": eval_block,
+                }
+            )
+
+        return {
+            "analyzed_requests": n,
+            "is_estimate": True,
+            "caveat": (
+                f"Replayed your last {n} routed requests (cache hits and web answers excluded) through each policy "
+                "under today's pricing. The offline eval numbers use each model's own holdout, so they are directional, "
+                "not apples-to-apples."
+            ),
+            "frontier_baseline_cost_usd": round(frontier_baseline, 6),
+            "models": models,
+        }
+    finally:
+        session.close()
+
+
 class EvaluateRequest(BaseModel):
     # Each query costs a real embedding plus a forward pass, and this route is
     # unauthenticated, so an unbounded list would be a free compute endpoint.
