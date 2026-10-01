@@ -19,6 +19,7 @@ const AboutPage = lazy(() => import('./components/AboutPage'))
 const AuthPage = lazy(() => import('./components/AuthPage'))
 const DashboardPage = lazy(() => import('./components/DashboardPage'))
 const MetricsDashboard = lazy(() => import('./components/MetricsDashboard'))
+const PolicyAnalytics = lazy(() => import('./components/PolicyAnalytics'))
 const ApiPlayground = lazy(() => import('./components/ApiPlayground'))
 const GuidePage = lazy(() => import('./components/GuidePage'))
 const AdminPage = lazy(() => import('./components/AdminPage'))
@@ -35,6 +36,7 @@ const TITLES = {
   '/models': 'Routewise — Models',
   '/pricing': 'Routewise — Models',
   '/metrics': 'Routewise — Live Metrics',
+  '/policies': 'Routewise — Policy Analytics',
   '/playground': 'Routewise — API Playground',
   '/guide': 'Routewise — Developer Guide',
   '/admin': 'Routewise — Admin',
@@ -320,6 +322,7 @@ export default function App() {
             <Route path="/models" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/pricing" element={<PricingRoute onNavigate={handleNavigate} />} />
             <Route path="/metrics" element={<MetricsDashboard isDark={isDark} backendOnline={backendOnline} />} />
+            <Route path="/policies" element={<PolicyAnalytics isDark={isDark} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />

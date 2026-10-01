@@ -119,6 +119,10 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
         className={`px-3 py-1.5 rounded-full transition-all ${isActive('/models') || isActive('/pricing') ? 'text-primary bg-line/60 shadow-card' : 'hover:text-primary hover:bg-line/30'}`}>
         Models
       </Link>
+      <Link to="/policies"
+        className={`px-3 py-1.5 rounded-full transition-all ${isActive('/policies') ? 'text-primary bg-line/60 shadow-card' : 'hover:text-primary hover:bg-line/30'}`}>
+        Policies
+      </Link>
       <Link to="/calculator"
         className={`px-3 py-1.5 rounded-full transition-all ${isActive('/calculator') ? 'text-primary bg-line/60 shadow-card' : 'hover:text-primary hover:bg-line/30'}`}>
         Calculator
