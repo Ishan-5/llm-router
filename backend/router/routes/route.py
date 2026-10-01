@@ -6,8 +6,11 @@ from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
+from router.support_policy import available_support_modes, SUPPORT_MODES
+# Re-exported: callers and tests import these from this module.
 from router.classifier import get_tier
-from router.support_policy import get_tier_with_mode, available_support_modes, SUPPORT_MODES
+from router.support_policy import get_tier_with_mode
+from router.multiturn import build_scoring_context, score_with_context
 from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings, compute_quality_score
@@ -128,10 +131,12 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     def _score_sync() -> tuple:
         """Run in the executor thread. Raises HTTPException-free errors; the
         caller converts them, because HTTPException is not meaningful off-loop."""
-        if req.support_mode and req.support_mode != "generic":
-            return get_tier_with_mode(req.query, threshold, support_mode=req.support_mode)
-        # Live path, unchanged.
-        return (*get_tier(req.query, threshold), "generic")
+        return score_with_context(
+            req.query,
+            margin=threshold,
+            support_mode=req.support_mode,
+            context=build_scoring_context(req.messages, req.query),
+        )
 
     # Scoring and the cache lookup are independent, so run them together as
     # the live path always did. A support-policy failure must surface as 503

@@ -114,6 +114,33 @@ def get_tier_with_mode(query: str, margin: float = 0.3, support_mode: str | None
     return score, tier, cheap_ceil, frontier_floor, support_mode
 
 
+def score_query(query: str, support_mode: str | None = None) -> float:
+    """Score a string under the active policy without mapping it to a tier.
+
+    Used by the multi-turn path, which needs a score for the conversation
+    transcript and then decides for itself which score to keep.
+    """
+    if not support_mode or support_mode == GENERIC:
+        from predict_difficulty import predict_difficulty
+        return float(predict_difficulty(query))
+
+    policy = _get_policy(support_mode)
+    embed = get_embedder().encode([query])
+    domain = fb.classify_domain(query)
+    features = fb.build_support_features(embed, [query], [domain])
+    return float(policy.predict(features)[0])
+
+
+def tier_for_score(score: float, margin: float = 0.3, support_mode: str | None = None) -> tuple[str, float, float]:
+    """Map an already-computed score to a tier using the active policy's own cuts."""
+    if not support_mode or support_mode == GENERIC:
+        from predict_difficulty import score_to_tier
+        return score_to_tier(score, margin=margin)
+
+    policy = _get_policy(support_mode)
+    return policy.tier_for(score), policy.cheap_ceil, policy.frontier_floor
+
+
 def _generic_get_tier(query: str, margin: float = 0.3):
     from predict_difficulty import predict_difficulty
 
