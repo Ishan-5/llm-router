@@ -12,6 +12,7 @@ log = logging.getLogger("routewise.openai_compat")
 
 from router.classifier import get_tier
 from router.support_policy import get_tier_with_mode
+from router.multiturn import build_scoring_context, score_with_context
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, ApiKey
 from router.auth import require_api_key, check_budget
@@ -223,10 +224,13 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             session.close()
 
     def _score():
-        if support_mode and support_mode != "generic":
-            score, tier, _c, _f, _ = get_tier_with_mode(user_query, _load_threshold(), support_mode=support_mode)
-            return score, tier, _c, _f
-        return get_tier(user_query, _load_threshold())
+        score, tier, _c, _f, _mode = score_with_context(
+            user_query,
+            margin=_load_threshold(),
+            support_mode=support_mode,
+            context=build_scoring_context(req.messages, user_query),
+        )
+        return score, tier, _c, _f
 
     cached, (difficulty_score, tier, _, _) = await asyncio.gather(
         _maybe_check_cache(),
