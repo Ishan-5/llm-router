@@ -78,6 +78,20 @@ print(result["cost_usd"])     # what it cost
 > No config needed. RouteWise scores the difficulty of every query, picks the cheapest tier
 > that can answer it, caches near-duplicates, and fails over across providers — out of the box.
 
+**Where to go next**
+
+| I want to… | Read |
+|---|---|
+| Browse every integration surface, searchable, with copy-paste snippets | **[/guide](frontend/src/components/GuidePage.jsx)** in the app |
+| Put RouteWise behind a **customer support chatbot** | [`customer-support/README.md`](customer-support/README.md) |
+| Roll it out to a **team** — keys, alerts, one threshold | [Teams](#-alerting) + [Known limitations](#-known-limitations) |
+| Understand the full request pipeline and scoring math | [How it works](#-how-it-works) |
+
+> [!WARNING]
+> **RouteWise is stateless.** It keeps no conversation memory — you own the transcript.
+> If you're wiring it into a chatbot, read
+> [Building a chatbot? Read this first](#-building-a-chatbot-read-this-first) before you ship.
+
 ---
 
 ## ✨ Why RouteWise?
@@ -208,7 +222,40 @@ artifacts, exposed live via `routewise models` / `GET /route/policies`):
 | 💎 Quality | ≤ 3.75 | ≥ 5.25 | Max frontier quality |
 
 This slider tunes **emma** (generic routing). **lisa** and **kate** ship fixed,
-support-tuned cuts (≤ 2.0 / ≥ 4.5 and ≤ 4.0) — see [the policies section](#meet-emma-lisa--kate--three-routing-policies).
+support-tuned cuts (≤ 2.0 / ≥ 4.5 and ≤ 4.0) — see [the policies section](#-meet-emma-lisa--kate--three-routing-policies).
+
+### 🧠 Building a chatbot? Read this first
+
+RouteWise keeps **no conversation memory**. It stores no sessions and never reads
+your history back — it scores the newest message to choose a model, then
+forwards whatever `messages` array you handed it.
+
+That makes the integration trivial and the footgun specific: if you send only the
+latest turn, the router is judging *"now draw it in python"* with no idea what
+*"it"* refers to, and it will send a hard question to the cheap model.
+
+| what you send | scored alone | scored with context | routed |
+|---|---|---|---|
+| `"now draw it in python"` | 1.61 | 6.86 | cheap → **frontier** |
+
+RouteWise scores the last 4 turns as context too and keeps whichever score is
+higher, so a follow-up can only ever escalate — but it can only do that **if you
+send the history**.
+
+```python
+# wrong — no context reaches the scorer
+client.chat.completions.create(model="kate", messages=[{"role": "user", "content": "now draw it in python"}])
+
+# right
+client.chat.completions.create(model="kate", messages=[*history, {"role": "user", "content": "now draw it in python"}])
+```
+
+And because the **semantic cache is not conversation-aware** (it matches on the
+newest message alone), pass `bypass_cache: true` on every turn after the first so
+a short reply can't match a stored answer from an unrelated conversation.
+
+Full recipe, the `kate`-vs-`lisa` decision, and the per-turn REST pattern:
+**[`customer-support/README.md`](customer-support/README.md)**.
 
 <img src="./screenshots/tier-slider.svg" alt="Animated: the cheap and frontier boundary knobs slide together between economy, balanced, and quality" />
 
@@ -422,7 +469,7 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 - **Training data mirrors real traffic.** The 7,488-query labeled pool is right-skewed toward
   easy-to-moderate queries (mean 3.5/10, median 3, 27% ≥5, 15% ≥7) — the distribution routing
   is built for. The sparse expert tail (8–10, ~14%) is where under-confidence shows up, noted
-  under [Known limitations](#known-limitations).
+  under [Known limitations](#-known-limitations).
 - **Both boundaries move with the slider.** Economy raises both (more cheap); quality lowers
   both (more frontier). Balanced = cheap ≤ 4.5 / frontier ≥ 6.0, sliding ±0.75 per step.
 - **`score_to_tier` returns `(tier, cheap_ceil, frontier_floor)`** so the `/route` response can
@@ -444,9 +491,29 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 
 ## ⚠️ Known limitations
 
+- 🧠 **The router is stateless — you own the conversation.** Nothing is stored
+  server-side and no history is read back. `messages` is forwarded verbatim, and
+  only the newest message drives the difficulty score. For a multi-turn bot you
+  must resend the whole transcript every turn; otherwise follow-ups like *"now
+  draw it in python"* score 1.61 on their own and route cheap when they actually
+  belong on frontier. RouteWise does score the last 4 turns as context and keeps
+  the higher score — but only when you send them. See
+  [`customer-support/README.md`](customer-support/README.md).
+- 💾 **The semantic cache is not conversation-aware.** It matches on the newest
+  message only, scoped to your API key, at 0.95 cosine similarity, and a hit
+  returns a stored answer verbatim without replaying any context. A short reply
+  like *"yes"* or *"draw it"* can therefore match an unrelated conversation and
+  serve the wrong answer. **Pass `bypass_cache: true` on every turn after the
+  first.** Supported on `/route` and `/route/stream`; *not* on the
+  OpenAI-compatible endpoint.
 - 🔐 **BYOM is scoped per user, not per-API-key.** Config loads per user
   (`get_active_config(user_id)`), so two keys of the same user share config; script-created
   keys without a `user_id` share the global config.
+- 💵 **Per-key daily budgets are enforced but not settable over the API.** Every
+  key has a `daily_budget_usd` column and the router forces that key to `cheap`
+  once its daily spend crosses it, but no public endpoint writes the column — it
+  is only readable via `/admin/keys`. Use `daily_spend` alerts plus key
+  revocation for team enforcement today.
 - 🧮 **The difficulty model is weakest on short, jargon-heavy math/physics one-liners** — few
   of those in the training pool, so it leans on sparse lexical cues. System-design error is now
   mid-pack after the 300-query frontier expansion.
@@ -638,7 +705,7 @@ independent provider (Gemini) answers as a last resort rather than returning a 5
 MAE 1.018, Spearman 0.861, 77.5% exact-tier accuracy at balanced thresholds on held-out data.
 Trained on a 7,488-query pool where every label is Claude-gold, plus 712 gold-only extras — an
 8,200-row training set drawn from an 8,783-row Claude-verified gold dataset. Scoring runs
-locally in <20 ms — no API call just to decide routing. Full comparison: [Model accuracy](#model-accuracy).
+locally in <20 ms — no API call just to decide routing. Full comparison: [Model accuracy](#-model-accuracy).
 
 </details>
 
@@ -650,7 +717,7 @@ For customer-support traffic, switch to **lisa** (3-tier, support-scored) — or
 (2-tier) when the cost of a hard ticket slipping through outweighs the extra frontier spend.
 Pick per request: `client.ask(..., model="lisa")`, `routewise ask "..." --model lisa`, or
 `model="lisa"` on the OpenAI-compatible endpoint. See the
-[three-policies section](#meet-emma-lisa--kate--three-routing-policies).
+[three-policies section](#-meet-emma-lisa--kate--three-routing-policies).
 
 </details>
 
