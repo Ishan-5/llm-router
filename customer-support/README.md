@@ -1,22 +1,220 @@
-# Customer-Support Difficulty Model — Reference
+# Customer-Support Routing — Integration Guide
 
-Notes for the README. Plain numbers, no marketing. Last updated 2026-09-28.
+Route your support traffic through RouteWise's support policies: **lisa** (3-tier)
+and **kate** (2-tier). Plain numbers, no marketing. Last updated 2026-10-02.
 
-## What this is
+> If you are integrating rather than evaluating, you only need the first four
+> sections. The model forensics start at [Model forensics](#model-forensics).
 
-A difficulty regressor for **customer-support mode only**. It is a separate model
-from the generic router, loaded only when a user selects a support difficulty
-policy. It never scores coding, writing, or general reasoning queries.
+---
+
+## TL;DR
+
+- Keep your chatbot, your memory, and your UX. Swap only the model call.
+- Default to **`kate`**. It has the safer cut for support traffic.
+- **You must send the full conversation every turn.** RouteWise stores nothing.
+- **Turn the cache off on follow-ups.** See
+  [You own the memory](#2-you-own-the-memory-and-the-cache).
+
+---
+
+## 1. The integration
+
+Point the OpenAI SDK at RouteWise and send your existing message list. Nothing
+else about your bot changes.
+
+```python
+from openai import OpenAI
+
+router = OpenAI(api_key="rw_...", base_url="https://llm-router-…onrender.com")
+
+def ask_router(turns):                 # turns = the list your bot already builds
+    resp = router.chat.completions.create(model="kate", messages=turns)
+    return resp.choices[0].message.content
+
+answer = ask_router([
+    {"role": "user",      "content": "my app keeps crashing when I sync"},
+    {"role": "assistant", "content": "Sorry about that — can you send the error code?"},
+    {"role": "user",      "content": "it says 500 every time"},
+])
+
+print(answer)
+print(resp.headers.get("x-routewise-tier"))   # cheap | mid | frontier
+print(resp.headers.get("x-routewise-cost"))   # USD actually spent
+```
+
+That is the whole change. Your prompt, your retrieval, your handoff logic, your
+conversation store — all untouched.
+
+### Prefer `/route` for a real conversation
+
+`/v1/chat/completions` has no per-request `bypass_cache` flag. `/route` does, and
+it also returns `request_log_id` so you can attach thumbs up/down feedback to the
+exact turn.
+
+```python
+import requests
+
+BASE = "https://llm-router-…onrender.com"
+HEADERS = {"Authorization": "Bearer rw_..."}
+
+def route_turn(turns):
+    r = requests.post(f"{BASE}/route", headers={**HEADERS, "Content-Type": "application/json"}, json={
+        "query":        turns[-1]["content"],   # newest message drives the score
+        "messages":     turns,                   # full context — this is what fixes follow-ups
+        "support_mode": "2tier",                 # kate  ("3tier" = lisa, omit = emma)
+        "bypass_cache": len(turns) > 1,          # never serve a stored answer to a follow-up
+    }, timeout=30)
+    r.raise_for_status()
+    d = r.json()
+    return {
+        "reply":      d["response"],
+        "tier":       d["routed_to"],
+        "difficulty": d["difficulty_score"],
+        "cost_usd":   d["cost_usd"],
+        "log_id":     d["request_log_id"],
+    }
+```
+
+---
+
+## 2. You own the memory and the cache
+
+**RouteWise is stateless.** It stores no sessions, holds no conversation memory,
+and never reads your history back. It scores the newest message to choose a
+model, then forwards whatever `messages` array you gave it.
+
+So if you send only the latest turn, a follow-up gets judged with no context:
+
+| message sent | scored alone | scored with context | routed |
+|---|---|---|---|
+| `"now draw it in python"` | 1.61 | 6.86 | cheap → **frontier** |
+
+RouteWise scores the last 4 turns as context too and keeps whichever score is
+higher, so a follow-up can only ever escalate. **But it can only do that if you
+send the history.** Sending one message means paying cheap-tier prices for a
+hard question.
+
+```python
+# wrong — no context reaches the scorer
+client.chat.completions.create(model="kate", messages=[{"role":"user","content":"now draw it in python"}])
+
+# right
+client.chat.completions.create(model="kate", messages=[*full_turn_history, {"role":"user","content":"now draw it in python"}])
+```
+
+### The cache does not know which conversation it belongs to
+
+The semantic cache matches on the **newest message only**, scoped to your API
+key, at 0.95 cosine similarity. On a hit it returns the stored answer verbatim —
+no model call, no history replayed.
+
+A follow-up like `"yes"` or `"draw it"` sits very close to someone else's `"yes"`
+or `"draw it"` from a completely different conversation, and a hit will serve
+that unrelated answer.
+
+**Bypass the cache on every turn after the first.** `bypass_cache` is supported on
+`/route` and `/route/stream`; it is not available on the OpenAI-compatible
+endpoint.
+
+---
+
+## 3. kate or lisa?
+
+Both policies run the **same regressors** on the **same 17,600 tickets**. They
+produce identical scores and differ only in how a score is cut into tiers.
+
+| | **kate** (2-tier) | **lisa** (3-tier) |
+|---|---|---|
+| cheap when | score ≤ 4.0 | score ≤ 2.0 |
+| mid | *no mid band* | 2.0 < score < 4.5 |
+| frontier when | anything above 4.0 | score ≥ 4.5 |
+| frontier recall | **86.0%** | 80.4% |
+| frontier escape | **14.0%** | 19.6% |
+| traffic (cheap/mid/frontier) | 66 / 0 / 34 | 46 / 24 / 29 |
+
+**"Frontier escape"** is the share of genuinely-hard tickets the policy would
+have downgraded to a cheaper tier. Lower is safer.
+
+Choose **kate** when a wrong answer costs more than the extra spend — a bot that
+answers "I can't log in" with the cheap model is a bad experience, and kate's 4.0
+cut keeps far more of those on a capable tier.
+
+Choose **lisa** only if mid-tier answers are genuinely good enough for your
+product and you want the cheaper mix. Dropping the mid band is not free: it costs
+5 more points of traffic on the expensive tier.
+
+Use **emma** (the default, no `support_mode`) for anything that is not a support
+ticket — see the domain warning below.
+
+---
+
+## 4. Before you ship
+
+### Measure it on your own traffic
+
+```python
+# replay your last 500 logged scores through each policy's own rule
+stats = requests.get(f"{BASE}/policy-analytics", headers=HEADERS).json()
+for m in stats["models"]:
+    if m["available"]:
+        print(m["id"], m["traffic"], f"{m['savings_pct']}% saved")
+
+for log in requests.get(f"{BASE}/logs?limit=20", headers=HEADERS).json():
+    print(f"{log['tier']:9s} score={log['difficulty_score']:.2f}  {log['query'][:60]}")
+```
+
+### Four things to know before a paying customer does
+
+- **The score is length-sensitive.** `"Prove the halting problem is undecidable"`
+  scores 3.60 and routes cheap; the same question spelled out at length scores
+  8.35 and routes frontier. Short-but-hard tickets can be under-routed. If your
+  tickets are terse, prefer kate, and read `/logs` weekly.
+
+- **The models are domain-specific.** They were trained on support tickets across
+  `account_access`, `orders_billing`, `technical` and `delivery_general`. Point
+  kate at a general or coding question and it will under-route, because that is
+  out of distribution. Use emma for anything that is not a support ticket.
+
+- **Short conversational turns land in mid under lisa.** `"thanks, that fixed it!"`
+  scores 2.17 against a 2.0 cut, so lisa routes a no-op acknowledgment to the mid
+  tier. Harmless, but do not read it as a bug.
+
+- **The top of the scale compresses.** On the hardest tickets (gold 8–9) the model
+  under-predicts, typically 5.6–7.1. Score 9–10 is 18 rows out of 17,600, so the
+  top band is effectively unevidenced and is not claimed.
+
+### Recommended rollout
+
+1. Put kate behind **one** support surface — the one with the most measurable
+   user feedback.
+2. Enable the `daily_spend` alert the same day you enable routing.
+3. Read `/logs` every few days for a fortnight. Look for
+   `cheap` + a `difficulty_score` above the policy's cheap cut: that is the
+   under-routing signature.
+4. Widen to the rest of the traffic once the numbers look boring.
+
+---
+
+---
+
+# Model forensics
+
+Everything below is evaluation evidence. It is not needed to integrate.
+
+## What the models are
+
+A difficulty regressor for **customer-support mode only**, separate from the
+generic router, loaded only when a request carries `support_mode`. It never
+scores coding, writing, or general reasoning queries.
 
 Both shipped policies use MiniLM-L6-v2 (384-dim) + 4 handcrafted features +
 4 domain indicators = 392, then an ensemble of three LightGBM regressors
 (seeds 18, 19, 20), predictions averaged and clipped to 0–10.
 
-## Using it
-
-Support mode is opt-in and additive. The live RouteWise router is the default
-and its behavior is unchanged; a request only touches these models if it
-carries `support_mode`.
+Support mode is opt-in and additive. The live RouteWise router is the default and
+its behavior is unchanged; a request only touches these models if it carries
+`support_mode`.
 
 ```
 POST /route            {"query": "...", "support_mode": "2tier"}   # or "3tier"
@@ -55,15 +253,15 @@ contributed to the training set.
 
 | source | rows | what it is |
 |---|---|---|
-DS3 (Tobi Bueck) | 9,229 | real enterprise support tickets, actual customer emails |
-DS2 (Bitext) | 8,371 | synthetic customer-support Q/A pairs |
+| DS3 (Tobi Bueck) | 9,229 | real enterprise support tickets, actual customer emails |
+| DS2 (Bitext) | 8,371 | synthetic customer-support Q/A pairs |
 
 | category | rows |
 |---|---|
-technical | 5,817 |
-orders & billing | 4,941 |
-delivery & general | 4,750 |
-account access | 2,092 |
+| technical | 5,817 |
+| orders & billing | 4,941 |
+| delivery & general | 4,750 |
+| account access | 2,092 |
 
 The 238 generated batches were shuffled across all four categories, so no
 category is over-represented within a batch. The labeled set is deduplicated:
@@ -204,7 +402,7 @@ trackable part:
 `make_support_batches.py` | builds the 238 Claude batches with the rubric |
 `extract_ds3_english.py` | extracts + deduplicates the English DS3 tickets |
 `fetch_ds2_bitext.py` | reproducible DS2 download |
-| `eval_support_model.py` | batch-level split, calibration, metrics, report |
+`eval_support_model.py` | batch-level split, calibration, metrics, report |
 
 `train_support_models.py` is kept for the record but its headline comparison
 was against generic-domain gold and is **not** the evaluation described here.
