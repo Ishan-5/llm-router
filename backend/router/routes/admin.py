@@ -39,7 +39,6 @@ def admin_stats(user_id: str = Depends(require_admin_any)):
         cache_savings_usd = float(session.query(func.sum(RequestLog.tokens_saved_usd)).filter(RequestLog.cache_hit == True).scalar() or 0.0)
         routing_savings_usd = max(0.0, round(total_hypothetical_cost - total_actual_cost, 6))
         total_savings_usd = round(cache_savings_usd + routing_savings_usd, 6)
-        average_quality = float(session.query(func.avg(RequestLog.quality_score)).filter(RequestLog.quality_score.isnot(None)).scalar() or 0.0)
         quality_judged_count = session.query(func.count(RequestLog.id)).filter(RequestLog.quality_judged == True).scalar() or 0
         judged_quality_avg = float(session.query(func.avg(RequestLog.quality_score)).filter(RequestLog.quality_judged == True).scalar() or 0.0)
         feedback_counts = dict(session.query(RequestLog.feedback, func.count(RequestLog.id)).filter(RequestLog.feedback.in_(("up", "down"))).group_by(RequestLog.feedback).all())
@@ -56,7 +55,7 @@ def admin_stats(user_id: str = Depends(require_admin_any)):
             "cache_hit_rate": cache_hit_rate, "fallback_count": fallback_count,
             "avg_latency_by_tier": avg_latency_by_tier, "daily_costs": daily_costs,
             "cache_savings_usd": cache_savings_usd, "routing_savings_usd": routing_savings_usd,
-            "total_savings_usd": total_savings_usd, "average_quality": round(average_quality, 4),
+            "total_savings_usd": total_savings_usd,
             "quality_judged_count": quality_judged_count, "judged_quality_avg": round(judged_quality_avg, 4),
             "feedback_counts": {"up": int(feedback_counts.get("up", 0)), "down": int(feedback_counts.get("down", 0))},
             "feedback_total": feedback_total,

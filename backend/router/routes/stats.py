@@ -124,7 +124,6 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
         # "failed" (see routes/route.py), which is the real failure signal.
         failed_count = session.query(func.count(RequestLog.id)).filter(RequestLog.tier == "failed", *base_filter).scalar() or 0
         success_rate_pct = round((total_requests - failed_count) / total_requests * 100, 1) if total_requests else 100.0
-        average_quality = float(session.query(func.avg(RequestLog.quality_score)).filter(*base_filter, RequestLog.quality_score.isnot(None)).scalar() or 0.0)
         quality_judged_count = session.query(func.count(RequestLog.id)).filter(*base_filter, RequestLog.quality_judged == True).scalar() or 0
         judged_quality_avg = float(session.query(func.avg(RequestLog.quality_score)).filter(*base_filter, RequestLog.quality_judged == True).scalar() or 0.0)
         feedback_counts = dict(session.query(RequestLog.feedback, func.count(RequestLog.id)).filter(*base_filter, RequestLog.feedback.in_(("up", "down"))).group_by(RequestLog.feedback).all())
@@ -168,7 +167,6 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "daily_costs": daily_costs,
             "cache_savings_usd": cache_savings_usd, "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd, "savings_pct": savings_pct,
-            "average_quality": round(average_quality, 4),
             "quality_judged_count": quality_judged_count, "judged_quality_avg": round(judged_quality_avg, 4),
             "feedback_counts": {"up": int(feedback_counts.get("up", 0)), "down": int(feedback_counts.get("down", 0))},
             "feedback_total": feedback_total,
