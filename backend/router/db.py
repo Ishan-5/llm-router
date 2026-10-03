@@ -57,6 +57,9 @@ class RequestLog(Base):
     cost_usd = Column(Float)
     latency_ms = Column(Float)
     tokens_saved_usd = Column(Float, nullable=True)
+    # quality_score is written only by the LLM judge (router/quality_judge.py).
+    # quality_judged distinguishes a real judge score from "not scored yet".
+    # Nothing else writes this column, so there is exactly one source of truth.
     quality_score = Column(Float, nullable=True)
     quality_judged = Column(Boolean, nullable=True, default=False)
     llm_difficulty_score = Column(Float, nullable=True)  # LLM-as-labeler ground-truth difficulty (0-10)
@@ -181,14 +184,6 @@ try:
         conn.commit()
 except Exception:
     pass
-
-
-def compute_quality_score(cache_hit: bool, cache_similarity: float | None, fallback_used: bool) -> float:
-    if cache_hit and cache_similarity is not None:
-        return round(min(float(cache_similarity), 1.0), 4)
-    if fallback_used:
-        return 0.85
-    return 1.0
 
 
 def log_request(data: dict):
