@@ -178,6 +178,10 @@ export default function DashboardPage() {
   const [loadingKeys, setLoadingKeys] = useState(true)
   const [creating, setCreating] = useState(false)
   const [revoking, setRevoking] = useState(null)
+const [keyBudget, setKeyBudget] = useState('')
+const [editingBudget, setEditingBudget] = useState(null)
+const [budgetDraft, setBudgetDraft] = useState('')
+const [savingBudget, setSavingBudget] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('keys')
@@ -206,21 +210,69 @@ export default function DashboardPage() {
     setError(null)
     setNewKey(null)
     const headers = await authHeaders()
+    // Blank means unlimited; anything typed must be a real non-negative number.
+    const trimmed = keyBudget.trim()
+    const body = { name: keyName.trim() }
+    if (trimmed !== '') {
+      const parsed = Number(trimmed)
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        setError('Daily budget must be zero or greater')
+        setCreating(false)
+        return
+      }
+      body.daily_budget_usd = parsed
+    }
     const res = await fetch(`${API_BASE}/keys`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ name: keyName.trim() }),
+      body: JSON.stringify(body),
     })
     if (res.ok) {
       const data = await res.json()
       setNewKey(data.key)
       setKeyName('')
+      setKeyBudget('')
       loadKeys()
     } else {
       const err = await res.json().catch(() => ({}))
       setError(err.detail || 'Failed to create key')
     }
     setCreating(false)
+  }
+
+  function startEditBudget(k) {
+    setEditingBudget(k.id)
+    setBudgetDraft(k.daily_budget_usd == null ? '' : String(k.daily_budget_usd))
+  }
+
+  async function saveBudget(id) {
+    const trimmed = budgetDraft.trim()
+    let value = null
+    if (trimmed !== '') {
+      const parsed = Number(trimmed)
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        setError('Daily budget must be zero or greater')
+        return
+      }
+      value = parsed
+    }
+    setSavingBudget(true)
+    setError(null)
+    const headers = await authHeaders()
+    const res = await fetch(`${API_BASE}/keys/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ daily_budget_usd: value }),
+    })
+    if (res.ok) {
+      setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, daily_budget_usd: value } : k)))
+      setEditingBudget(null)
+      setBudgetDraft('')
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setError(err.detail || 'Failed to update budget')
+    }
+    setSavingBudget(false)
   }
 
   async function handleRevoke(id) {
@@ -286,13 +338,23 @@ export default function DashboardPage() {
           </p>
 
           {/* Create key */}
-          <form onSubmit={handleCreate} className="flex gap-3 mb-8">
+          <form onSubmit={handleCreate} className="flex flex-wrap gap-3 mb-8">
             <input
               type="text"
               value={keyName}
               onChange={(e) => setKeyName(e.target.value)}
               placeholder="Key name (e.g. my-app)"
-              className="flex-1 bg-surface border border-line rounded-lg px-4 py-3 font-body text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
+              className="flex-1 min-w-[12rem] bg-surface border border-line rounded-lg px-4 py-3 font-body text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
+            />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={keyBudget}
+              onChange={(e) => setKeyBudget(e.target.value)}
+              placeholder="Daily budget $ (optional)"
+              title="Once this key's spend today passes the cap, the router forces it to the cheap tier. Leave blank for no cap."
+              className="w-full sm:w-48 bg-surface border border-line rounded-lg px-4 py-3 font-mono text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
             />
             <button
               type="submit"
@@ -338,6 +400,47 @@ export default function DashboardPage() {
                     <p className="font-body text-sm font-medium group-hover:text-signal transition-colors">{k.name}</p>
                     <p className="font-mono text-[10px] text-muted">{maskKey(k.key)}</p>
                     <p className="font-mono text-[10px] text-muted">created {new Date(k.created_at).toLocaleDateString()}</p>
+                    {editingBudget === k.id ? (
+                      <div className="flex items-center gap-2 mt-2">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          autoFocus
+                          value={budgetDraft}
+                          onChange={(e) => setBudgetDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveBudget(k.id)
+                            if (e.key === 'Escape') setEditingBudget(null)
+                          }}
+                          placeholder="blank = no limit"
+                          className="w-36 bg-surface border border-line rounded px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+                        />
+                        <button
+                          onClick={() => saveBudget(k.id)}
+                          disabled={savingBudget}
+                          className="font-mono text-[10px] px-2 py-1 rounded border border-signal/50 text-signal hover:bg-signal/10 transition disabled:opacity-50"
+                        >
+                          {savingBudget ? 'saving…' : 'save'}
+                        </button>
+                        <button
+                          onClick={() => setEditingBudget(null)}
+                          className="font-mono text-[10px] px-2 py-1 rounded border border-line text-muted hover:text-primary transition"
+                        >
+                          cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => startEditBudget(k)}
+                        title="Set a daily spend cap for this key"
+                        className="font-mono text-[10px] text-muted hover:text-signal transition mt-0.5 text-left"
+                      >
+                        {k.daily_budget_usd == null
+                          ? 'daily budget: none — set one'
+                          : `daily budget: $${k.daily_budget_usd.toFixed(2)}/day — edit`}
+                      </button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
