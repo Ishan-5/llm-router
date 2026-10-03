@@ -13,7 +13,7 @@ from router.support_policy import get_tier_with_mode
 from router.multiturn import build_scoring_context, score_with_context
 from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
 from router.cache import check_cache, add_to_cache
-from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings, compute_quality_score
+from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings
 from router.auth import require_api_key, check_budget
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
@@ -26,6 +26,19 @@ log = logging.getLogger("routewise")
 executor = ThreadPoolExecutor()
 
 DEFAULT_THRESHOLD = 1.0
+
+
+def _cache_lookup(query: str, api_key_id: int | None, context: str | None):
+    """run_in_executor takes positional args only."""
+    return check_cache(query, api_key_id, context=context)
+
+
+def _cache_store(query: str, response: str, tier: str, model_id: str, cost_usd: float,
+                 input_tokens: int, output_tokens: int, api_key_id: int | None,
+                 context: str | None):
+    """Store under the same context the scorer used, never a bare follow-up."""
+    return add_to_cache(query, response, tier, model_id, cost_usd,
+                        input_tokens, output_tokens, api_key_id, context=context)
 
 
 def _is_price(v) -> bool:
@@ -56,6 +69,11 @@ class QueryRequest(BaseModel):
     # support models instead. Costs no extra LLM call.
     support_mode: str | None = None
     messages: list[dict] | None = None  # multi-turn: [{"role": "user"|"assistant", "content": str}]
+    # Multi-turn requests skip the cache by default: a follow-up's meaning
+    # depends on the transcript, so a shared similarity cache could serve
+    # another conversation's answer. Set this to true to allow it, in which case
+    # the lookup matches on the full transcript context, not the newest message.
+    allow_context_cache: bool = False
 
     @field_validator("query")
     @classmethod
@@ -119,14 +137,27 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
                 "fallback_used": False, "cache_hit": False, "cache_similarity": None,
                 "model_id": "tavily/search", "input_tokens": 0, "output_tokens": 0,
-                "cost_usd": 0.0, "latency_ms": latency_ms, "quality_score": 1.0,
+                "cost_usd": 0.0, "latency_ms": latency_ms,
             })
-            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "quality_score": 1.0, "log_id": log_id}
+            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "log_id": log_id}
+
+    # Build the conversation context once. The scorer needs it to judge a
+    # follow-up fairly, and the cache needs it so a multi-turn request can never
+    # be answered with another conversation's stored response.
+    context = build_scoring_context(req.messages, req.query)
 
     async def _maybe_check_cache():
+        # A request carrying history means something different on every call, so
+        # a shared similarity cache cannot judge it safely. Opt back in with
+        # bypass_cache=False plus allow_context_cache=True -- the lookup then
+        # matches on the full transcript context rather than the newest message.
         if req.bypass_cache:
             return None
-        return await loop.run_in_executor(_executor, check_cache, req.query, api_key.id)
+        if context and not req.allow_context_cache:
+            return None
+        return await loop.run_in_executor(
+            _executor, _cache_lookup, req.query, api_key.id, context
+        )
 
     def _score_sync() -> tuple:
         """Run in the executor thread. Raises HTTPException-free errors; the
@@ -135,7 +166,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             req.query,
             margin=threshold,
             support_mode=req.support_mode,
-            context=build_scoring_context(req.messages, req.query),
+            context=context,
         )
 
     # Scoring and the cache lookup are independent, so run them together as
@@ -165,7 +196,6 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         tokens_saved_usd = round(
             (cached["input_tokens"] / 1_000_000 * price_in)
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
-        quality_score = compute_quality_score(cache_hit=True, cache_similarity=cached["similarity"], fallback_used=False)
         log_id = log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
             "query": sanitize_pii(req.query), "response": cached["response"],
@@ -173,9 +203,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
             "model_id": cached["model_id"], "input_tokens": 0, "output_tokens": 0,
             "cost_usd": 0.0, "latency_ms": latency_ms, "tokens_saved_usd": tokens_saved_usd,
-            "quality_score": quality_score,
         })
-        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "quality_score": quality_score, "log_id": log_id}
+        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "log_id": log_id}
 
     if req.override_tier and req.override_tier not in ("cheap", "mid", "frontier"):
         raise HTTPException(status_code=400, detail="invalid override_tier")
@@ -259,6 +288,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             ["cheap", "frontier"] if resolved_mode == "2tier" else ["cheap", "mid", "frontier"]
         ),
         "messages": req.messages,
+        "context": context,
         "route_reason": route_reason,
     }
 
@@ -307,12 +337,11 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
             "tier": "failed", "fallback_used": False,
             "cache_hit": False, "cache_similarity": None, "model_id": None,
             "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
-            "latency_ms": round((time.time() - start) * 1000, 2), "quality_score": 0.0,
+            "latency_ms": round((time.time() - start) * 1000, 2),
         })
         raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
 
     latency_ms = round((time.time() - start) * 1000, 2)
-    quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=result["fallback_used"])
     log_id = log_request({
         "api_key_id": api_key.id, "user_id": api_key.user_id,
         "query": sanitize_pii(req.query), "response": result["text"],
@@ -322,9 +351,8 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
         "cost_usd": result["cost_usd"],
         "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
-        "quality_score": quality_score,
     })
-    loop.run_in_executor(executor, add_to_cache, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"], api_key.id)
+    loop.run_in_executor(executor, _cache_store, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"], api_key.id, pre.get("context"))
     if log_id is not None:
         loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), result["text"], result["tier"], result["model_id"])
         loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
@@ -336,7 +364,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         "cross_provider_fallback": bool(result.get("cross_provider_fallback")),
         "cache_hit": False,
         "difficulty_score": difficulty_score, "cost_usd": result["cost_usd"],
-        "latency_ms": latency_ms, "quality_score": quality_score,
+        "latency_ms": latency_ms,
         "cheap_ceil": pre["cheap_ceil"], "frontier_floor": pre["frontier_floor"],
         "support_mode": pre["support_mode"], "available_tiers": pre["available_tiers"],
         "model_id": result["model_id"],
@@ -454,7 +482,6 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         full_response = "".join(full_text)
         fallback_used = meta["tier"] != routing_tier
         cross_provider_fallback = meta["tier"] == "gemini"
-        quality_score = compute_quality_score(cache_hit=False, cache_similarity=None, fallback_used=fallback_used)
 
         log_id = log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
@@ -463,11 +490,11 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             "tier": meta["tier"], "fallback_used": fallback_used, "cache_hit": False,
             "cache_similarity": None, "model_id": meta["model_id"],
             "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
-            "cost_usd": meta["cost_usd"], "latency_ms": latency_ms, "quality_score": quality_score,
+            "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
         })
-        loop.run_in_executor(executor, add_to_cache, req.query, full_response,
+        loop.run_in_executor(executor, _cache_store, req.query, full_response,
             meta["tier"], meta["model_id"], meta["cost_usd"],
-            meta["input_tokens"], meta["output_tokens"], api_key.id)
+            meta["input_tokens"], meta["output_tokens"], api_key.id, pre.get("context"))
         if log_id is not None:
             loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), full_response, meta["tier"], meta["model_id"])
             loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
@@ -485,7 +512,6 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             "difficulty_score": difficulty_score,
             "cost_usd": meta["cost_usd"],
             "latency_ms": latency_ms,
-            "quality_score": quality_score,
             "model_id": meta["model_id"],
             "request_log_id": log_id,
             "support_mode": pre["support_mode"],
