@@ -250,9 +250,10 @@ client.chat.completions.create(model="kate", messages=[{"role": "user", "content
 client.chat.completions.create(model="kate", messages=[*history, {"role": "user", "content": "now draw it in python"}])
 ```
 
-And because the **semantic cache is not conversation-aware** (it matches on the
-newest message alone), pass `bypass_cache: true` on every turn after the first so
-a short reply can't match a stored answer from an unrelated conversation.
+The semantic cache is safe on its own now: it refuses queries under 12 characters
+(where `yes` / `ok` / `do it` collide across conversations) and any request carrying
+conversation history skips the cache entirely. Pass `allow_context_cache: true` if you
+want it to match on the full transcript instead.
 
 Full recipe, the `kate`-vs-`lisa` decision, and the per-turn REST pattern:
 **[`customer-support/README.md`](customer-support/README.md)**.
@@ -499,21 +500,22 @@ The dashboard populates its tier dropdowns directly from `/providers`.
   belong on frontier. RouteWise does score the last 4 turns as context and keeps
   the higher score — but only when you send them. See
   [`customer-support/README.md`](customer-support/README.md).
-- 💾 **The semantic cache is not conversation-aware.** It matches on the newest
-  message only, scoped to your API key, at 0.95 cosine similarity, and a hit
-  returns a stored answer verbatim without replaying any context. A short reply
-  like *"yes"* or *"draw it"* can therefore match an unrelated conversation and
-  serve the wrong answer. **Pass `bypass_cache: true` on every turn after the
-  first.** Supported on `/route` and `/route/stream`; *not* on the
-  OpenAI-compatible endpoint.
+- 💾 **The semantic cache skips multi-turn requests by default.** It is scoped to
+  your API key and matches at 0.95 cosine similarity, so it cannot judge a
+  follow-up on its own — "now add retries" means something different in every
+  conversation. Any request carrying `messages` history bypasses the cache rather
+  than risk serving another conversation's answer. Queries under 12 characters
+  never read or write the cache at all, since short replies like *"yes"* collide
+  across conversations. Set `allow_context_cache: true` to match on the full
+  transcript instead, or `bypass_cache: true` to skip caching on any request.
 - 🔐 **BYOM is scoped per user, not per-API-key.** Config loads per user
   (`get_active_config(user_id)`), so two keys of the same user share config; script-created
   keys without a `user_id` share the global config.
-- 💵 **Per-key daily budgets are enforced but not settable over the API.** Every
-  key has a `daily_budget_usd` column and the router forces that key to `cheap`
-  once its daily spend crosses it, but no public endpoint writes the column — it
-  is only readable via `/admin/keys`. Use `daily_spend` alerts plus key
-  revocation for team enforcement today.
+- 💵 **Per-key daily budgets downgrade routing, they don't block it.** Every key
+  has a `daily_budget_usd`, settable via `POST /keys` or `PATCH /keys/{key_id}`
+  (`null` = no cap). Once a key's spend *today* passes the cap, the router forces
+  that key to `cheap` for the rest of the UTC day — it does not return 429. Use
+  `daily_spend` alerts alongside it for a hard stop.
 - 🧮 **The difficulty model is weakest on short, jargon-heavy math/physics one-liners** — few
   of those in the training pool, so it leans on sparse lexical cues. System-design error is now
   mid-pack after the 300-query frontier expansion.

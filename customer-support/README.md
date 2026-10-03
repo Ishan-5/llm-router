@@ -13,7 +13,7 @@ and **kate** (2-tier). Plain numbers, no marketing. Last updated 2026-10-02.
 - Keep your chatbot, your memory, and your UX. Swap only the model call.
 - Default to **`kate`**. It has the safer cut for support traffic.
 - **You must send the full conversation every turn.** RouteWise stores nothing.
-- **Turn the cache off on follow-ups.** See
+- **The cache already skips follow-ups for you.** See
   [You own the memory](#2-you-own-the-memory-and-the-cache).
 
 ---
@@ -63,7 +63,7 @@ def route_turn(turns):
         "query":        turns[-1]["content"],   # newest message drives the score
         "messages":     turns,                   # full context — this is what fixes follow-ups
         "support_mode": "2tier",                 # kate  ("3tier" = lisa, omit = emma)
-        "bypass_cache": len(turns) > 1,          # never serve a stored answer to a follow-up
+        # no bypass needed — a request with messages skips the cache on its own
     }, timeout=30)
     r.raise_for_status()
     d = r.json()
@@ -103,19 +103,25 @@ client.chat.completions.create(model="kate", messages=[{"role":"user","content":
 client.chat.completions.create(model="kate", messages=[*full_turn_history, {"role":"user","content":"now draw it in python"}])
 ```
 
-### The cache does not know which conversation it belongs to
+### The cache cannot tell one conversation from another
 
-The semantic cache matches on the **newest message only**, scoped to your API
-key, at 0.95 cosine similarity. On a hit it returns the stored answer verbatim —
-no model call, no history replayed.
+The semantic cache is scoped to your API key and matches at 0.95 cosine
+similarity, but on a hit it returns the stored answer verbatim — no model call,
+no history replayed. A follow-up like `"yes"` sits very close to someone else's
+`"yes"` from a completely different conversation.
 
-A follow-up like `"yes"` or `"draw it"` sits very close to someone else's `"yes"`
-or `"draw it"` from a completely different conversation, and a hit will serve
-that unrelated answer.
+**You do not have to handle this.** Two guards are built in:
 
-**Bypass the cache on every turn after the first.** `bypass_cache` is supported on
-`/route` and `/route/stream`; it is not available on the OpenAI-compatible
-endpoint.
+- queries under 12 characters never read from or write to the cache
+- a request carrying `messages` history skips the cache entirely
+
+So a follow-up is always answered by a real model. Single-turn requests still
+hit the cache, which is where it pays for itself on repeat questions.
+
+Set `allow_context_cache: true` if you would rather match on the full
+transcript than skip. `bypass_cache` additionally disables caching on any single
+request — it is supported on `/route` and `/route/stream`, but not on the
+OpenAI-compatible endpoint, which no longer needs it for safety.
 
 ---
 
