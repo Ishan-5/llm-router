@@ -186,27 +186,30 @@ a capable tier. Choose lisa only if mid-tier answers are genuinely good enough
 for your product and you want the cheaper mix.`,
       },
       {
-        label: 'Turn the cache off for follow-ups',
+        label: 'The cache handles follow-ups for you',
         kind: 'warn',
-        title: 'A cache hit replays nothing — it returns a stored answer verbatim',
-        body: `The semantic cache matches on the NEWEST message only, scoped to your
-API key, at 0.95 cosine similarity. It does not know which conversation it
-belongs to.
+        title: 'Short replies collide across conversations — so the router refuses them',
+        body: `The semantic cache is scoped to your API key and matches at 0.95
+cosine similarity, but it cannot tell one conversation from another. "yes" in
+your billing bot is very close to someone else's "yes".
 
-A follow-up like "yes" or "draw it" is very close to someone else's "yes" or
-"draw it" from a different conversation — and a hit returns that stored answer
-without calling a model at all. No history is replayed, so it cannot possibly
-know what "it" meant.
+So two rules are now built in:
 
-The safe integration is to bypass the cache on every turn after the first:
+  1. Queries under 12 characters never read or write the cache at all.
+  2. A request carrying messages history skips the cache entirely.
 
-  # OpenAI endpoint has no per-request bypass flag, so switch to /route,
-  # which does (bypass_cache: true):
+That means a follow-up is always answered by a real model, never by replaying
+a stored answer that had no idea what "it" referred to. You do not have to
+remember to bypass anything.
+
+Single-turn requests still hit the cache — that is where it earns money, on
+repeat questions. If you would rather match on the full transcript, opt in:
+
   resp = requests.post(f"{API_BASE}/route", json={
       "query": last_user_text,
       "messages": turns,
-      "support_mode": "2tier",     # kate
-      "bypass_cache": len(turns) > 1,
+      "support_mode": "2tier",            # kate
+      "allow_context_cache": True,        # default False
   }, headers={"Authorization": "Bearer rw_..."})`,
       },
       {
@@ -222,7 +225,7 @@ def route_turn(turns):
         "query": turns[-1]["content"],   # newest message drives the score
         "messages": turns,               # full context — this is what fixes follow-ups
         "support_mode": "2tier",         # kate  ("3tier" = lisa, omit = emma)
-        "bypass_cache": len(turns) > 1,  # never serve a stored answer to a follow-up
+        # no bypass needed: multi-turn skips the cache on its own
     }, timeout=30)
     r.raise_for_status()
     d = r.json()
@@ -288,21 +291,26 @@ requests.post(f"{BASE}/route/feedback", headers=HEADERS, json={
       'What a lead actually does on day one: issue a key per person, set one routing threshold for everyone, and put a webhook on spend before anything else.',
     sections: [
       {
-        label: 'Day 1 — issue one key per person',
+label: 'Day 1 — issue one key per person',
         code: `# Keys are per-user, per-key, and revocable. Never share one key.
 # The endpoints below need a Supabase JWT (any logged-in user), not an rw_ key.
 
 curl -X POST ${API_BASE}/keys \\
   -H "Authorization: Bearer <your-jwt>" \\
   -H "Content-Type: application/json" \\
-  -d '{"name": "priya — support-bot"}'
+  -d '{"name": "priya — support-bot", "daily_budget_usd": 5.00}'
 
 curl ${API_BASE}/keys -H "Authorization: Bearer <your-jwt>"
-# → [{"id": 7, "name": "priya — support-bot", ...}]
+# → [{"id": 7, "name": "priya — support-bot", "daily_budget_usd": 5.0, ...}]
+
+# Cap a key's daily spend. Omit the field or send null to remove the cap.
+curl -X PATCH ${API_BASE}/keys/7 \\
+  -H "Authorization: Bearer <your-jwt>" \\
+  -H "Content-Type: application/json" \\
+  -d '{"daily_budget_usd": 2.50}'
 
 # Revoke instantly when someone leaves
 curl -X DELETE ${API_BASE}/keys/7 -H "Authorization: Bearer <your-jwt>"`,
-        lang: 'bash',
       },
       {
         label: 'Set one threshold for the whole team',
@@ -470,9 +478,12 @@ scan window     most recent 500 rows for your API key
 store           the embedding as JSON text alongside the response
 on hit          cost $0, logs tokens_saved_usd, no provider call
 eviction        30-day expiry, 5,000-row cap
+short queries   under 12 chars never read or write the cache
+multi-turn      requests carrying messages skip the cache entirely
 
-Keyed on the newest message only — see the Support bot tab for why that
-matters for multi-turn chat.`,
+Keyed on the newest message for single-turn requests, and on the full
+transcript when allow_context_cache is true — so a follow-up is never
+answered with another conversation's stored response.`,
         lang: 'text',
       },
       {
@@ -783,16 +794,18 @@ for chunk in stream:
         lang: 'python',
       },
       {
-        label: 'Gotcha — no cache bypass here',
+        label: 'Cache flags per endpoint',
         kind: 'warn',
-        title: 'The OpenAI endpoint has no per-request bypass_cache flag',
-        body: `POST /route and /route/stream accept bypass_cache. The OpenAI-compatible
-POST /v1/chat/completions does not.
+        title: 'bypass_cache lives on /route only; allow_context_cache is on both',
+        body: `POST /route and /route/stream accept bypass_cache, to skip caching on any
+single request. The OpenAI-compatible POST /v1/chat/completions does not.
 
-If you are sending a real conversation, use /route instead so you can bypass
-the semantic cache on follow-up turns — otherwise a short reply like "yes" can
-match a stored answer from a different conversation. The Support bot tab shows
-the pattern.`,
+That is no longer a safety problem: /v1/chat/completions already skips the
+cache for any request carrying conversation history, so a follow-up can never
+be answered from a stored response.
+
+allow_context_cache is accepted on all three, if you would rather match on the
+full transcript than skip.`,
       },
     ],
   },
@@ -897,7 +910,7 @@ routewise ask "..."      # auto-applies your saved models; unset tiers keep defa
     "support_mode": "generic"
   }'
 
-# Response — exactly these 20 fields:
+# Response — exactly these 19 fields:
 # {
 #   "response":              "TCP is connection-oriented...",
 #   "routed_to":            "cheap",      # what actually served it
@@ -911,7 +924,6 @@ routewise ask "..."      # auto-applies your saved models; unset tiers keep defa
 #   "difficulty_score":     1.09,         # 0-10
 #   "cost_usd":             0.000012,
 #   "latency_ms":           342.1,
-#   "quality_score":        null,         # filled in later by the judge
 #   "cheap_ceil":           4.5,          # the cuts actually used
 #   "frontier_floor":       6.0,
 #   "support_mode":         "generic",
@@ -1523,8 +1535,9 @@ const ENDPOINT_GROUPS = [
     dot: 'cool',
     items: [
       { method: 'GET', path: '/keys', desc: 'List your API keys' },
-      { method: 'POST', path: '/keys', desc: 'Issue a new key' },
-      { method: 'DELETE', path: '/keys/{key_id}', desc: 'Revoke a key' },
+{ method: 'POST', path: '/keys', desc: 'Issue a new key (optional daily_budget_usd)' },
+        { method: 'PATCH', path: '/keys/{key_id}', desc: 'Set or clear a key budget' },
+        { method: 'DELETE', path: '/keys/{key_id}', desc: 'Revoke a key' },
       { method: 'GET', path: '/settings', desc: 'Your routing threshold' },
       { method: 'POST', path: '/settings', desc: 'Set your routing threshold (0–2)' },
     ],
