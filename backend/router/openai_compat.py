@@ -36,6 +36,11 @@ class ChatCompletionRequest(BaseModel):
     stream: bool = False
     max_tokens: int | None = None
     temperature: float | None = None
+    # Multi-turn requests skip the cache by default: a follow-up's meaning
+    # depends on the transcript, so a shared similarity cache could serve
+    # another conversation's answer. Set true to allow matching on the full
+    # transcript context instead of the newest message.
+    allow_context_cache: bool = False
 
 
 def _generate_id() -> str:
@@ -70,6 +75,19 @@ def _resolve_tier(model: str) -> tuple[str | None, str, str | None]:
         return None, "auto", MODEL_TO_POLICY[model_lower]
     # Default to auto-routing if the model parameter is unrecognized.
     return None, "auto", None
+
+
+def _cache_lookup(query: str, api_key_id: int | None, context: str | None):
+    """run_in_executor takes positional args only."""
+    return check_cache(query, api_key_id, context=context)
+
+
+def _cache_store(query: str, response: str, tier: str, model_id: str, cost_usd: float,
+                 input_tokens: int, output_tokens: int, api_key_id: int | None,
+                 context: str | None):
+    """Store under the same context the scorer used, never a bare follow-up."""
+    return add_to_cache(query, response, tier, model_id, cost_usd,
+                        input_tokens, output_tokens, api_key_id, context=context)
 
 
 def _extract_user_query(messages: list[ChatMessage]) -> str:
@@ -211,8 +229,14 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     # --- cache + classifier in parallel ---
     loop = asyncio.get_event_loop()
 
+    # Build the conversation context once for both the scorer and the cache, so
+    # a multi-turn request is never answered from an unrelated stored response.
+    context = build_scoring_context(req.messages, user_query)
+
     async def _maybe_check_cache():
-        return await loop.run_in_executor(executor, check_cache, user_query, api_key.id)
+        if context and not req.allow_context_cache:
+            return None
+        return await loop.run_in_executor(executor, _cache_lookup, user_query, api_key.id, context)
 
     from router.db import SessionLocal, UserSettings
     def _load_threshold():
@@ -228,7 +252,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             user_query,
             margin=_load_threshold(),
             support_mode=support_mode,
-            context=build_scoring_context(req.messages, user_query),
+            context=context,
         )
         return score, tier, _c, _f
 
@@ -298,10 +322,10 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             "cost_usd": result["cost_usd"], "latency_ms": latency_ms,
         })
         loop.run_in_executor(
-            executor, add_to_cache, user_query, result["text"], result["tier"],
-            result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"],
-            api_key.id,
-        )
+executor, _cache_store, user_query, result["text"], result["tier"],
+        result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"],
+        api_key.id, context,
+    )
 
         usage = {"input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"]}
         response.headers["x-routewise-tier"] = result["tier"]
@@ -378,9 +402,9 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
         })
         loop.run_in_executor(
-            executor, add_to_cache, user_query, full_response,
-            meta["tier"], meta["model_id"], meta["cost_usd"],
-            meta["input_tokens"], meta["output_tokens"], api_key.id,
-        )
+executor, _cache_store, user_query, full_response,
+        meta["tier"], meta["model_id"], meta["cost_usd"],
+        meta["input_tokens"], meta["output_tokens"], api_key.id, context,
+    )
 
     return StreamingResponse(_stream(), media_type="text/event-stream")
