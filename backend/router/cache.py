@@ -16,6 +16,13 @@ from sqlalchemy.orm import declarative_base
 SIMILARITY_THRESHOLD = 0.95
 MAX_SCAN_ROWS = 500
 
+# Short queries cannot be matched safely on embedding similarity alone. Two
+# unrelated conversations both saying "yes" / "ok" / "do it" embed to ~0.97,
+# well above SIMILARITY_THRESHOLD, so the lookup would serve one conversation's
+# answer to another. Below this length a query is never read from or written to
+# the cache; callers pay a real provider call instead of risking a wrong answer.
+MIN_CACHE_QUERY_CHARS = 12
+
 Base = declarative_base()
 SessionLocal = _SessionLocal
 
@@ -54,9 +61,29 @@ def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
 
 
-def check_cache(query: str, api_key_id: int | None = None) -> dict | None:
+def cache_lookup_key(query: str, context: str | None = None) -> str | None:
+    """Return the text the cache should be keyed on, or None to skip caching.
+
+    Multi-turn requests carry their meaning in the transcript, so the cache must
+    match on the same context string the difficulty scorer used -- otherwise the
+    scorer reasons about "now draw it in python" in context while the cache
+    happily serves an unrelated stored answer for those same five words.
+
+    Returns None when the query is too short to match on similarity safely.
+    """
+    key = context or query
+    if not key or len(key.strip()) < MIN_CACHE_QUERY_CHARS:
+        return None
+    return key
+
+
+def check_cache(query: str, api_key_id: int | None = None, context: str | None = None) -> dict | None:
+    key = cache_lookup_key(query, context)
+    if key is None:
+        return None
+
     embedder = get_embedder()
-    query_embed = embedder.encode([query])[0]
+    query_embed = embedder.encode([key])[0]
 
     session = SessionLocal()
     try:
@@ -106,14 +133,18 @@ def _evict(session):
         session.query(QueryCache).filter(QueryCache.id.in_(oldest_ids)).delete(synchronize_session=False)
 
 
-def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float, input_tokens: int = 0, output_tokens: int = 0, api_key_id: int | None = None):
+def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float, input_tokens: int = 0, output_tokens: int = 0, api_key_id: int | None = None, context: str | None = None):
+    key = cache_lookup_key(query, context)
+    if key is None:
+        return
+
     embedder = get_embedder()
-    embedding = embedder.encode([query])[0].tolist()
+    embedding = embedder.encode([key])[0].tolist()
 
     session = SessionLocal()
     try:
         entry = QueryCache(
-            query=query,
+            query=key,
             embedding=json.dumps(embedding),
             response=response,
             tier=tier,
