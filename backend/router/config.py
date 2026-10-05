@@ -37,10 +37,11 @@ DEFAULT_PROVIDER = "groq"
 # "frontier" at $0.15/$0.60, so every downroute to cheap cost 1.84x MORE than
 # calling frontier and the savings claims inverted. deepseek-chat is the most
 # expensive of these three, so it belongs on the top rung.
-# Per-request cost @ 500 in / 500 out:
-#   cheap    gpt-oss-20b       $0.000188   (1.0x)
-#   mid      gpt-oss-120b      $0.000375   (2.0x)
-#   frontier deepseek-chat     $0.000690   (3.7x)
+# Per-request cost @ 1,000 in / 300 out (the assumption every public cost
+# figure on the site is quoted at -- see frontend/src/productMetrics.js):
+#   cheap    gpt-oss-20b       $0.000165   (1.0x)
+#   mid      gpt-oss-120b      $0.000330   (2.0x)
+#   frontier deepseek-chat     $0.000600   (3.6x)
 MODEL_CONFIG = {
     "cheap": {
         "provider": "groq",

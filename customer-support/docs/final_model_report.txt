@@ -1,4 +1,19 @@
 ======================================================================
+SUPERSEDED - DO NOT QUOTE THESE NUMBERS
+This report describes models/support_final.joblib, which is an earlier
+experiment and is NOT the model the router serves. feature_builder.py
+loads support_final_3tier.joblib (lisa) and support_final_2tier.joblib
+(kate) instead. The figures below are kept only as a record of that run.
+
+Current shipped numbers, on the same batch-level holdout:
+  3-tier (lisa)  MAE 0.822  Spearman 0.786  frontier recall 80.4%  escape 19.6%
+  2-tier (kate)  MAE 0.822  Spearman 0.786  frontier recall 86.0%  escape 14.0%
+
+See customer-support/README.md and docs/tier_comparison.json for the
+current artifacts and thresholds.
+======================================================================
+
+======================================================================
 FINAL CUSTOMER-SUPPORT DIFFICULTY MODEL
 ======================================================================
 training rows        17,600   (88 of 238 batches labeled)

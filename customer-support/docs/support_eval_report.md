@@ -1,5 +1,14 @@
 # Customer-support difficulty model - held-out SUPPORT evaluation
 
+> **Superseded - do not quote these numbers.** This report scores the
+> `support_all` / `support_ds3` exploratory variants, which are not the models
+> the router serves. `feature_builder.py` loads `support_final_3tier.joblib`
+> (lisa) and `support_final_2tier.joblib` (kate). Current shipped numbers:
+> lisa MAE 0.822 / Spearman 0.786 / frontier recall 80.4% / escape 19.6%;
+> kate MAE 0.822 / Spearman 0.786 / frontier recall 86.0% / escape 14.0%.
+> See `customer-support/README.md` for those and this file's own caveats
+> (label noise, unlabeled batches) still apply.
+
 Split is by batch (60/14/14) so near-duplicate tickets cannot leak across the boundary. Thresholds calibrated on the calib batches only.
 
 ## Test-batch results (support tickets only)

@@ -23,6 +23,15 @@ sdk/build/
 seed_cache.py
 backend/models/minilm/
 
+# quality_ab_test.py run outputs: sampled prompts plus raw model responses.
+# Regenerate them, never commit -- they are large and contain user traffic.
+backend/ab_blind_samples.json
+backend/ab_report.json
+backend/ab_*_report.json
+backend/ab_easy_*.json
+backend/ab_*smoke*.json
+backend/ab_*.log
+
 ARCHITECTURE.md
 METRICS.md
 PRODUCTION_UPGRADE.md

@@ -99,9 +99,27 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
 
         avg_latency_by_tier = {
             tier: float(avg) for tier, avg in
-            session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).filter(*base_filter).group_by(RequestLog.tier).all()
+            session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).filter(
+                *base_filter, RequestLog.cache_hit == False,
+            ).group_by(RequestLog.tier).all()
             if tier and avg is not None
         }
+        # Cache hits are excluded above. routes/route.py logs a hit against the
+        # tier it WOULD have served from, with the near-instant lookup time, so
+        # including them silently compared "model call + cache lookup" against
+        # "model call" and made the chart unreadable as a tier comparison.
+        # avg_latency_ms below stays request-weighted across everything served,
+        # which is the number a user actually waits for.
+        #
+        # These figures are wall-clock provider time, not model capability: they
+        # are dominated by provider queueing and 429 backoff. Groq's LPUs in
+        # particular make the cheap tier look slower than the frontier tier, which
+        # says nothing about answer quality and should not be read as if it did.
+        cache_hit_latency_ms = float(
+            session.query(func.avg(RequestLog.latency_ms)).filter(
+                *base_filter, RequestLog.cache_hit == True,
+            ).scalar() or 0.0
+        )
         # Request-weighted mean across every logged request. Averaging the per-tier
         # means instead would over-weight a tier with only a handful of requests.
         avg_latency_ms = float(session.query(func.avg(RequestLog.latency_ms)).filter(*base_filter).scalar() or 0.0)
@@ -164,6 +182,7 @@ def get_stats(api_key: ApiKey = Depends(require_api_key)):
             "cache_hit_rate": cache_hit_rate, "fallback_count": fallback_count,
             "failed_count": failed_count, "success_rate_pct": success_rate_pct,
             "avg_latency_by_tier": avg_latency_by_tier, "avg_latency_ms": round(avg_latency_ms, 1),
+        "cache_hit_latency_ms": round(cache_hit_latency_ms, 1),
             "daily_costs": daily_costs,
             "cache_savings_usd": cache_savings_usd, "routing_savings_usd": routing_savings_usd,
             "total_savings_usd": total_savings_usd, "savings_pct": savings_pct,

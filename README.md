@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/React-frontend-61DAFB" />
   <img src="https://img.shields.io/badge/LightGBM-difficulty%20model-orange" />
   <img src="https://img.shields.io/badge/Docker-containerized-2496ED" />
-  <img src="https://img.shields.io/badge/tests-163%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-233%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
@@ -31,9 +31,9 @@
 
 <div align="center">
 
-| 💸 **~52% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **9+** providers | 🧭 **3 policies** · emma · lisa · kate |
+| 💸 **~50% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **10 providers** | 🧭 **3 policies** · emma · lisa · kate |
 |---|---|---|---|---|---|
-| than frontier-only routing | on held-out Claude-gold | local scoring, no API call | Claude-verified training set | with cross-provider failover | generic, 3-tier & 2-tier support routing |
+| than frontier-only, at our measured traffic mix | on held-out Claude-gold | local scoring, no API call | Claude-verified training set | 109 models, cross-provider failover | generic, 3-tier & 2-tier support routing |
 
 </div>
 
@@ -119,8 +119,10 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | Terminal-first access | Write your own client | **`routewise` CLI, zero deps, from npm** |
 
 > [!IMPORTANT]
-> The average query costs **$0.000144** with RouteWise vs **$0.00033** if you send everything
-> to the frontier model — **~52% cheaper**, before cache hits (which are free) are even counted.
+> The average paid query costs **$0.000306** with RouteWise vs **$0.000600** if you send
+> everything to the frontier model — **~50% cheaper**, before cache hits (which are free)
+> are even counted. Both figures are for ~1,000 input + ~300 output tokens on our measured
+> traffic mix; see [the cost math](#-the-cost-math).
 
 ---
 
@@ -129,7 +131,7 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | | | |
 |---|---|---|
 | 🎯 **Difficulty scoring** | 🧠 **Claude-gold trained** | 💰 **Real cost savings** |
-| LightGBM ensemble scores every query 0–10 in <20 ms — locally, no API call just to decide routing | Trained on 8,200 Claude-verified labels (8,783-row gold dataset) · 77.5% exact-tier accuracy | ~52% cheaper than frontier-only; cached answers cost **$0.00** |
+| LightGBM ensemble scores every query 0–10 in <20 ms — locally, no API call just to decide routing | Trained on 8,200 Claude-verified labels (8,783-row gold dataset) · 77.5% exact-tier accuracy | ~50% cheaper than frontier-only at our measured traffic mix; cached answers cost **$0.00** |
 | 🛡️ **Guardrails first** | 🔄 **Cross-provider failover** | ⚖️ **Multi-key load balancing** |
 | Prompt-injection detection + PII sanitization before anything else runs | frontier → mid → cheap → **Gemini last resort** — an outage never 503s you | Round-robin across keys per tier, per-key 429 cooldown |
 | 🔌 **Bring your own model** | 🔍 **Live web search** | ⚡ **Semantic cache** |
@@ -333,43 +335,93 @@ just another Groq tier.
 
 ## 💰 The cost math
 
-~1,000 input + ~300 output tokens per query, balanced sensitivity:
+~1,000 input + ~300 output tokens per query, on our own measured traffic mix
+(44% cheap / 26% mid / 19% frontier / 9% web / 2% failed). Normalised over the
+tiers that actually cost money, that is 49% cheap / 29% mid / 21% frontier:
 
 | | Frontier-only baseline | RouteWise routed |
 |---|---|---|
-| Cheap share (~50%) | — | `gpt-oss-20b` @ $0.075/$0.30 → **$0.000165** |
-| Mid share (~35%) | — | `gpt-oss-120b` @ $0.15/$0.60 → **$0.000330** |
-| Frontier share (~15%) | `deepseek-chat` @ $0.27/$1.10 → **$0.000600** | `deepseek-chat` @ $0.27/$1.10 → **$0.000600** |
-| **1,000 queries** | **$0.600** | **$0.288** |
+| Cheap share (~49%) | — | `gpt-oss-20b` @ $0.075/$0.30 → **$0.000165** |
+| Mid share (~29%) | — | `gpt-oss-120b` @ $0.15/$0.60 → **$0.000330** |
+| Frontier share (~21%) | `deepseek-chat` @ $0.27/$1.10 → **$0.000600** | `deepseek-chat` @ $0.27/$1.10 → **$0.000600** |
+| **1,000 paid requests** | **$0.600** | **$0.306** |
 
 > [!NOTE]
-> **≈ 52% cheaper** than sending everything to the frontier model, on the tier mix above.
-> The figure moves with the tier mix, the token counts, and which model you treat as
-> frontier — the [savings calculator](/calculator) lets a visitor set all three.
+> **≈ 50% cheaper** than sending everything to the frontier model, on the tier mix
+> above. That 50% is the number every page in this repo quotes.
+>
+> It is **not a constant** — savings are a function of how much of your traffic
+> is genuinely hard. Roughly: 65% if 10% of queries are hard, 59% at 19%, 51%
+> at 30%, 36% at 50%. The [savings calculator](/calculator) sets all three
+> variables, and the dashboard shows each account its own figure from real
+> logged traffic.
+>
 > Semantic-cache hits add further savings — cached answers cost **$0** in tokens.
-
-> [!WARNING]
-> The landing page advertises a flat **~40%**, not this number. 40% is the
-> conservative figure we hold across real traffic mixes; the 52% above is only
-> true for the specific mix and token counts in that table.
 
 ---
 
 ## 📊 Measured results
 
-Snapshot from the running deployment (`GET /stats`), over roughly 310 routed requests:
+Point-in-time snapshot from the running deployment (`GET /stats`), taken while the
+public demo was being exercised:
 
 | Metric | Value |
 |---|---|
-| Requests routed | ~310 |
 | Tier split | 44% cheap · 26% mid · 19% frontier · 9% web · 2% failed |
 | Semantic cache hit rate | 34% |
-| Total spend on that traffic shown | ~$0.05 |
+
+> [!NOTE]
+> These are the numbers the savings figure is derived from, and they are a **snapshot,
+> not a live reading**. The request count behind them grows with demo traffic and we do
+> not restate it here, because a hardcoded count reads as "current" long after it stops
+> being true. Call `GET /stats` for current figures; the tier split and cache hit rate
+> above are the last measured values we can stand behind.
 
 The tier distribution shows the router doing what it's built for — the majority of queries
 are easy enough for the cheap model, and only the genuinely hard ones reach the frontier
-tier. Blended cost was ~$0.00015 per request against ~$0.00033 for sending all of it to
-the frontier model.
+tier.
+
+### Does the cheap tier actually hold up?
+
+The savings figure above is only worth anything if the cheap model is genuinely good
+enough for the traffic we send it. We tested that directly with a blind pairwise A/B
+(`backend/scripts/quality_ab_test.py`, `--bands easy`):
+
+| | cheap | frontier | tie |
+|---|---|---|---|
+| Strict wins | 13 (23.2%) | 14 (25.0%) | — |
+| Ties | — | — | 29 (51.8%) |
+
+- **Cheap matched or beat frontier on 75.0%** of easy queries (n=56, 95% CI 62.3–84.5%).
+- Strict win rates are statistically indistinguishable: 23.2% vs 25.0% (95% CI 14.1–35.8%).
+- Measured cost ratio **2.1x**, lower than the 3.6x illustration because real query token
+  profiles are not 1,000/300.
+- The judge (`openai/gpt-oss-120b`) never saw which model produced which answer, and
+  presentation order was randomised per query.
+
+**What this does and does not claim.** It supports sending easy work to the cheap tier.
+It is *not* a parity guarantee — frontier still wins about one pair in four, so the
+~50% saving is a routing decision, not a free lunch. No mid/hard numbers are published
+here because they have not been measured to this standard.
+
+> [!WARNING]
+> The first version of this test reported **100% ties across 190 pairs**. It was
+> measuring nothing: the judge was given an 8-token completion budget, `gpt-oss-120b`
+> is a reasoning model, every call returned `finish_reason="length"` with empty
+> content, and unparseable output was silently recorded as `"TIE"`. Two further bugs
+> were found in the same pass — a 40-character minimum that discarded correct short
+> answers, and 104 gold queries whose referenced passage is absent from the dataset.
+> `tests/test_quality_ab_test.py` now fails if any of those regressions return.
+
+On this mix, a request that actually calls a model costs **$0.000306** on average against
+**$0.000600** for sending all of it to the frontier — the ~50% in
+[the cost math](#-the-cost-math). Fold in the 34% cache hit rate, where the answer cost
+$0, and the average across *all* traffic drops to **$0.000202**.
+
+> [!NOTE]
+> Those two numbers answer different questions and are not interchangeable:
+> $0.000306 is the price of a request the router decided to serve, while $0.000202 is
+> what the average request actually cost once free cache hits are counted.
 
 ---
 

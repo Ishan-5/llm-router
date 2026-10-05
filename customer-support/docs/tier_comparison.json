@@ -1,4 +1,5 @@
 {
+  "_status": "SUPERSEDED - do not quote these numbers. This is the models/support_final.joblib run. The router serves support_final_3tier.joblib (lisa) and support_final_2tier.joblib (kate), whose shipped figures are MAE 0.822 / Spearman 0.786, frontier recall 80.4% (lisa) and 86.0% (kate). See customer-support/README.md.",
   "regressor": {
     "objective": "regression_l1",
     "n_estimators": 1200,
