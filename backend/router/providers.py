@@ -47,7 +47,7 @@ def _call_openai_compatible(
     price_out: float,
     api_key: str,
     base_url: str,
-    max_tokens: int = 1000,
+    max_tokens: int = 4096,
     messages: list[dict] | None = None,
     temperature: float | None = None,
 ) -> dict:
@@ -63,7 +63,34 @@ def _call_openai_compatible(
     }
     if temperature is not None:
         kwargs["temperature"] = temperature
-    response = client.chat.completions.create(**kwargs)
+
+    def _call(mtok: int):
+        k = dict(kwargs)
+        k["max_tokens"] = mtok
+        r = client.chat.completions.create(**k)
+        ch = r.choices[0]
+        msg = ch.message
+        text = msg.content or ""
+        return r, ch, text
+
+    response, choice, text = _call(max_tokens)
+
+    # Retry once if we ran out of budget or produced an empty answer. This
+    # prevents reasoning models from silently returning "" at the default cap.
+    if (not text.strip() or choice.finish_reason == "length"):
+        # Bump budget once. If it still truncates after retry, surface it.
+        retry_mtok = max(max_tokens * 2, 8192)
+        try:
+            response, choice, text = _call(retry_mtok)
+        except Exception:
+            pass
+
+    if choice.finish_reason == "length":
+        raise RuntimeError("model response truncated (finish_reason=length)")
+
+    if not text.strip():
+        raise RuntimeError("model returned empty completion")
+
     input_tokens = response.usage.prompt_tokens
     output_tokens = response.usage.completion_tokens
     cost = (
@@ -71,7 +98,7 @@ def _call_openai_compatible(
         + (output_tokens / 1_000_000) * price_out
     )
     return {
-        "text": response.choices[0].message.content,
+        "text": text,
         "tier": tier_label,
         "model_id": model_id,
         "input_tokens": input_tokens,
@@ -206,12 +233,12 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
                     cfg["model_id"], query, tier,
                     cfg["price_per_m_input"], cfg["price_per_m_output"],
                     _get_groq_key("cheap"), PROVIDERS_REGISTRY["groq"]["base_url"],
-                    messages=messages, max_tokens=max_tokens or 1000, temperature=temperature,
+                    messages=messages, max_tokens=max_tokens or 4096, temperature=temperature,
                 )
                 result["ollama_fallback"] = True
                 return result
 
-        effective_max = max_tokens or 1000
+        effective_max = max_tokens or 4096
         return call_provider(provider, model_id, query, tier, api_key, price_in, price_out, effective_max, messages)
 
     ollama_fallback = False
@@ -228,7 +255,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
         cfg["price_per_m_input"], cfg["price_per_m_output"],
         _resolve_key(cfg["provider"], tier),
         PROVIDERS_REGISTRY[cfg["provider"]]["base_url"],
-        messages=messages, max_tokens=max_tokens or 1000, temperature=temperature,
+        messages=messages, max_tokens=max_tokens or 4096, temperature=temperature,
     )
     if ollama_fallback:
         result["ollama_fallback"] = True
