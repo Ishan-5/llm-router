@@ -8,14 +8,25 @@ import TierCircuit from './TierCircuit'
 import ThresholdSlider from './ThresholdSlider'
 import ModelPicker from './ModelPicker'
 import { getModel, policyBandsFor, DEFAULT_MODEL_ID } from '../models'
+import { TIERS, TIER_ORDER, EMMA_CUTS, DATASETS } from '../productMetrics'
 import QueryForm from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
 
-const TIER_DEFAULTS = {
-  cheap: { label: 'Cheap', sub: 'deepseek/deepseek-v4-flash · openrouter (default)', y: 60 },
-  mid: { label: 'Mid', sub: 'openai/gpt-oss-20b · groq', y: 160 },
-  frontier: { label: 'Frontier', sub: 'openai/gpt-oss-120b · groq', y: 260 },
-}
+// Tier names, models and providers come from productMetrics, which mirrors
+// router.config.MODEL_CONFIG. This used to carry its own hardcoded copy that
+// still described the pre-fix mapping (cheap = a deepseek model on openrouter),
+// so the diagram contradicted the landing page and the guide about which model
+// actually served each tier.
+const TIER_DEFAULTS = Object.fromEntries(
+  TIER_ORDER.map((key) => [
+    key,
+    {
+      label: TIERS[key].label,
+      sub: `${TIERS[key].model} · ${TIERS[key].provider}`,
+      y: TIERS[key].y,
+    },
+  ])
+)
 
 
 function MobileRoutingDiagram({ tiers, activeTier, score, cacheHit, loading, chaosActive, crossProviderFallback }) {
@@ -297,16 +308,26 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
   // slider. Lisa and Kate ship fixed cuts, so their bands come from the policy
   // itself. Showing the generic bands for a fixed-cut model would be a lie.
   const t = threshold - 1
-  const emmaCheapCeil = +(4.5 - t * 0.75).toFixed(3)
-  const emmaFrontierFloor = +(6.0 - t * 0.75).toFixed(3)
+  const emmaCheapCeil = +(EMMA_CUTS.balanced.cheap - t * 0.75).toFixed(3)
+  const emmaFrontierFloor = +(EMMA_CUTS.balanced.frontier - t * 0.75).toFixed(3)
   // Live response values win. Before the first response, fall back to whatever
   // the selected model actually uses.
   const policyBands = policyBandsFor(modelId)
   const cheapCeil = latestResult?.cheap_ceil ?? (model.adjustable ? emmaCheapCeil : policyBands.cheap)
   const frontierFloor = latestResult?.frontier_floor ?? (model.adjustable ? emmaFrontierFloor : policyBands.frontier)
 
-  const savedPct = ticker && ticker.total_hypothetical_cost > 0
-    ? Math.round((1 - ticker.total_actual_cost / ticker.total_hypothetical_cost) * 100)
+  // Use the backend's savings_pct, not a locally recomputed one.
+  //
+  // This used to be (1 - actual/hypothetical), whose denominator omits the cache
+  // savings. The dollar figure beside it, total_savings_usd, INCLUDES them. So
+  // the page showed "$0.1219 saved" next to "71%" while the dashboard under the
+  // same data said 77% -- three numbers, two baselines, no way for a reader to
+  // tell which pair was the real one.
+  //
+  // stats.py computes savings_pct against hypothetical + cache_savings so the
+  // percentage and the dollar figure share a denominator. Same source, both.
+  const savedPct = ticker && ticker.savings_pct != null
+    ? Math.round(ticker.savings_pct)
     : null
 
   const isEmpty = !started && messages.length === 0 && !loading
@@ -382,7 +403,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                     </div>
                   </div>
                   <div className="px-5 py-3.5 bg-panel/50">
-                    <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">vs all-frontier</p>
+                    <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">vs all-frontier + cache</p>
                     <p className="font-mono text-xs text-primary num-tabular">
                       ${ticker.total_savings_usd?.toFixed(4) || '0.0000'} on {ticker.total_requests} requests
                     </p>
@@ -533,7 +554,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                     <span>cut at {model.cuts.cheap}</span>
                   )}
                   <span aria-hidden>·</span>
-                  <span>fixed, tuned on 17,600 support labels</span>
+                  <span>fixed, tuned on {DATASETS.support.trainRows.toLocaleString()} support labels</span>
                 </div>
               )}
             </>

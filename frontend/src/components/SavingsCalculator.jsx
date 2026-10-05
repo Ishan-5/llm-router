@@ -221,9 +221,10 @@ export default function SavingsCalculator() {
     [catalog, frontierModel]
   )
 
-  // The catalog runs to ~70 models across ~15 providers. A single flat <select>
-  // is unusable at that size, so the provider is chosen first and the model
-  // list narrows to it. Sorted by provider so the narrowing is predictable.
+  // The catalog runs to 109 models across 10 providers (see productMetrics). A
+  // single flat <select> is unusable at that size, so the provider is chosen
+  // first and the model list narrows to it. Sorted by provider so the narrowing
+  // is predictable.
   const providers = useMemo(() => {
     const byName = new Map()
     for (const m of catalog?.models ?? []) {

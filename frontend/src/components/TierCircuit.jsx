@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { EMMA_CUTS } from '../productMetrics'
 
 // Layout is derived from the tier list so a 2-tier policy renders two nodes
 // instead of a 3-node diagram with a hole in it. tierKeys comes from the policy
@@ -67,8 +68,8 @@ export default function TierCircuit({ tiers, activeTier, score, cacheHit, loadin
   const gx = (s) => GX + (Math.min(10, Math.max(0, s)) / 10) * GW
   // Actual thresholds from the last response when we have them, otherwise the
   // caller has already substituted the selected model's own bands.
-  const cheapTick = cheapCeil ?? 4.5
-  const frontierTick = frontierFloor ?? 6.0
+  const cheapTick = cheapCeil ?? EMMA_CUTS.balanced.cheap
+  const frontierTick = frontierFloor ?? EMMA_CUTS.balanced.frontier
   // Vega has one cut: no mid band, so there is no second boundary to draw.
   const showMidBand = tiers.length > 2 && frontierTick > cheapTick
 

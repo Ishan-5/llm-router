@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { fetchStats, fetchCompare } from '../api'
-import AnimatedCounter from './AnimatedCounter'
+import Money from './Money'
+import { TIER_ORDER as CORE_TIER_ORDER, savingsBreakdown } from '../productMetrics'
 
-const TIER_ORDER = ['cheap', 'mid', 'frontier', 'web']
+// Core routing tiers plus the two tiers that exist outside the routing decision
+// (web search, and the cross-provider last resort). Anything else the backend
+// logs gets appended at render time -- see tierOrder below.
+const TIER_ORDER = [...CORE_TIER_ORDER, 'web']
 
-const TIER_LABELS = { cheap: 'Cheap', mid: 'Mid', frontier: 'Frontier', web: 'Web' }
+const TIER_LABELS = {
+  cheap: 'Cheap',
+  mid: 'Mid',
+  frontier: 'Frontier',
+  web: 'Web',
+  gemini: 'Gemini (fallback)',
+  failed: 'Failed',
+}
 
 export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [stats, setStats] = useState(null)
@@ -70,13 +81,26 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
 
   const savedPct = Math.round(stats.savings_pct || 0)
 
+  // Cache saved + Routing saved must add up to Total saved at display precision.
+  const breakdown = savingsBreakdown(stats)
+
   const successRate = Math.round(stats.success_rate_pct ?? 100)
 
   const avgLatency = Math.round(stats.avg_latency_ms || 0)
 
-  const pieData = TIER_ORDER
+  // Driven by whatever the backend actually logged, not by a hardcoded tier
+  // list. The list was missing 'gemini' (a real tier -- routes/route.py logs it
+  // when the cross-provider fallback fires) and 'failed', so the breakdown
+  // silently dropped those rows while the "Total" line below printed every
+  // request. On the demo key that was 13 of 396 requests, 3.3% unaccounted for.
+  const tierOrder = [
+    ...TIER_ORDER,
+    ...Object.keys(stats.tier_counts || {}).filter((t) => !TIER_ORDER.includes(t)),
+  ]
+
+  const pieData = tierOrder
     .filter((t) => stats.tier_counts?.[t])
-    .map((t) => ({ name: TIER_LABELS[t] || t, value: stats.tier_counts[t], color: p[t] }))
+    .map((t) => ({ name: TIER_LABELS[t] || t, value: stats.tier_counts[t], color: p[t] || 'var(--color-muted)' }))
 
   const costCompare = [
     { name: 'You paid', value: stats.total_actual_cost, fill: p.cool },
@@ -121,10 +145,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
           <div>
             <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">Total saved vs. all-frontier</p>
             <div className="flex items-baseline gap-3">
-              <span className="font-display text-4xl md:text-5xl font-bold text-signal">
-                <AnimatedCounter value={Math.round((stats.total_savings_usd || 0) * 100)} prefix="$" suffix="" duration={800} />
-                <span className="text-2xl md:text-3xl">.{String((stats.total_savings_usd || 0).toFixed(2)).split('.')[1] || '00'}</span>
-              </span>
+              <Money value={stats.total_savings_usd || 0} size="xl" className="text-signal" />
               {savedPct > 0 && (
                 <span className="font-mono text-sm font-semibold text-signal bg-signal/10 border border-signal/20 rounded-full px-3 py-1">
                   {savedPct}% saved
@@ -143,11 +164,11 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
           <div className="flex gap-6 md:gap-8">
             <div className="text-right">
               <p className="font-mono text-[10px] text-muted uppercase">Cache saved</p>
-              <p className="font-display text-lg font-semibold text-cool">${(stats.cache_savings_usd || 0).toFixed(4)}</p>
+              <p className="font-display text-lg font-semibold text-cool">${breakdown.cache.toFixed(4)}</p>
             </div>
             <div className="text-right">
               <p className="font-mono text-[10px] text-muted uppercase">Routing saved</p>
-              <p className="font-display text-lg font-semibold text-signal">${(stats.routing_savings_usd || 0).toFixed(4)}</p>
+              <p className="font-display text-lg font-semibold text-signal">${breakdown.routing.toFixed(4)}</p>
             </div>
           </div>
         </div>
@@ -385,7 +406,12 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
 
         {/* Latency by tier */}
         <div className="bg-panel border border-line rounded-xl p-5">
-          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-4">Avg latency by tier</h3>
+          <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-1">Avg model-call latency by tier</h3>
+          <p className="font-mono text-[10px] text-muted/80 mb-4">
+            Cache hits excluded. Wall-clock provider time including queueing and
+            429 backoff &mdash; not a measure of answer quality, so a lower bar
+            here does not mean a worse tier.
+          </p>
           {Object.keys(stats.avg_latency_by_tier || {}).length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
               <BarChart
@@ -417,7 +443,10 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
         <div className="bg-panel border border-line rounded-xl p-5 mb-6">
           <h3 className="font-mono text-[10px] text-muted uppercase tracking-wide mb-3">Mode comparison</h3>
           <p className="font-mono text-[10px] text-muted mb-4">
-            What {compareData.analyzed_requests} recent requests would cost with different thresholds:
+            What {compareData.analyzed_requests} recent requests would cost with different thresholds.
+            These are model calls only &mdash; cache hits and web searches are excluded, and the
+            baseline is frontier pricing for that same {compareData.analyzed_requests}-request window,
+            so they are lower than the headline saving above, which also counts cache.
           </p>
           <div className="grid grid-cols-3 gap-3">
             {compareData.modes.map((m) => {
@@ -430,7 +459,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
                 <div key={m.mode} className={`bg-surface border ${borderClass} rounded-lg p-3`}>
                   <div className={`font-mono text-[10px] font-semibold ${textClass} capitalize mb-1`}>{m.mode}</div>
                   <div className="font-display text-lg font-semibold text-primary">${m.estimated_cost.toFixed(4)}</div>
-                  <div className="font-mono text-[10px] text-muted mt-1">Save {m.savings_pct}% vs frontier</div>
+                  <div className="font-mono text-[10px] text-muted mt-1">Save {m.savings_pct}% vs all-frontier</div>
                 </div>
               )
             })}

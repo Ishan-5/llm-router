@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { evaluateQueries } from '../api'
+import { EMMA_CUTS } from '../productMetrics'
 
 const SAMPLE_QUERIES = [
   // Cheap tier (score <= 3)
@@ -109,9 +110,9 @@ export default function EvaluatePage() {
           </div>
         </div>
         <div className="flex justify-between mt-2 font-mono text-[9px] text-muted">
-          <span>Economy: cheap ≤ 5.25 · frontier ≥ 6.75</span>
-          <span>Balanced: cheap ≤ 4.5 · frontier ≥ 6.0</span>
-          <span>Quality: cheap ≤ 3.75 · frontier ≥ 5.25</span>
+          <span>Economy: cheap ≤ {EMMA_CUTS.economy.cheap} · frontier ≥ {EMMA_CUTS.economy.frontier}</span>
+          <span>Balanced: cheap ≤ {EMMA_CUTS.balanced.cheap} · frontier ≥ {EMMA_CUTS.balanced.frontier}</span>
+          <span>Quality: cheap ≤ {EMMA_CUTS.quality.cheap} · frontier ≥ {EMMA_CUTS.quality.frontier}</span>
         </div>
         <p className="font-mono text-[9px] text-muted/60 mt-2">
           The slider shifts both boundaries continuously. Economy routes more to Cheap and
@@ -202,10 +203,10 @@ export default function EvaluatePage() {
                       <p className="font-mono text-xs text-primary truncate">{r.query}</p>
                       <span className={`font-mono text-[9px] ${changes ? 'text-signal' : 'text-muted'}`}>
                         score: {r.difficulty_score.toFixed(2)}
-                        {r.difficulty_score <= 3.75 && ' (always cheap)'}
-                        {r.difficulty_score > 3.75 && r.difficulty_score < 5.25 && ' (changes: cheap ↔ mid)'}
-                        {r.difficulty_score >= 5.25 && r.difficulty_score < 6.75 && ' (changes: mid ↔ frontier)'}
-                        {r.difficulty_score >= 6.75 && ' (always frontier)'}
+                        {r.difficulty_score <= EMMA_CUTS.quality.cheap && ' (always cheap)'}
+                        {r.difficulty_score > EMMA_CUTS.quality.cheap && r.difficulty_score < EMMA_CUTS.quality.frontier && ' (changes: cheap ↔ mid)'}
+                        {r.difficulty_score >= EMMA_CUTS.quality.frontier && r.difficulty_score < EMMA_CUTS.economy.frontier && ' (changes: mid ↔ frontier)'}
+                        {r.difficulty_score >= EMMA_CUTS.economy.frontier && ' (always frontier)'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

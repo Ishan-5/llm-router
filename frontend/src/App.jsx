@@ -12,6 +12,7 @@ import LiveStatsStrip from './components/LiveStatsStrip'
 import MetricsBand from './components/MetricsBand'
 import { useTheme } from './useTheme'
 import { API_BASE } from './config'
+import { EASY_BAND_AB_FOOTNOTE } from './productMetrics'
 
 const PricingPage = lazy(() => import('./components/PricingTable'))
 const LandingPage = lazy(() => import('./components/LandingPage'))
@@ -176,6 +177,9 @@ function HomePage({ configVersion, backendOnline, isDark, onNavigate }) {
           </h2>
           <p className="text-muted text-sm max-w-lg mx-auto mb-8">
             Route every query to the cheapest model that can handle it — and watch the savings stack up in real time.
+          </p>
+          <p className="text-muted text-xs max-w-xl mx-auto mb-8 font-mono">
+            {EASY_BAND_AB_FOOTNOTE}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link

@@ -1,6 +1,11 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { API_BASE, API_KEY } from '../config'
+import {
+  TIERS, TIER_ORDER, EXAMPLE_COSTS, EXAMPLE_TOKENS, SAVINGS_PCT,
+  EMMA_EVAL, LISA_EVAL, KATE_EVAL, DATASETS, SCORING, CACHE, SEARCH,
+  EMMA_CUTS, LISA_CUTS, KATE_CUTS, PROVIDERS, PROVIDER_COUNT,
+} from '../productMetrics'
 
 const COPY_RESET_MS = 2000
 
@@ -113,7 +118,7 @@ result = client.ask("I want a refund", model="lisa")`,
         title: 'Start with emma, move to kate when the traffic is support',
         body: `emma is the general-purpose model and the default — use it unless your
 queries are support tickets. If they are, kate is the safer default because it
-sends 14.0% of genuinely-hard tickets to a cheap model versus lisa's 19.6%.
+sends ${KATE_EVAL.frontierEscapePct}% of genuinely-hard tickets to a cheap model versus lisa's ${LISA_EVAL.frontierEscapePct}%.
 
 Not building a bot? You can skip all of this. emma is the right answer until
 your traffic looks like tickets.`,
@@ -173,12 +178,12 @@ last 4 turns as context too, but it can only do that if you SEND them.
         title: 'Both are support models on the same regressors — only the cut rule differs',
         columns: ['', 'kate (2-tier)', 'lisa (3-tier)'],
         rows: [
-          ['cheap when', 'score ≤ 4.0', 'score ≤ 2.0'],
-          ['frontier when', 'anything above 4.0', 'score ≥ 4.5'],
-          ['mid band', 'none', '2.0 < score < 4.5'],
-          ['frontier recall', '86.0%', '80.4%'],
-          ['frontier escape', '14.0%', '19.6%'],
-          ['traffic c/m/f', '66 / 0 / 34', '46 / 24 / 29'],
+          ['cheap when', `score ≤ ${KATE_CUTS.cheap}`, `score ≤ ${LISA_CUTS.cheap}`],
+          ['frontier when', `anything above ${KATE_CUTS.cheap}`, `score ≥ ${LISA_CUTS.frontier}`],
+          ['mid band', 'none', `${LISA_CUTS.cheap} < score < ${LISA_CUTS.frontier}`],
+          ['frontier recall', `${KATE_EVAL.recallFrontierPct}%`, `${LISA_EVAL.recallFrontierPct}%`],
+          ['frontier escape', `${KATE_EVAL.frontierEscapePct}%`, `${LISA_EVAL.frontierEscapePct}%`],
+          ['traffic c/m/f', `${KATE_EVAL.traffic.cheap} / ${KATE_EVAL.traffic.mid} / ${KATE_EVAL.traffic.frontier}`, `${LISA_EVAL.traffic.cheap} / ${LISA_EVAL.traffic.mid} / ${LISA_EVAL.traffic.frontier}`],
         ],
         body: `Default to kate. A support bot that answers "I can't log in" with the
 cheap model is a bad experience, and kate's 4.0 cut keeps far more of those on
@@ -189,7 +194,7 @@ for your product and you want the cheaper mix.`,
         label: 'The cache handles follow-ups for you',
         kind: 'warn',
         title: 'Short replies collide across conversations — so the router refuses them',
-        body: `The semantic cache is scoped to your API key and matches at 0.95
+        body: `The semantic cache is scoped to your API key and matches at ${CACHE.similarityThreshold}
 cosine similarity, but it cannot tell one conversation from another. "yes" in
 your billing bot is very close to someone else's "yes".
 
@@ -269,7 +274,7 @@ requests.post(f"{BASE}/route/feedback", headers=HEADERS, json={
   scores 8.35 (frontier). Short-but-hard tickets can be under-routed. If your
   tickets are terse, prefer kate over lisa, and spot-check /logs weekly.
 
-• Support models are domain-specific. Lisa and kate were trained on 17,600
+• Support models are domain-specific. Lisa and kate were trained on ${DATASETS.support.trainRows.toLocaleString()}
   support tickets across four domains (account_access, orders_billing,
   technical, delivery_general). Point kate at a general or coding question
   and it will under-route, because that is out of distribution for it. Use
@@ -319,9 +324,9 @@ curl -X DELETE ${API_BASE}/keys/7 -H "Authorization: Bearer <your-jwt>"`,
   -H "Content-Type: application/json" \\
   -d '{"router_threshold": 1.0}'
 
-# 0.0 economy  cheap ≤ 5.25   frontier ≥ 6.75   cheapest, misses more hard work
-# 1.0 balanced  cheap ≤ 4.50   frontier ≥ 6.00   the default
-# 2.0 quality   cheap ≤ 3.75   frontier ≥ 5.25   priciest, escalates the most
+# 0.0 economy  cheap ≤ ${EMMA_CUTS.economy.cheap.toFixed(2)}   frontier ≥ ${EMMA_CUTS.economy.frontier.toFixed(2)}   cheapest, misses more hard work
+# 1.0 balanced  cheap ≤ ${EMMA_CUTS.balanced.cheap.toFixed(2)}   frontier ≥ ${EMMA_CUTS.balanced.frontier.toFixed(2)}   the default
+# 2.0 quality   cheap ≤ ${EMMA_CUTS.quality.cheap.toFixed(2)}   frontier ≥ ${EMMA_CUTS.quality.frontier.toFixed(2)}   priciest, escalates the most
 
 # Per-request override always wins, so a teammate can test without changing
 # the team default:
@@ -415,8 +420,8 @@ carries provider keys. Leave the defaults.`,
                       support_mode ∈ {generic, 2tier, 3tier}
                       override_tier ∈ {cheap, mid, frontier}
                       threshold ∈ [0.0, 2.0]
-3. injection check    9 regexes → HTTP 400 on match
-4. web search?        ~30 regexes (today/latest/weather/news/price) + Tavily
+3. injection check    ${SEARCH.injectionRegexes} regexes → HTTP 400 on match
+4. web search?        ~${SEARCH.intentRegexes} regexes (today/latest/weather/news/price) + Tavily
                       → returns tier="web", cost $0, no LLM called
 5. threshold          request value → user setting → default 1.0
 6. IN PARALLEL        ┌─ semantic cache lookup  (≥0.95 cosine)
@@ -436,14 +441,14 @@ carries provider keys. Leave the defaults.`,
   384  MiniLM-L6-v2 sentence embedding (local, in memory)
     4  handcrafted: word count · has-code regex · contains "?" · "N words"
   → ensemble of 2 LightGBM regressors (v18 + v19, averaged), output clipped 0-10
-  trained on 8,200 rows of an 8,783-row Claude-verified gold set
+  trained on ${DATASETS.emma.trainRows.toLocaleString()} rows of an ${DATASETS.emma.totalGoldRows.toLocaleString()}-row Claude-verified gold set
 
 lisa / kate — 392 features
   384  the same MiniLM embedding (shared instance, no extra pass)
     4  the same handcrafted features
     4  domain one-hot: account_access · delivery_general ·
                          orders_billing · technical
-  → 3 LightGBM regressors (seeds 18/19/20), 17,600 support tickets
+  → ${SCORING.ensembleSize} LightGBM regressors (seeds ${SCORING.seeds}), ${DATASETS.support.trainRows.toLocaleString()} support tickets
   domain chosen by a deterministic keyword vote, no model, no network
 
 lisa and kate run the SAME regressors. They produce identical scores and differ
@@ -454,30 +459,30 @@ only in how the score is cut into tiers.`,
         label: 'Score → tier',
         code: `emma:
   t              = (margin * 0.3 - 0.3) / 0.3
-  cheap_ceil     = 4.5  - t * 0.75
-  frontier_floor = 6.0  - t * 0.75
+  cheap_ceil     = ${EMMA_CUTS.balanced.cheap}  - t * 0.75
+  frontier_floor = ${EMMA_CUTS.balanced.frontier}  - t * 0.75
 
-  margin 0.0 economy   cheap ≤ 5.25   frontier ≥ 6.75
-  margin 1.0 balanced  cheap ≤ 4.50   frontier ≥ 6.00
-  margin 2.0 quality   cheap ≤ 3.75   frontier ≥ 5.25
+  margin 0.0 economy   cheap ≤ ${EMMA_CUTS.economy.cheap.toFixed(2)}   frontier ≥ ${EMMA_CUTS.economy.frontier.toFixed(2)}
+  margin 1.0 balanced  cheap ≤ ${EMMA_CUTS.balanced.cheap.toFixed(2)}   frontier ≥ ${EMMA_CUTS.balanced.frontier.toFixed(2)}
+  margin 2.0 quality   cheap ≤ ${EMMA_CUTS.quality.cheap.toFixed(2)}   frontier ≥ ${EMMA_CUTS.quality.frontier.toFixed(2)}
 
   score >= frontier_floor → frontier
   score <= cheap_ceil     → cheap
   otherwise               → mid
 
-lisa (3tier):  cheap ≤ 2.0 · frontier ≥ 4.5 · else mid
-kate (2tier):  cheap ≤ 4.0 · else frontier   (no mid band; the stored
+lisa (3tier):  cheap ≤ ${LISA_CUTS.cheap} · frontier ≥ ${LISA_CUTS.frontier} · else mid
+kate (2tier):  cheap ≤ ${KATE_CUTS.cheap} · else frontier   (no mid band; the stored
                                                frontier_floor of 4.5 is unused)`,
         lang: 'text',
       },
       {
         label: 'The semantic cache',
-        code: `threshold      0.95 cosine similarity — deliberately strict, near-exact
+        code: `threshold      ${CACHE.similarityThreshold} cosine similarity — deliberately strict, near-exact
                 paraphrase only
-scan window     most recent 500 rows for your API key
+scan window     most recent ${CACHE.scanWindow} rows for your API key
 store           the embedding as JSON text alongside the response
 on hit          cost $0, logs tokens_saved_usd, no provider call
-eviction        30-day expiry, 5,000-row cap
+eviction        ${CACHE.ttlDays}-day expiry, ${CACHE.rowCap.toLocaleString()}-row cap
 short queries   under 12 chars never read or write the cache
 multi-turn      requests carrying messages skip the cache entirely
 
@@ -526,12 +531,13 @@ This only helps if you send the history — Routewise stores nothing.`,
         label: 'What the models actually cost',
         kind: 'table',
         title: 'Tier prices ascend by design',
-        columns: ['tier', 'model', 'in / out per M', 'per request @ 500+500'],
-        rows: [
-          ['cheap', 'groq · gpt-oss-20b', '$0.075 / $0.30', '$0.000188  (1.0×)'],
-          ['mid', 'groq · gpt-oss-120b', '$0.15 / $0.60', '$0.000375  (2.0×)'],
-          ['frontier', 'openrouter · deepseek-chat', '$0.27 / $1.10', '$0.000690  (3.7×)'],
-        ],
+        columns: ['tier', 'model', 'in / out per M', `per request @ ${EXAMPLE_TOKENS.in}+${EXAMPLE_TOKENS.out}`],
+        rows: TIER_ORDER.map((k) => [
+          k,
+          `${TIERS[k].provider} · ${TIERS[k].model.split('/').pop()}`,
+          `$${TIERS[k].priceIn} / $${TIERS[k].priceOut}`,
+          `$${EXAMPLE_COSTS[k].toFixed(6)}  (${(EXAMPLE_COSTS[k] / EXAMPLE_COSTS.cheap).toFixed(1)}×)`,
+        ]),
         body: `Tier prices MUST ascend cheap < mid < frontier. They once did not:
 deepseek-chat sat in "cheap" while gpt-oss-120b sat in "frontier", so every
 downroute cost 1.84× more than calling frontier and the savings claims inverted.
@@ -549,8 +555,8 @@ model does not silently inherit the default tier's price.`,
       {
         label: 'Pick a policy',
         code: `emma   — generic routing (default): cheap / mid / frontier, slider-movable cuts
-lisa   — customer support, 3-tier:  cheap / mid / frontier, fixed cuts ≤ 2.0 / ≥ 4.5
-kate   — customer support, 2-tier:  cheap / frontier, single fixed cut ≤ 4.0
+lisa   — customer support, 3-tier:  cheap / mid / frontier, fixed cuts ≤ ${LISA_CUTS.cheap} / ≥ ${LISA_CUTS.frontier}
+kate   — customer support, 2-tier:  cheap / frontier, single fixed cut ≤ ${KATE_CUTS.cheap}
 
 Pick by what you route for:
   general chat / agents               → emma
@@ -610,9 +616,9 @@ print(resp.choices[0].message.content)`,
         title: 'Read these as directional signals, not one leaderboard',
         columns: ['policy', 'MAE', 'Spearman', 'frontier recall', 'frontier escape'],
         rows: [
-          ['emma (783 general holdout)', '1.018', '0.861', '58.0%', '—'],
-          ['lisa (17,600 support tickets)', '0.822', '0.786', '80.4%', '19.6%'],
-          ['kate (17,600 support tickets)', '0.822', '0.786', '86.0%', '14.0%'],
+          [`emma (${EMMA_EVAL.holdoutRows} general holdout)`, EMMA_EVAL.mae.toFixed(3), EMMA_EVAL.spearman.toFixed(3), `${EMMA_EVAL.recallFrontierPct}%`, '—'],
+          [`lisa (${LISA_EVAL.trainRows.toLocaleString()} support tickets)`, LISA_EVAL.maeMean.toFixed(3), LISA_EVAL.spearmanMean.toFixed(3), `${LISA_EVAL.recallFrontierPct}%`, `${LISA_EVAL.frontierEscapePct}%`],
+          [`kate (${KATE_EVAL.trainRows.toLocaleString()} support tickets)`, KATE_EVAL.maeMean.toFixed(3), KATE_EVAL.spearmanMean.toFixed(3), `${KATE_EVAL.recallFrontierPct}%`, `${KATE_EVAL.frontierEscapePct}%`],
         ],
         body: `These are NOT comparable to each other. emma is evaluated on general
 Claude-gold queries; lisa and kate are evaluated on support tickets from three
@@ -1227,10 +1233,10 @@ VITE_API_KEY=${API_KEY || 'rw_your_key_here'}`,
         lang: 'bash',
       },
       {
-        label: 'Supported providers',
-        code: `# Run this to see all available providers and models:
+label: `Supported providers (${PROVIDER_COUNT})`,
+ code: `# Run this to see all available providers and models:
 providers = client.get_providers()
-# → groq, openrouter, openai, anthropic, gemini, deepseek, perplexity, mistral, xai, ollama
+# → ${PROVIDERS.join(', ')}
 
 # Each tier config:
 {

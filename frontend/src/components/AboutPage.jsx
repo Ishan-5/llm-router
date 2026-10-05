@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import emailjs from '@emailjs/browser'
+import { DATASETS, TIER_ORDER } from '../productMetrics'
 
 export default function AboutPage() {
   const [feedback, setFeedback] = useState({ name: '', email: '', message: '' })
@@ -54,10 +55,10 @@ export default function AboutPage() {
           {[
             {
               title: 'Scores difficulty in real time',
-              body: 'A regression model trained on 8,200 Claude-gold labels predicts how hard a request is on a 0–10 scale, directly from the text — no API call needed, so it doesn\'t add meaningful latency of its own.',
+              body: `A regression model trained on ${DATASETS.emma.trainRows.toLocaleString()} Claude-gold labels predicts how hard a request is on a 0–10 scale, directly from the text — no API call needed, so it doesn't add meaningful latency of its own.`,
             },
             {
-              title: 'Routes across four tiers',
+              title: `Routes across ${TIER_ORDER.length} model tiers, plus web search`,
               body: 'From a free local model up to frontier-class models, biased conservatively — when a query is borderline, it errs toward the safer, more capable tier rather than the cheaper one.',
             },
             {

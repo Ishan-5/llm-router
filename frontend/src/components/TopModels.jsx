@@ -32,10 +32,10 @@ const PICKS = {
   ],
   fast: [
     { model: 'llama3.2:3b', provider: 'ollama', why: 'Runs locally. Zero latency, zero cost. Great for simple queries.' },
-    { model: 'deepseek/deepseek-v4-flash', provider: 'openrouter', why: 'Frontier-class quality at the lowest cost on the board. ~84 tok/s.' },
+    { model: 'deepseek/deepseek-v4-flash', provider: 'openrouter', why: 'Frontier-class quality at the lowest cost on the board.' },
     { model: 'gemini-2.0-flash', provider: 'gemini', why: 'Fast API responses, very cheap. Handles most simple queries.' },
     { model: 'deepseek-v4-flash', provider: 'deepseek', why: 'Fast and cheap. Great bang for buck on straightforward tasks.' },
-    { model: 'openai/gpt-oss-20b', provider: 'groq', why: '~1000 tok/s on Groq. Great for classification and simple Q&A.' },
+    { model: 'openai/gpt-oss-20b', provider: 'groq', why: 'Our default cheap tier. Great for classification and simple Q&A.' },
   ],
   reasoning: [
     { model: 'claude-3.5-sonnet', provider: 'anthropic', why: 'Strongest at multi-step reasoning, math, and logic puzzles.' },

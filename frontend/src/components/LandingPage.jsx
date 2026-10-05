@@ -4,19 +4,22 @@ import Reveal from './Reveal'
 import HowItWorks from './HowItWorks'
 import AnimatedCounter from './AnimatedCounter'
 import { fetchTiers } from '../api'
+import { TIERS, TIER_ORDER, SAVINGS_PCT, SAVINGS_EXACT_PCT, FRONTIER_VS_CHEAP, DATASETS, EASY_BAND_AB_FOOTNOTE } from '../productMetrics'
 
 const Features = lazy(() => import('./Features'))
 
-/* Snapshot of backend/router/config.py, used only until /tiers answers and only
-   if it never does. /tiers resolves through the same path /route uses, so the
-   numbers on this page cannot drift from the prices the router charges. The
-   old hardcoded TIER block is what mislabelled cheap and frontier after a
-   re-tier, so the fallback is explicitly stale-looking and not the source. */
-const TIER_SNAPSHOT = {
-  cheap: { model: 'openai/gpt-oss-20b', provider: 'groq', in: 0.075, out: 0.3 },
-  mid: { model: 'openai/gpt-oss-120b', provider: 'groq', in: 0.15, out: 0.6 },
-  frontier: { model: 'deepseek/deepseek-chat', provider: 'openrouter', in: 0.27, out: 1.1 },
-}
+/* Tier prices live in productMetrics, which mirrors backend/router/config.py.
+   They are only a fallback for when /tiers answers and only if it never does.
+/tiers resolves through the same path /route uses, so the live numbers cannot
+   drift from the prices the router actually charges. The old hardcoded TIER
+   block here is what mislabelled cheap and frontier after a re-tier, which is
+   why it now lives in one shared module rather than being copied per page. */
+const TIER_SNAPSHOT = Object.fromEntries(
+  TIER_ORDER.map((k) => [
+    k,
+    { model: TIERS[k].model, provider: TIERS[k].provider, in: TIERS[k].priceIn, out: TIERS[k].priceOut },
+  ])
+)
 /* Industry reference point, clearly labelled as not our config. */
 const TYPICAL_FRONTIER = { in: 3.0, out: 15.0 }
 
@@ -128,13 +131,13 @@ function RoutingVisual() {
         <circle cx="262" cy="80" r="13" fill="var(--color-base)" stroke="var(--color-cool)" strokeWidth="2" />
         <text x="262" y="106" textAnchor="middle" className="fill-[var(--color-cool)]" style={{ font: '600 11px ui-monospace, monospace' }}>mid</text>
         <text x="262" y="120" textAnchor="middle" className="fill-[var(--color-muted)]" style={{ font: '10px ui-monospace, monospace' }}>most traffic</text>
-        <text x="262" y="134" textAnchor="middle" className="fill-[var(--color-cool)]" style={{ font: '10px ui-monospace, monospace' }}>$0.15 / 1M</text>
+        <text x="262" y="134" textAnchor="middle" className="fill-[var(--color-cool)]" style={{ font: '10px ui-monospace, monospace' }}>${TIERS.mid.priceIn.toFixed(2)} / 1M</text>
 
         {/* frontier node */}
         <circle cx="262" cy="252" r="13" fill="var(--color-base)" stroke="var(--color-signal)" strokeWidth="2" />
         <text x="262" y="278" textAnchor="middle" className="fill-[var(--color-signal)]" style={{ font: '600 11px ui-monospace, monospace' }}>frontier</text>
         <text x="262" y="292" textAnchor="middle" className="fill-[var(--color-muted)]" style={{ font: '10px ui-monospace, monospace' }}>when earned</text>
-        <text x="262" y="306" textAnchor="middle" className="fill-[var(--color-signal)]" style={{ font: '10px ui-monospace, monospace' }}>$0.27 / 1M</text>
+        <text x="262" y="306" textAnchor="middle" className="fill-[var(--color-signal)]" style={{ font: '10px ui-monospace, monospace' }}>${TIERS.frontier.priceIn.toFixed(2)} / 1M</text>
       </svg>
 
       <span className="absolute top-0 left-0 font-mono text-[10px] text-muted/70">incoming</span>
@@ -418,9 +421,10 @@ function CostSimulator() {
               <span className="text-primary font-semibold">
                 {money(savedVsOurFrontier)}
               </span>
-              /mo ({pctVsOurFrontier.toFixed(0)}%). We quote 40% because it holds
-              across real traffic mixes; the bigger figures depend on which
-              baseline you pick and on how much of your traffic is genuinely hard.
+              /mo ({pctVsOurFrontier.toFixed(0)}%). The headline figure of{' '}
+              {SAVINGS_PCT}% is the one measured on our own logged traffic; your
+              number depends on how much of your traffic is genuinely hard, so
+              score your own prompts rather than trusting ours.
             </p>
             <Link
               to="/calculator"
@@ -628,7 +632,7 @@ function CodeBlock() {
 
 const PROOF = [
   {
-    value: 8200,
+    value: DATASETS.emma.trainRows,
     format: (n) => n.toLocaleString(),
     label: 'Claude-gold labels',
     detail: 'training set',
@@ -646,11 +650,11 @@ const PROOF = [
     detail: 'for failover',
   },
   {
-    value: 40,
+    value: SAVINGS_PCT,
     suffix: '%',
     format: (n) => String(n),
     label: 'Off the frontier tier',
-    detail: 'at 80% easy traffic',
+    detail: `at our measured traffic mix (${SAVINGS_EXACT_PCT}% unrounded)`,
   },
 ]
 
@@ -800,7 +804,7 @@ export default function LandingPage() {
                 The math
               </p>
               <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">
-                The cheap tier costs 3.7x less than the frontier one.
+                The cheap tier costs {FRONTIER_VS_CHEAP.toFixed(1)}x less than the frontier one.
               </h2>
               <p className="text-muted text-sm leading-relaxed mt-4">
                 Same shape of request, a smaller model. The only question is how
@@ -947,6 +951,9 @@ export default function LandingPage() {
           <p className="text-muted text-sm max-w-lg mx-auto mb-8">
             Every routing decision, tier, and real cost in the demo is the actual
             running system — not a mockup.
+          </p>
+          <p className="text-muted text-xs max-w-xl mx-auto mb-8 font-mono">
+            {EASY_BAND_AB_FOOTNOTE}
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link

@@ -4,6 +4,7 @@ import {
 } from 'recharts'
 import { fetchPolicyAnalytics } from '../api'
 import { MODEL_LIST } from '../models'
+import { DATASETS } from '../productMetrics'
 
 const TIER_COLORS = { cheap: '#3FB8AF', mid: '#FF9F1C', frontier: '#E85D5D' }
 const TIER_TEXT = { cheap: 'text-cool', mid: 'text-signal', frontier: 'text-danger' }
@@ -255,7 +256,7 @@ export default function PolicyAnalytics({ isDark }) {
 
           <p className="font-mono text-[10px] text-muted/70 mt-6 leading-relaxed max-w-3xl">
             Offline evals are measured on each policy's own holdout — emma on general Claude-gold rows,
-            lisa and kate on 17,600 support tickets — so compare them as directional signals, not a
+            lisa and kate on {DATASETS.support.trainRows.toLocaleString()} support tickets — so compare them as directional signals, not a
             single leaderboard. Frontier escape is the share of genuinely-hard queries a policy would
             have downgraded; lower is safer, higher is cheaper.
           </p>

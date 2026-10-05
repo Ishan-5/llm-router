@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchStats } from '../api'
 import AnimatedCounter from './AnimatedCounter'
+import Money from './Money'
+import { savingsBreakdown } from '../productMetrics'
 
 const TIER_STYLES = {
   cheap: 'text-cool bg-cool/10 border-cool/30',
@@ -28,6 +30,9 @@ export default function MetricsBand() {
   }, [])
 
   const savedPct = stats ? Math.round(stats.savings_pct || 0) : 0
+
+  // Cache saved + Routing saved must add up to Total saved at display precision.
+  const breakdown = savingsBreakdown(stats)
 
   const avgMs = stats && stats.avg_latency_ms ? Math.round(stats.avg_latency_ms) : null
 
@@ -77,10 +82,7 @@ export default function MetricsBand() {
                 <div>
                   <p className="font-mono text-[10px] text-muted uppercase tracking-wide mb-2">Total saved vs. all-frontier</p>
                   <div className="flex items-baseline gap-3">
-                    <span className="font-display text-4xl md:text-5xl font-bold text-signal num-tabular">
-                      <AnimatedCounter value={Math.round((stats.total_savings_usd || 0) * 100)} prefix="$" duration={800} />
-                      <span className="text-2xl md:text-3xl">.{String((stats.total_savings_usd || 0).toFixed(2)).split('.')[1] || '00'}</span>
-                    </span>
+                    <Money value={stats.total_savings_usd || 0} size="xl" className="text-signal" />
                     {savedPct > 0 && (
                       <span className="font-mono text-sm font-semibold text-signal bg-signal/10 border border-signal/20 rounded-full px-3 py-1">
                         {savedPct}% saved
@@ -99,11 +101,11 @@ export default function MetricsBand() {
                 <div className="flex gap-6 md:gap-8">
                   <div className="text-right">
                     <p className="font-mono text-[10px] text-muted uppercase">Cache saved</p>
-                    <p className="font-display text-lg font-semibold text-cool">${(stats.cache_savings_usd || 0).toFixed(4)}</p>
+                    <p className="font-display text-lg font-semibold text-cool">${breakdown.cache.toFixed(4)}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-mono text-[10px] text-muted uppercase">Routing saved</p>
-                    <p className="font-display text-lg font-semibold text-signal">${(stats.routing_savings_usd || 0).toFixed(4)}</p>
+                    <p className="font-display text-lg font-semibold text-signal">${breakdown.routing.toFixed(4)}</p>
                   </div>
                 </div>
               </div>

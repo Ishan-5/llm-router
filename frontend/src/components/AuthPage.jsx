@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, fetchEnabledProviders } from '../supabase'
+import { EMMA_EVAL, SAVINGS_PCT, SCORING, DATASETS } from '../productMetrics'
 
 const inputClass =
   'w-full bg-base border border-line rounded-lg pl-10 pr-4 py-2.5 text-sm text-primary placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/40 focus:border-signal transition-colors'
@@ -37,7 +38,7 @@ function LockIcon() {
 const FEATURES = [
   {
     title: 'Difficulty-scored routing',
-    desc: 'LightGBM trained on 8,200 Claude-gold labels',
+    desc: `LightGBM trained on ${DATASETS.emma.trainRows.toLocaleString()} Claude-gold labels`,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
@@ -56,7 +57,7 @@ const FEATURES = [
   },
   {
     title: 'Near-zero overhead',
-    desc: '~16ms local scoring — no extra API call',
+    desc: `~${Math.round(SCORING.latencyMs)}ms local scoring — no extra API call`,
     icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -279,9 +280,9 @@ export default function AuthPage() {
 
         <div className="relative grid grid-cols-3 gap-4 border-t border-white/10 pt-6 mt-12">
           {[
-            { value: '77.5%', label: 'Tier accuracy' },
-            { value: '56%', label: 'Cheaper', accent: true },
-            { value: '~16ms', label: 'Per decision' },
+            { value: `${EMMA_EVAL.tierAccuracyPct}%`, label: 'Tier accuracy' },
+            { value: `${SAVINGS_PCT}%`, label: 'Cheaper', accent: true },
+            { value: `~${Math.round(SCORING.latencyMs)}ms`, label: 'Per decision' },
           ].map((s) => (
             <div key={s.label}>
               <p className={`font-display text-2xl font-semibold ${s.accent ? 'text-signal' : 'text-white'}`}>{s.value}</p>
