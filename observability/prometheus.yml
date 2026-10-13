@@ -1,0 +1,19 @@
+# Scrape config for a self-hosted RouteWise instance.
+#
+# RouteWise keeps the JSON rollup at GET /metrics (read by the dashboard) and
+# exposes the Prometheus text exposition at GET /metrics/prometheus, so the
+# metrics_path below matters.
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: routewise
+    metrics_path: /metrics/prometheus
+    static_configs:
+      # Local `uvicorn router.main:app` on the host, scraped from a Prometheus
+      # container (Docker Desktop resolves host.docker.internal).
+      - targets: ["host.docker.internal:8000"]
+        labels:
+          env: local
+      # If Prometheus runs in the same docker-compose network, use the service
+      # name instead:  - targets: ["backend:8000"]

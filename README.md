@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-289%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-296%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -418,7 +418,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (241 tests) · node:test (48 CLI tests) · 289 total · GitHub Actions CI |
+| ✅ Testing | pytest (248 tests) · node:test (48 CLI tests) · 296 total · GitHub Actions CI |
 
 ---
 
@@ -625,6 +625,26 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 - 🔒 **CORS restricted** to the deployed frontend origin and localhost — not wildcard.
 - 📬 **Found a vulnerability?** Report it privately — see [`SECURITY.md`](SECURITY.md);
   please don't open a public issue.
+
+---
+
+## 📈 Observability
+
+Every request is counted and timed; routing decisions, cache outcomes and the
+deployed model are all exposed as Prometheus series.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /health/live` | Liveness — the process is up (no dependency checks) |
+| `GET /health/ready` | Readiness — verifies the database answers, `503` if not |
+| `GET /metrics` | JSON rollup the dashboard reads (unchanged) |
+| `GET /metrics/prometheus` | Prometheus text exposition |
+
+Series include `routewise_requests_total`, `routewise_request_duration_seconds`,
+`routewise_routing_decision_seconds`, `routewise_tier_decisions_total`,
+`routewise_cache_events_total`, and `routewise_build_info` carrying the deployed
+model name. A ready-to-edit scrape config lives in
+[`observability/prometheus.yml`](observability/prometheus.yml).
 
 ---
 
