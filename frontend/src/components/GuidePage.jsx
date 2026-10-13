@@ -1742,7 +1742,7 @@ export default function GuidePage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search the guide…  (press / )"
             aria-label="Search the guide"
-            className="w-full bg-surface border border-line rounded-full pl-4 pr-10 py-2.5 text-xs font-mono text-primary placeholder:text-muted placeholder-opacity-60 focus:border-signal focus:outline-none transition"
+            className="w-full bg-surface border border-line rounded-full pl-4 pr-10 py-2.5 text-xs font-mono text-primary placeholder:text-muted/60 focus:border-signal focus:outline-none transition"
           />
           {query ? (
             <button
