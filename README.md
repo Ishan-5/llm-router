@@ -59,6 +59,36 @@
 
 ---
 
+## 📚 Table of contents
+
+**Get started**
+- [Quick start](#-quick-start) — first query in ~30 seconds
+- [Why RouteWise?](#-why-routewise) — the problem, and how it differs from a gateway
+- [Features](#-features) — everything on one screen
+
+**How it works**
+- [Meet emma, lisa & kate](#-meet-emma-lisa--kate--three-routing-policies) — three routing policies
+- [How it works](#-how-it-works) — guard → score → route → respond
+- [Architecture](#-architecture) — the request pipeline
+- [Model tiers & prices](#-model-tiers)
+- [The cost math](#-the-cost-math) — where the ~50% comes from
+
+**Evidence**
+- [Measured results](#-measured-results) — real traffic, plus the cheap-tier A/B
+- [Model accuracy](#-model-accuracy) — v15 → v20 head-to-head
+
+**Integrate & operate**
+- [Bring your own model (BYOM)](#-bring-your-own-model-byom)
+- [SDK](#-sdk) · [Terminal CLI](#-terminal-cli) · [MCP gateway](#-mcp-gateway)
+- [Security](#-security) · [Alerting](#-alerting)
+- [Running it locally](#-running-it-locally) · [Docker](#-running-it-with-docker)
+
+**Go deeper**
+- [Engineering decisions](#-engineering-decisions) · [Known limitations](#-known-limitations)
+- [FAQ](#-faq) · [Project structure](#-project-structure) · [Roadmap](#-roadmap)
+
+---
+
 ## 🚀 Quick start
 
 Route your first query in about 30 seconds — no config, no account required.
@@ -144,6 +174,15 @@ RouteWise sits between you and the LLM providers. It scores how hard each reques
 picks the cheapest tier that can handle it, and degrades gracefully when providers fail. You
 get frontier-class quality where it matters — and **8B-model prices everywhere else**.
 
+> [!TIP]
+> **Three things you don't get from a plain model call:**
+> - 🎯 **Routing on predicted difficulty** — you don't pick the model. The router scores the
+>   query and sends it to the cheapest tier that handles it well.
+> - 🧭 **Three routing personalities** — `emma` (general), `lisa` (support, 3-tier) and `kate`
+>   (support, max-care, 2-tier) — switchable **per request**.
+> - 🔌 **Bring your own model** — point any tier at any provider or custom model ID, repriced at
+>   the model's real rate.
+
 ### RouteWise vs. calling providers directly
 
 | | ❌ Calling a provider directly | ⚡ RouteWise |
@@ -159,11 +198,34 @@ get frontier-class quality where it matters — and **8B-model prices everywhere
 | OpenAI-compatible API | Native | **Drop-in `/v1/chat/completions`** |
 | Terminal-first access | Write your own client | **`routewise` CLI, zero deps, from npm** |
 
+### RouteWise vs. a plain LLM gateway
+
+A gateway (LiteLLM, Portkey and friends) is a great front door for **which provider to call** —
+one OpenAI-shaped API over many vendors, with keys, retries and observability. RouteWise answers
+a different question: **how hard is this request, and what's the cheapest tier that answers it
+well?** The two compose.
+
+| | 🔀 Plain LLM gateway | ⚡ RouteWise |
+|---|---|---|
+| **Routing basis** | You pick the model, or a static rule does | An ML model scores the query 0–10 and picks the tier |
+| **Per-domain tuning** | One config for all traffic | `emma` · `lisa` · `kate` — a model and cuts tuned per product |
+| **Cost control** | Pass-through + budgets | Cheapest capable tier + semantic cache + savings analytics |
+| **What you configure** | Provider keys and model names | Nothing — it routes out of the box; BYOM when you want control |
+
 > [!IMPORTANT]
 > The average paid query costs **$0.000306** with RouteWise vs **$0.000600** if you send
 > everything to the frontier model — **~50% cheaper**, before cache hits (which are free)
 > are even counted. Both figures are for ~1,000 input + ~300 output tokens on our measured
 > traffic mix; see [the cost math](#-the-cost-math).
+
+### What you'd route with it
+
+| If you're building… | Reach for | Because |
+|---|---|---|
+| A **customer-support bot** | `lisa` or `kate` | Support-tuned scoring — 80.4% / 86.0% frontier recall on the tickets that matter |
+| A **coding assistant or agent** | `emma` | General difficulty routing, cheap by default, OpenAI drop-in |
+| A **high-volume app** | Cache + cheap tier | ~50% cheaper at our measured mix, and cached answers cost **$0** |
+| A **multi-provider stack** | BYOM + failover | Any tier → any provider, and outages step down automatically |
 
 ---
 
