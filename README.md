@@ -7,11 +7,12 @@
 
 <h1 align="center">⚡ RouteWise</h1>
 
-<h3 align="center"><b>The cost-aware LLM request router.</b></h3>
+<h3 align="center"><b>Route every query to the cheapest model that answers it well.</b></h3>
 
 <p align="center">
-  Every query gets a <b>difficulty score</b> — then routed to the <b>cheapest model tier that can handle it</b>.<br/>
-  Stop paying frontier-model prices for queries that a small model can answer perfectly.
+  RouteWise scores each request's <b>difficulty</b>, then sends it to the <b>cheapest model tier that handles it</b> —<br/>
+  frontier-quality answers where the query is hard, small-model prices everywhere else.<br/>
+  <b>Drop-in OpenAI-compatible · zero routing rules to write · ~50% cheaper</b> at our measured traffic mix.
 </p>
 
 <p align="center">
@@ -50,6 +51,10 @@
 | **~50% lower**<br/><sub>at our measured traffic mix</sub> | **77.5%**<br/><sub>exact tier, held-out Claude-gold</sub> | **&lt;20 ms**<br/><sub>local, no API call</sub> | **8,200**<br/><sub>Claude-verified</sub> | **10**<br/><sub>109 models, failover</sub> | **3**<br/><sub>emma · lisa · kate</sub> |
 
 </div>
+
+<p align="center">
+  <sub><b>Works with</b> &nbsp; Groq · OpenRouter · OpenAI · Anthropic · Gemini · DeepSeek · Mistral · Perplexity · xAI · Ollama &nbsp;·&nbsp; or bring your own model ID</sub>
+</p>
 
 <img src="./screenshots/routewise-hero.svg" alt="Animated: a query is scored on a live 0-10 difficulty gauge, then a packet flies across to the Frontier tier" />
 
