@@ -20,20 +20,34 @@
   <img src="https://img.shields.io/badge/React-frontend-61DAFB" />
   <img src="https://img.shields.io/badge/LightGBM-difficulty%20model-orange" />
   <img src="https://img.shields.io/badge/Docker-containerized-2496ED" />
-  <img src="https://img.shields.io/badge/tests-233%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
+  <img src="https://img.shields.io/badge/license-Proprietary-red" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/tests-281%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
-  <img src="https://img.shields.io/badge/Node.js-20%2B-339933" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
-  <img src="https://img.shields.io/badge/license-Proprietary-red" />
   <a href="https://llm-router-d2b2.onrender.com/health"><img src="https://img.shields.io/website?url=https%3A%2F%2Fllm-router-d2b2.onrender.com%2Fhealth&label=backend&color=green" /></a>
+</p>
+
+<p align="center">
+  <a href="#-quick-start"><b>Quick start</b></a> &nbsp;·&nbsp;
+  <a href="#-why-routewise">Why RouteWise</a> &nbsp;·&nbsp;
+  <a href="#-meet-emma-lisa--kate--three-routing-policies">Policies</a> &nbsp;·&nbsp;
+  <a href="#-the-cost-math">Cost math</a> &nbsp;·&nbsp;
+  <a href="#-model-accuracy">Accuracy</a> &nbsp;·&nbsp;
+  <a href="#-sdk">SDK</a> &nbsp;·&nbsp;
+  <a href="#-terminal-cli">CLI</a> &nbsp;·&nbsp;
+  <a href="#-running-it-locally">Self-host</a>
 </p>
 
 <div align="center">
 
-| 💸 **~50% cheaper** | 🎯 **77.5%** tier accuracy | ⚡ **<20 ms** per query | 🧠 **8,200** gold labels | 🔌 **10 providers** | 🧭 **3 policies** · emma · lisa · kate |
-|---|---|---|---|---|---|
-| than frontier-only, at our measured traffic mix | on held-out Claude-gold | local scoring, no API call | Claude-verified training set | 109 models, cross-provider failover | generic, 3-tier & 2-tier support routing |
+| 💸 Cost vs frontier | 🎯 Tier accuracy | ⚡ Scoring latency | 🧠 Gold labels | 🔌 Providers | 🧭 Policies |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| **~50% lower**<br/><sub>at our measured traffic mix</sub> | **77.5%**<br/><sub>exact tier, held-out Claude-gold</sub> | **&lt;20 ms**<br/><sub>local, no API call</sub> | **8,200**<br/><sub>Claude-verified</sub> | **10**<br/><sub>109 models, failover</sub> | **3**<br/><sub>emma · lisa · kate</sub> |
 
 </div>
 
@@ -47,20 +61,31 @@
 
 ## 🚀 Quick start
 
-<kbd>npm install -g routewise</kbd> &nbsp;·&nbsp; <kbd>pip install routewise</kbd>
+Route your first query in about 30 seconds — no config, no account required.
+
+**Install** &nbsp; <kbd>npm install -g routewise</kbd> &nbsp;·&nbsp; <kbd>pip install routewise</kbd>
+
+**Ask**
 
 ```bash
-npm install -g routewise
-
-routewise login                 # create your key, save it without it touching shell history
+routewise login                 # create your key — masked paste, never touches shell history
 routewise ask "What is the capital of France?"
-
+```
+```text
 Paris
 [cheap score=3.11 $0.00008 · 812ms]    # routing metadata on stderr, answer clean on stdout
 ```
 
 One call and the query is **scored, routed, cached, logged, and billed** — automatically.
-The same routing pipeline is a Python SDK, a REST API, and an OpenAI-compatible endpoint:
+The same pipeline is a **CLI**, a **Python SDK**, a **REST API**, and a **drop-in
+OpenAI-compatible endpoint**:
+
+| Surface | Your first call |
+|---|---|
+| 🖥️ **CLI** | `routewise ask "design a rate limiter" --tier frontier` |
+| 🐍 **Python SDK** | `client.ask("design a rate limiter")` |
+| 🌐 **REST** | `POST /route` → `{ "query": "design a rate limiter" }` |
+| 🧩 **OpenAI-compatible** | repoint any OpenAI client at `POST /v1/chat/completions` |
 
 ```python
 from routewise import RouteWiseClient
@@ -72,6 +97,22 @@ result = client.ask("What is the capital of France?")
 print(result["response"])     # the LLM answer
 print(result["routed_to"])    # which tier handled it
 print(result["cost_usd"])     # what it cost
+```
+
+Already have OpenAI code? Change one line and keep your client:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://llm-router-d2b2.onrender.com/v1",   # ← point at RouteWise
+    api_key="rw_your_key",
+)
+
+client.chat.completions.create(
+    model="emma",                                          # emma · lisa · kate
+    messages=[{"role": "user", "content": "hi"}],
+)
 ```
 
 > [!TIP]
@@ -310,7 +351,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (115 tests) · node:test (48 CLI) · GitHub Actions CI |
+| ✅ Testing | pytest (233 tests) · node:test (48 CLI tests) · 281 total · GitHub Actions CI |
 
 ---
 

@@ -588,6 +588,11 @@ def test_readme_test_badge_is_not_stale():
     This is the same failure mode as the tier prices, so it gets the same
     treatment: assert the badge against reality rather than trusting whoever
     last remembered to bump it.
+
+    The badge is the FULL suite — pytest plus the CLI's node:test files — because
+    that is what "N passing" reads as. The tech-stack table breaks the same total
+    back out per runner, so the two can never disagree (they did: the badge said
+    233 while the table still claimed "pytest (115 tests)").
     """
     readme = (REPO / "README.md").read_text(encoding="utf-8", errors="replace")
     m = re.search(r"badge/tests-([0-9]+)%20passing", readme)
@@ -599,10 +604,26 @@ def test_readme_test_badge_is_not_stale():
         cwd=BACKEND, capture_output=True, text=True, timeout=600,
     )
     assert collected.returncode == 0, collected.stderr[-2000:]
-    actual = len(re.findall(r"(?m)^tests\/\S+::\S+", collected.stdout))
+    pytest_count = len(re.findall(r"(?m)^tests\/\S+::\S+", collected.stdout))
+
+    # node:test cases are counted statically, so this guard needs no node
+    # toolchain to run under CI.
+    cli_dir = REPO / "cli" / "test"
+    cli_count = 0
+    if cli_dir.exists():
+        for ts in cli_dir.glob("*.ts"):
+            cli_count += len(
+                re.findall(
+                    r"(?m)^[ \t]*(?:test|it)\(",
+                    ts.read_text(encoding="utf-8", errors="replace"),
+                )
+            )
+
+    actual = pytest_count + cli_count
     assert claimed == actual, (
-        f"README badge claims {claimed} tests but pytest collects {actual}. "
-        f"Update the badge, or drop the count from it."
+        f"README badge claims {claimed} tests but the suite has {actual} "
+        f"({pytest_count} pytest + {cli_count} CLI). Update the badge, or drop "
+        f"the count from it."
     )
 
 
