@@ -26,6 +26,23 @@ function formatTier(tier) {
   return tier === 'web' ? 'web search' : tier
 }
 
+// The tier is the backend's decision; this only measures how far the score sat
+// from the cut that mattered, so the routing rule itself stays in one place.
+function cutDistance(result) {
+  const score = result?.difficulty_score
+  const cheap = result?.cheap_ceil
+  const frontier = result?.frontier_floor
+  if (score == null || cheap == null || frontier == null) return null
+  const decided = result.predicted_tier || result.routed_to
+  if (decided === 'cheap') return { cut: 'cheap cut', distance: Math.max(0, cheap - score) }
+  if (decided === 'frontier') return { cut: 'frontier cut', distance: Math.max(0, score - frontier) }
+  const toCheap = score - cheap
+  const toFrontier = frontier - score
+  return toCheap <= toFrontier
+    ? { cut: 'cheap cut', distance: Math.max(0, toCheap) }
+    : { cut: 'frontier cut', distance: Math.max(0, toFrontier) }
+}
+
 function CopyIcon({ done }) {
   return done ? (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,6 +83,16 @@ function RefreshIcon() {
   )
 }
 
+function WhyIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.2 9a2.8 2.8 0 0 1 5.5.8c0 1.9-2.7 2.2-2.7 3.7" />
+      <path d="M12 17.2h.01" />
+    </svg>
+  )
+}
+
 function ActionButton({ title, onClick, active, danger, disabled, children, spinning }) {
   return (
     <button
@@ -98,6 +125,35 @@ function Chip({ className = '', children, title }) {
     <span title={title} className={`inline-flex items-center gap-1 font-mono text-[11px] px-1.5 py-0.5 rounded-md border whitespace-nowrap min-w-0 ${className}`}>
       <span className="min-w-0 truncate">{children}</span>
     </span>
+  )
+}
+
+function ScoreBar({ score, cheap, frontier }) {
+  if (score == null || cheap == null || frontier == null) return null
+  const pct = (v) => `${Math.max(0, Math.min(100, (v / 10) * 100))}%`
+  const bandWidth = Math.max(0, Math.min(100, ((frontier - cheap) / 10) * 100))
+  return (
+    <div className="mt-3">
+      <div className="flex items-center justify-between font-mono text-[9px] text-muted">
+        <span>0</span>
+        <span>cheap ≤ {cheap.toFixed(2)}</span>
+        <span>frontier ≥ {frontier.toFixed(2)}</span>
+        <span>10</span>
+      </div>
+      <div className="relative mt-1 h-1.5 rounded-full bg-line">
+        <div
+          className="absolute inset-y-0 rounded-full bg-signal/15"
+          style={{ left: pct(cheap), width: `${bandWidth}%` }}
+        />
+        <div className="absolute -top-1 h-3.5 w-px bg-muted/70" style={{ left: pct(cheap) }} />
+        <div className="absolute -top-1 h-3.5 w-px bg-muted/70" style={{ left: pct(frontier) }} />
+        <div
+          title={`score ${score.toFixed(2)}`}
+          className="absolute -top-1 h-3.5 w-1 -translate-x-1/2 rounded-full bg-signal shadow-[0_0_8px_var(--color-signal)]"
+          style={{ left: pct(score) }}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -188,6 +244,7 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
 
   const tier = TIER_META[result.routed_to] || { chip: 'text-muted bg-panel border-line', dot: 'bg-muted' }
   const modelName = (result.model_id || '').split('/').pop()
+  const boundary = cutDistance(result)
 
   return (
     <div className="mt-2">
@@ -205,6 +262,15 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
 
         {result.difficulty_score != null && (
           <Chip className="text-muted bg-base border-line">score {result.difficulty_score.toFixed(1)}</Chip>
+        )}
+
+        {boundary && (
+          <Chip
+            className="text-muted bg-base border-line"
+            title={`score ${result.difficulty_score.toFixed(2)} · cheap ceiling ${result.cheap_ceil.toFixed(2)} · frontier floor ${result.frontier_floor.toFixed(2)}`}
+          >
+            {boundary.distance.toFixed(2)} from {boundary.cut}
+          </Chip>
         )}
 
         <Chip className="text-muted bg-base border-line">{formatLatency(result.latency_ms)}</Chip>
@@ -232,10 +298,16 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
           <button
             type="button"
             onClick={handleExplain}
+            aria-expanded={showExplain}
             title="Show how this route was decided (no model call)"
-            className="font-mono text-[11px] text-muted hover:text-signal underline decoration-dotted underline-offset-2 transition-colors"
+            className={`inline-flex items-center gap-1 font-mono text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+              showExplain
+                ? 'border-signal/50 bg-signal/10 text-signal'
+                : 'border-line bg-base text-muted hover:text-signal hover:border-signal/40'
+            }`}
           >
-            {explainLoading ? 'analysing…' : showExplain ? 'hide why' : 'why?'}
+            <WhyIcon />
+            {explainLoading ? 'analysing…' : showExplain ? 'hide why' : 'why this route?'}
           </button>
         )}
 
@@ -317,7 +389,18 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
             <p className="font-mono text-[11px] text-muted">scoring…</p>
           ) : (
             <>
+              <div className="flex items-center gap-1.5 mb-1.5 text-signal">
+                <WhyIcon />
+                <span className="font-mono text-[10px] uppercase tracking-[0.15em]">How this route was decided</span>
+              </div>
+
               <p className="text-xs leading-relaxed text-primary">{explain.summary}</p>
+
+              <ScoreBar
+                score={explain.difficulty_score}
+                cheap={explain.cheap_ceil}
+                frontier={explain.frontier_floor}
+              />
 
               <div className="mt-2 flex flex-wrap gap-1.5">
                 <Chip className="text-muted bg-panel border-line">
