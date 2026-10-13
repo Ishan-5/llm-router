@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, String
 from router.db import SessionLocal, RequestLog, ApiKey, AlertRule
@@ -23,6 +23,7 @@ from router.routes.settings import router as settings_router
 from router.routes.news import router as news_router
 from router.routes.demo import router as demo_router
 from router.routes.calculator import router as calculator_router
+from router.metrics import PrometheusMiddleware, metrics_response, set_model_info
 
 log = logging.getLogger("routewise")
 
@@ -96,8 +97,9 @@ async def lifespan(app):
     try:
         import sys
         sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent.parent / 'src'))
-        from predict_difficulty import preload_models
+        from predict_difficulty import preload_models, _load
         preload_models()
+        set_model_info(_load()[0].get("model_name", "unknown"))
         log.info("ML models loaded successfully")
     except Exception as e:
         log.warning("ML model preload failed: %s", e)
@@ -125,6 +127,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Added after CORS so it is the outermost layer and times the whole request.
+app.add_middleware(PrometheusMiddleware)
+
 app.include_router(openai_compat_router)
 app.include_router(route_router)
 app.include_router(keys_router)
@@ -141,6 +146,39 @@ app.include_router(calculator_router)
 @app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
+
+
+@app.get("/health/live")
+def health_live():
+    """Liveness: the process is up. Never touches a dependency."""
+    return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def health_ready(response: Response):
+    """Readiness: the process can serve traffic (its database answers)."""
+    from sqlalchemy import text
+    checks = {}
+    ready = True
+    session = SessionLocal()
+    try:
+        session.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as e:  # pragma: no cover - depends on the environment
+        ready = False
+        checks["database"] = f"error: {type(e).__name__}"
+        log.warning("Readiness check failed: %s", e)
+    finally:
+        session.close()
+    if not ready:
+        response.status_code = 503
+    return {"status": "ready" if ready else "not ready", "checks": checks}
+
+
+@app.get("/metrics/prometheus")
+def metrics_prometheus():
+    """Prometheus text exposition. The JSON rollup stays at GET /metrics."""
+    return metrics_response()
 
 
 @app.get("/metrics")
