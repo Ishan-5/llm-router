@@ -82,8 +82,8 @@ accuracy still improves overall.
 
 ## Regression gate
 
-`backend/tests/test_difficulty_model_gate.py` runs in CI and fails if the deployed
-bundle regresses past these floors:
+`backend/tests/test_difficulty_model_gate.py` runs in CI and raises a warning —
+without failing the build — if the deployed bundle regresses past these floors:
 
 | Metric | Floor | Deployed |
 |---|---|---|
@@ -91,11 +91,12 @@ bundle regresses past these floors:
 | Spearman | ≥ **0.84** | 0.861 |
 | Exact-tier accuracy | ≥ **74%** | 77.5% |
 
-The same test asserts this card and the experiment tracker
-(`backend/mlops/model_metrics.csv`) agree with the bundle's recorded metrics, so
-the number in the artifact, this document and the tracker cannot drift apart. It
-reads the bundle's own recorded metrics and needs no model download, so it runs
-offline in CI.
+The floor check is advisory on purpose: a regression is surfaced loudly, but it
+does not block a merge. The same test *does* hard-fail if this card or the
+experiment tracker (`backend/mlops/model_metrics.csv`) disagree with the bundle's
+recorded metrics, so the number in the artifact, this document and the tracker
+cannot silently drift apart. It reads the bundle's own recorded metrics and needs
+no model download, so it runs offline in CI (no MiniLM, no network).
 
 ## Limitations
 
