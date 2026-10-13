@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 🔒 Report a security vulnerability
+    url: https://github.com/Ishan-5/llm-router/security/advisories/new
+    about: Please report vulnerabilities privately, never in a public issue.
+  - name: 📖 Read the docs first
+    url: https://github.com/Ishan-5/llm-router#readme
+    about: Quick start, provider setup, and the model card are all in the README.

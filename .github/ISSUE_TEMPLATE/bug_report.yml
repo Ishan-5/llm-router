@@ -1,0 +1,59 @@
+name: Bug report
+description: Something isn't working as expected
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please search existing issues first.
+        For security problems, do **not** open an issue — see [SECURITY.md](https://github.com/Ishan-5/llm-router/blob/main/SECURITY.md).
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Backend API (/route, /logs, /providers, ...)
+        - Web dashboard
+        - CLI (routewise)
+        - Python SDK
+        - Docs
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The API URL, CLI/SDK version, or commit SHA you're on.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or response body
+      description: Paste what you saw. Remove any API keys or personal data first.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed any API keys or personal data from what I pasted above.
+          required: true
