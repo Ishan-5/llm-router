@@ -10,6 +10,7 @@ log = logging.getLogger("routewise.cache")
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "src"))
 from predict_difficulty import get_embedder
 from router.db import engine, SessionLocal as _SessionLocal
+from router.metrics import observe_cache
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime
 from sqlalchemy.orm import declarative_base
 
@@ -80,6 +81,7 @@ def cache_lookup_key(query: str, context: str | None = None) -> str | None:
 def check_cache(query: str, api_key_id: int | None = None, context: str | None = None) -> dict | None:
     key = cache_lookup_key(query, context)
     if key is None:
+        observe_cache("skipped")
         return None
 
     embedder = get_embedder()
@@ -97,6 +99,7 @@ def check_cache(query: str, api_key_id: int | None = None, context: str | None =
         session.close()
 
     if not rows:
+        observe_cache("miss")
         return None
 
     matrix = np.array([json.loads(r.embedding) for r in rows])
@@ -107,6 +110,7 @@ def check_cache(query: str, api_key_id: int | None = None, context: str | None =
     best_row = rows[best_idx]
 
     if best_sim >= SIMILARITY_THRESHOLD:
+        observe_cache("hit")
         return {
             "matched_query": best_row.query,
             "response": best_row.response,
@@ -117,6 +121,7 @@ def check_cache(query: str, api_key_id: int | None = None, context: str | None =
             "output_tokens": best_row.output_tokens or 0,
             "similarity": best_sim,
         }
+    observe_cache("miss")
     return None
 
 
@@ -136,6 +141,7 @@ def _evict(session):
 def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: float, input_tokens: int = 0, output_tokens: int = 0, api_key_id: int | None = None, context: str | None = None):
     key = cache_lookup_key(query, context)
     if key is None:
+        observe_cache("skipped")
         return
 
     embedder = get_embedder()
@@ -157,6 +163,7 @@ def add_to_cache(query: str, response: str, tier: str, model_id: str, cost_usd: 
         session.add(entry)
         _evict(session)
         session.commit()
+        observe_cache("stored")
     except Exception:
         session.rollback()
     finally:

@@ -20,6 +20,7 @@ from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_searc
 from router.model_config_loader import get_active_config, get_pricing_for_model, resolve_tier_pricing
 from router.quality_judge import update_quality_score
 from router.difficulty_labeler import update_difficulty_label
+from router.metrics import observe_routing, observe_tier
 
 router = APIRouter()
 log = logging.getLogger("routewise")
@@ -172,6 +173,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     # Scoring and the cache lookup are independent, so run them together as
     # the live path always did. A support-policy failure must surface as 503
     # rather than silently falling back to a model that did not score.
+    _routing_started = time.perf_counter()
     try:
         _cache_result, scored = await asyncio.gather(
             _maybe_check_cache(),
@@ -187,6 +189,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
                 detail=f"support policy {req.support_mode!r} unavailable: {e}",
             )
         raise
+    finally:
+        observe_routing(time.perf_counter() - _routing_started)
     cached = _cache_result
     difficulty_score, tier, cheap_ceil, frontier_floor, resolved_mode = scored
 
@@ -273,6 +277,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
                         user_config[t]["price_per_m_output"],
                     )
 
+    observe_tier(routing_tier, resolved_mode)
     return {
         "type": "live",
         "tier": routing_tier,
@@ -329,6 +334,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
     try:
         result = await loop.run_in_executor(executor, call_with_failover, routing_tier, req.query, req.user_api_keys or {}, pre["messages"], None, None, pre["user_config"])
     except AllTiersFailedError as e:
+        observe_tier("failed", pre.get("support_mode") or "generic")
         log.error("AllTiersFailedError: %s", e)
         log_request({
             "api_key_id": api_key.id, "user_id": api_key.user_id,
@@ -463,6 +469,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
             if item is None:
                 break
             if isinstance(item, Exception):
+                observe_tier("failed", pre.get("support_mode") or "generic")
                 yield f"data: {json.dumps({'type': 'error', 'detail': str(item)})}\n\n"
                 return
             if isinstance(item, dict):
