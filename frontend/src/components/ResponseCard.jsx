@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { sendFeedback } from '../api'
+import { explainRoute, sendFeedback } from '../api'
 
 function formatCost(cost) {
   if (cost == null) return ''
@@ -107,6 +107,10 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
   const [feedbackSaving, setFeedbackSaving] = useState(false)
   const [showReason, setShowReason] = useState(false)
   const [reason, setReason] = useState('')
+  const [showExplain, setShowExplain] = useState(false)
+  const [explain, setExplain] = useState(null)
+  const [explainLoading, setExplainLoading] = useState(false)
+  const [explainError, setExplainError] = useState(null)
   const copyTimer = useRef(null)
   const reasonRef = useRef(null)
 
@@ -151,6 +155,37 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
     }
   }
 
+  const explainCtx = result?._explain
+
+  async function handleExplain() {
+    if (showExplain) {
+      setShowExplain(false)
+      return
+    }
+    if (!explainCtx?.query) return
+    if (explain) {
+      setShowExplain(true)
+      return
+    }
+    setExplainLoading(true)
+    setExplainError(null)
+    try {
+      const data = await explainRoute(explainCtx.query, {
+        overrideTier: explainCtx.override,
+        threshold: explainCtx.threshold,
+        messages: explainCtx.messages,
+        supportMode: explainCtx.supportMode,
+      })
+      setExplain(data)
+      setShowExplain(true)
+    } catch (e) {
+      setExplainError(e.message || 'Explain failed')
+      setShowExplain(true)
+    } finally {
+      setExplainLoading(false)
+    }
+  }
+
   const tier = TIER_META[result.routed_to] || { chip: 'text-muted bg-panel border-line', dot: 'bg-muted' }
   const modelName = (result.model_id || '').split('/').pop()
 
@@ -191,6 +226,17 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
           <Chip className="text-muted bg-base border-line max-w-[180px] truncate" title={result.route_reason}>
             {result.route_reason}
           </Chip>
+        )}
+
+        {explainCtx?.query && (
+          <button
+            type="button"
+            onClick={handleExplain}
+            title="Show how this route was decided (no model call)"
+            className="font-mono text-[11px] text-muted hover:text-signal underline decoration-dotted underline-offset-2 transition-colors"
+          >
+            {explainLoading ? 'analysing…' : showExplain ? 'hide why' : 'why?'}
+          </button>
         )}
 
         <span className="ml-auto flex items-center gap-1">
@@ -260,6 +306,49 @@ function AssistantMetaBar({ result, logId, onRegenerate, regenerating }) {
           >
             cancel
           </button>
+        </div>
+      )}
+
+      {showExplain && (
+        <div className="mt-2 rounded-lg border border-line bg-base p-3 animate-[slide-in_0.15s_ease-out]">
+          {explainError ? (
+            <p className="text-xs text-danger">{explainError}</p>
+          ) : !explain ? (
+            <p className="font-mono text-[11px] text-muted">scoring…</p>
+          ) : (
+            <>
+              <p className="text-xs leading-relaxed text-primary">{explain.summary}</p>
+
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Chip className="text-muted bg-panel border-line">
+                  decided by {explain.boundary.decided_by.replace('_', ' ')} · {explain.boundary.distance} away
+                </Chip>
+                {explain.slider && Object.entries(explain.slider).map(([name, s]) => (
+                  <Chip key={name} className="text-muted bg-panel border-line">
+                    {name} → {formatTier(s.tier)}
+                  </Chip>
+                ))}
+              </div>
+
+              {explain.tiers?.length > 0 && (
+                <div className="mt-2 grid gap-1">
+                  {explain.tiers.map((t) => (
+                    <div key={t.tier} className="flex items-center justify-between font-mono text-[10px]">
+                      <span className={t.chosen ? 'text-signal' : 'text-muted'}>
+                        {formatTier(t.tier)}{t.chosen ? ' · chosen' : ''}
+                      </span>
+                      <span className="text-muted">
+                        {t.price_per_m_input != null ? `$${t.price_per_m_input}/M in` : 'price n/a'}
+                        {t.input_price_vs_chosen != null && t.input_price_vs_chosen !== 1 ? ` · ×${t.input_price_vs_chosen}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="mt-2 font-mono text-[10px] text-muted">{explain.note}</p>
+            </>
+          )}
         </div>
       )}
     </div>

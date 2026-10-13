@@ -212,11 +212,20 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     setError(null)
     const startTime = Date.now()
 
-    // seed an assistant bubble immediately so tokens render as they arrive
+    // seed an assistant bubble immediately so tokens render as they arrive.
+    // Remember exactly what produced this answer so the "why?" panel can replay
+    // the same scoring inputs rather than guessing at the current settings.
+    const explainSeed = {
+      query,
+      override: override === 'auto' ? null : override,
+      threshold,
+      supportMode,
+      messages: conversationMessages,
+    }
     if (replaceIndex != null) {
-      setMessages((prev) => prev.map((m, i) => (i === replaceIndex ? { role: 'assistant', result: { response: '' } } : m)))
+      setMessages((prev) => prev.map((m, i) => (i === replaceIndex ? { role: 'assistant', result: { response: '', _explain: explainSeed } } : m)))
     } else {
-      setMessages((prev) => [...prev, { role: 'assistant', result: { response: '' } }])
+      setMessages((prev) => [...prev, { role: 'assistant', result: { response: '', _explain: explainSeed } }])
     }
 
     const patchResult = (patchFn) =>

@@ -145,6 +145,30 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
   return res.json()
 }
 
+// Ask the router to explain a decision it would make. Same scoring inputs as
+// /route, but the backend stops at the decision and calls no model, so this is
+// free to hit. Pass the values the original request used so the explanation
+// matches what actually happened.
+export async function explainRoute(query, { overrideTier = null, threshold = null, messages = null, supportMode = null } = {}) {
+  const body = { query }
+  if (overrideTier) body.override_tier = overrideTier
+  // Same rule as /route: fixed-cut policies ignore the sensitivity threshold.
+  if (supportMode && supportMode !== 'generic') body.support_mode = supportMode
+  else if (threshold != null) body.threshold = threshold
+  if (messages && messages.length > 0) body.messages = messages
+
+  const res = await fetch(`${API_BASE}/route/explain`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Explain failed' }))
+    throw new Error(err.detail || 'Explain failed')
+  }
+  return res.json()
+}
+
 export async function sendFeedback(requestLogId, feedback, reason = '') {
   const res = await fetch(`${API_BASE}/route/feedback`, {
     method: 'POST',
