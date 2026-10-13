@@ -623,6 +623,8 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 - 🌐 **SSRF-safe webhook validation** — must be `https://`, non-localhost, non-private-IP
   (blocks 10.x, 172.16.x, 192.168.x, 169.254.x, loopback, link-local).
 - 🔒 **CORS restricted** to the deployed frontend origin and localhost — not wildcard.
+- 📬 **Found a vulnerability?** Report it privately — see [`SECURITY.md`](SECURITY.md);
+  please don't open a public issue.
 
 ---
 
@@ -1049,6 +1051,17 @@ llm-router/
 | 🔜 | MCP server auth (fine for local use, not network exposure) |
 
 *Not needed to call the current version complete — documented here for transparency.*
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome — [`CONTRIBUTING.md`](CONTRIBUTING.md) covers local setup, the three
+CI jobs, and the commit conventions.
+
+- 🐛 [Report a bug](.github/ISSUE_TEMPLATE/bug_report.yml) · ✨ [Request a feature](.github/ISSUE_TEMPLATE/feature_request.yml)
+- 🔒 [Report a vulnerability privately](SECURITY.md) — never in a public issue
+- 📜 This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md)
 
 ---
 
