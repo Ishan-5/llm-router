@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-307%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-312%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -450,7 +450,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (259 tests) · node:test (48 CLI tests) · 307 total · GitHub Actions CI |
+| ✅ Testing | pytest (264 tests) · node:test (48 CLI tests) · 312 total · GitHub Actions CI |
 
 ---
 
@@ -655,6 +655,9 @@ The dashboard populates its tier dropdowns directly from `/providers`.
 - 🌐 **SSRF-safe webhook validation** — must be `https://`, non-localhost, non-private-IP
   (blocks 10.x, 172.16.x, 192.168.x, 169.254.x, loopback, link-local).
 - 🔒 **CORS restricted** to the deployed frontend origin and localhost — not wildcard.
+- 🛡️ **Hardened responses** — baseline security headers on every API response (and the
+  dashboard), a non-root container with a healthcheck, and a `render.yaml` blueprint
+  that keeps every secret out of git. See [Deployment hardening](#-deployment-hardening).
 - 📬 **Found a vulnerability?** Report it privately — see [`SECURITY.md`](SECURITY.md);
   please don't open a public issue.
 
@@ -997,6 +1000,31 @@ docker compose up
 Ollama still runs natively on the host, not in the container — see `docker-compose.yml` for the
 `host.docker.internal` networking that lets the container reach it.
 
+### 🔐 Deployment hardening
+
+The container and the deploy configs ship with the baseline already applied:
+
+- **Non-root container.** The image creates an unprivileged `app` user and drops to it;
+  `HOME` is set explicitly so the Hugging Face cache stays writable and the app never
+  needs root at runtime.
+- **Healthcheck.** Both the image and `docker-compose.yml` probe `GET /health/live`
+  with a 90 s start period, so the first-boot model load doesn't flap the check.
+- **`--proxy-headers`.** Uvicorn trusts the platform's forwarded headers
+  (`FORWARDED_ALLOW_IPS=*`), so client IPs and the inferred scheme are correct behind
+  Render/Fly instead of showing the proxy's.
+- **Small build context.** `.dockerignore` keeps `venv/`, `node_modules/`, `.git/`, the
+  frontend/CLI sources and the large customer-support training data out of the context —
+  only `backend/{router,src,models}` and `customer-support/{routing,models}` are copied
+  into the image.
+- **No extra privileges.** `docker-compose.yml` sets `no-new-privileges:true`.
+- **Response security headers.** Every API response — including `4xx`/`5xx` and the SSE
+  stream — carries `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+  `Permissions-Policy` and `Cross-Origin-Opener-Policy`; HSTS is added only over TLS.
+  The Vercel config applies the same set to the dashboard.
+- **`render.yaml`.** An opt-in blueprint for the backend (Docker runtime, `/health/ready`
+  probe, every secret `sync: false`) — it does not touch an existing manually-created
+  service.
+
 ---
 
 ## 📸 Screenshots
@@ -1019,8 +1047,13 @@ llm-router/
 ├── backend/
 │   ├── router/
 │   │   ├── main.py               # FastAPI app, mounts all routers, alert loop, /health, /metrics
+│   │   ├── security.py           # baseline security response headers (pure ASGI)
+│   │   ├── metrics.py            # Prometheus registry, middleware, exposition
+│   │   ├── explain.py            # /route/explain payload builder (no model call)
+│   │   ├── multiturn.py          # follow-up scoring with conversation context
+│   │   ├── support_policy.py     # lisa/kate support-mode policies
 │   │   ├── routes/
-│   │   │   ├── route.py          # /route, /route/stream (SSE token streaming), /route/feedback
+│   │   │   ├── route.py          # /route, /route/stream (SSE), /route/explain, /route/feedback
 │   │   │   ├── keys.py           # /keys CRUD
 │   │   │   ├── config.py         # /config, /pricing, /providers
 │   │   │   ├── stats.py          # /stats, /logs, /analytics, /calibrate, /compare, /evaluate
@@ -1086,6 +1119,8 @@ llm-router/
 │
 ├── docker-compose.yml
 ├── Dockerfile
+├── .dockerignore
+├── render.yaml
 └── requirements.txt
 ```
 
