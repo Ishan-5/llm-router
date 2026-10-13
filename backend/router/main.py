@@ -24,6 +24,7 @@ from router.routes.news import router as news_router
 from router.routes.demo import router as demo_router
 from router.routes.calculator import router as calculator_router
 from router.metrics import PrometheusMiddleware, metrics_response, set_model_info
+from router.security import SecurityHeadersMiddleware
 
 log = logging.getLogger("routewise")
 
@@ -126,6 +127,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE", "HEAD"],
     allow_headers=["*"],
 )
+
+# Baseline security headers on every response, including 4xx/5xx and SSE.
+# Sits inside PrometheusMiddleware (added next, so it stays outermost) but
+# outside CORS, so CORS's own responses are covered too.
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Added after CORS so it is the outermost layer and times the whole request.
 app.add_middleware(PrometheusMiddleware)
