@@ -4,14 +4,41 @@ updates:
   # never mix a major bump into that batch. Majors get their own PR so they can
   # be reviewed, tested and merged one at a time instead of red-lighting the
   # whole group.
+  #
+  # The Python "web framework + ML" stack is deliberately kept OUT of the batch:
+  # torch / numpy / scipy / scikit-learn / tokenizers / transformers and the
+  # FastAPI / pydantic / SQLAlchemy stack move in lockstep, and a single bad bump
+  # (e.g. torch 2.5 -> 2.14) turns an otherwise-green batch red. These arrive as
+  # individual PRs so the safe utilities can still merge on their own.
   - package-ecosystem: pip
     directory: "/"
     schedule:
       interval: weekly
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     groups:
       python-deps:
         patterns: ["*"]
+        exclude-patterns:
+          # web framework / ORM: API-level changes ripple through the app
+          - fastapi
+          - starlette
+          - uvicorn
+          - pydantic
+          - pydantic_core
+          - pydantic-core
+          - sqlalchemy
+          # ML / numeric stack: heavy, tightly coupled
+          - torch
+          - numpy
+          - scipy
+          - scikit-learn
+          - pandas
+          - lightgbm
+          - tokenizers
+          - safetensors
+          - transformers
+          - sentence-transformers
+          - huggingface_hub
         update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
