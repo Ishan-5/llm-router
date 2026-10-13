@@ -61,6 +61,12 @@ CACHE_EVENTS = Counter(
     ["result"],
     registry=REGISTRY,
 )
+EXPLANATIONS = Counter(
+    "routewise_explanations",
+    "Route explanations served, by policy (no model call is made).",
+    ["policy"],
+    registry=REGISTRY,
+)
 BUILD_INFO = Gauge(
     "routewise_build_info",
     "Static build information (always 1); labels carry the deployed model.",
@@ -85,6 +91,10 @@ def observe_tier(tier: str, policy: str = "generic") -> None:
 
 def observe_cache(result: str) -> None:
     CACHE_EVENTS.labels(result=result).inc()
+
+
+def observe_explanation(policy: str = "generic") -> None:
+    EXPLANATIONS.labels(policy=policy or "generic").inc()
 
 
 def set_model_info(model_name: str) -> None:

@@ -20,7 +20,8 @@ from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_searc
 from router.model_config_loader import get_active_config, get_pricing_for_model, resolve_tier_pricing
 from router.quality_judge import update_quality_score
 from router.difficulty_labeler import update_difficulty_label
-from router.metrics import observe_routing, observe_tier
+from router.metrics import observe_explanation, observe_routing, observe_tier
+from router.explain import build_explanation
 
 router = APIRouter()
 log = logging.getLogger("routewise")
@@ -391,6 +392,67 @@ async def list_route_policies(api_key: ApiKey = Depends(require_api_key)):
 
     available = preload_support_policies()
     return {"default": "generic", "available_modes": available, "policies": _fb.policy_manifest()}
+
+
+@router.post("/route/explain")
+async def explain_route(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+    """Explain how a query would be routed, without calling a model.
+
+    It scores with the same policy and the same cuts as /route, then stops:
+    no provider call, no cache read or write, and no request-log row. /route's
+    own response is unchanged, so this is purely additive and free to call.
+    """
+    if is_prompt_injection(req.query):
+        raise HTTPException(status_code=400, detail="Prompt injection detected")
+
+    threshold = req.threshold if req.threshold is not None else load_user_threshold(api_key.user_id)
+    context = build_scoring_context(req.messages, req.query)
+    loop = asyncio.get_event_loop()
+
+    try:
+        scored = await loop.run_in_executor(
+            executor,
+            lambda: score_with_context(
+                req.query, margin=threshold, support_mode=req.support_mode, context=context
+            ),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        if req.support_mode and req.support_mode != "generic":
+            log.error("support policy %s failed: %s", req.support_mode, e)
+            raise HTTPException(
+                status_code=503,
+                detail=f"support policy {req.support_mode!r} unavailable: {e}",
+            )
+        raise
+
+    difficulty_score, tier, cheap_ceil, frontier_floor, resolved_mode = scored
+
+    if req.override_tier == "mid" and resolved_mode == "2tier":
+        raise HTTPException(
+            status_code=400,
+            detail="override_tier 'mid' is not available under the 2tier support policy",
+        )
+
+    available_tiers = (
+        ["cheap", "frontier"] if resolved_mode == "2tier" else ["cheap", "mid", "frontier"]
+    )
+    observe_explanation(resolved_mode)
+    return build_explanation(
+        query=req.query,
+        score=difficulty_score,
+        tier=req.override_tier or tier,
+        predicted_tier=tier,
+        override=req.override_tier,
+        cheap_ceil=cheap_ceil,
+        frontier_floor=frontier_floor,
+        threshold=threshold,
+        policy=resolved_mode,
+        available_tiers=available_tiers,
+        user_config=get_active_config(api_key.user_id),
+        context=context,
+    )
 
 
 @router.post("/route/stream")
