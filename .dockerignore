@@ -1,12 +1,56 @@
-.env
+# Keep the build context small, and keep secrets and local state out of the
+# image layers. Only requirements.txt, backend/{router,src,models} and
+# customer-support/{routing,models} are COPY'd into the image; everything
+# excluded here is either not copied or not needed at runtime.
+#
+# The **/ prefixes matter: a bare "__pycache__/" or "*.bak*" matches only the
+# context root, so nested caches and the models/*.joblib.bak_* backups would
+# otherwise be copied in.
+
+# VCS and CI
+.git
+.github
+.gitignore
+
+# Local environments and caches
 venv/
-__pycache__/
-*.pyc
+.venv/
+env/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 node_modules/
+
+# Not copied into the image
 frontend/
-dataset_pipeline/
-eval/
-dashboard/
-baseline/
-*.db
-.git/
+cli/
+sdk/
+screenshots/
+tests/
+backend/tests/
+docs/
+observability/
+**/*.md
+*.pdf
+
+# Customer-support: only routing/ (feature_builder) and models/ (joblib
+# bundles) are loaded at runtime -- see feature_builder.MODELS_DIR. The
+# training data and raw datasets are large and never touched by the app.
+customer-support/scripts/
+customer-support/docs/
+customer-support/data/
+customer-support/raw-datasets/
+
+# Secrets and local state
+.env
+**/.env
+**/*.db
+**/*.sqlite3
+**/*.log
+**/*.bak*
+.coverage
+htmlcov/

@@ -1,0 +1,46 @@
+# Render blueprint for the backend API.
+#
+# Opt-in: this only runs if you create a Blueprint from it in the Render
+# dashboard. It does not touch an existing manually-created service, and no
+# secret is stored here -- every secret is `sync: false`, so Render prompts for
+# it (or keeps the value already set in the dashboard).
+
+services:
+  - type: web
+    name: llm-router-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Readiness probe (checks the database) from the observability work.
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    envVars:
+      # --- required ---
+      - key: DATABASE_URL          # e.g. postgresql://... (needed for durable logs)
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Comma-separated CORS origins: the Vercel URL plus any localhost dev.
+      # e.g. https://your-app.vercel.app,http://localhost:5173
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # No Ollama in the cloud: skip the local model and use the hosted chain.
+      - key: DISABLE_OLLAMA
+        value: "true"
+      # --- optional ---
+      - key: ADMIN_USER_ID
+        sync: false
+      - key: GROQ_JUDGE_API_KEY
+        sync: false
+      - key: GROQ_LABEL_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
