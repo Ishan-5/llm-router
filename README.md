@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-281%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-289%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -418,7 +418,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (233 tests) · node:test (48 CLI tests) · 281 total · GitHub Actions CI |
+| ✅ Testing | pytest (241 tests) · node:test (48 CLI tests) · 289 total · GitHub Actions CI |
 
 ---
 
@@ -558,6 +558,9 @@ costs money when a hard query lands on the cheap model) and sends easy queries t
 tier more reliably (cheap recall 88% → 94%). The tradeoff is a thinner mid band (mid recall 68%
 → 40%): a gold-mid query is now more likely to be pushed up to frontier or down to cheap than
 called mid. Overall exact-tier accuracy still improves 70.6% → 77.5%.
+
+Full model card — training data, thresholds, the CI regression gate and limitations:
+[`docs/MODEL_CARD.md`](docs/MODEL_CARD.md).
 
 ---
 
