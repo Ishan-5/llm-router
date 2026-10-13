@@ -1,5 +1,9 @@
 version: 2
 updates:
+  # Policy: batch the safe stuff (minor + patch) into one PR per ecosystem, but
+  # never mix a major bump into that batch. Majors get their own PR so they can
+  # be reviewed, tested and merged one at a time instead of red-lighting the
+  # whole group.
   - package-ecosystem: pip
     directory: "/"
     schedule:
@@ -8,6 +12,7 @@ updates:
     groups:
       python-deps:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: "/frontend"
@@ -17,6 +22,7 @@ updates:
     groups:
       frontend-deps:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: "/cli"
@@ -26,6 +32,7 @@ updates:
     groups:
       cli-deps:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: github-actions
     directory: "/"
@@ -34,3 +41,4 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+        update-types: ["minor", "patch"]
