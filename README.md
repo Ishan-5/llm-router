@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-296%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-307%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -334,6 +334,38 @@ artifacts, exposed live via `routewise models` / `GET /route/policies`):
 This slider tunes **emma** (generic routing). **lisa** and **kate** ship fixed,
 support-tuned cuts (≤ 2.0 / ≥ 4.5 and ≤ 4.0) — see [the policies section](#-meet-emma-lisa--kate--three-routing-policies).
 
+### 🔍 Explain any routing decision
+
+`POST /route/explain` returns the decision `/route` would make, spelled out — and
+**makes no model call**, so asking *why* costs nothing:
+
+```json
+{ "query": "Write a regex to validate email addresses and explain each part" }
+```
+
+```json
+{
+  "difficulty_score": 4.9,
+  "tier": "mid",
+  "predicted_tier": "mid",
+  "summary": "4.90/10 — between the cheap ceiling (4.50) and the frontier floor (6.00), so the mid tier answers it.",
+  "boundary": { "decided_by": "cheap_ceil", "value": 4.5, "distance": 0.4, "side": "above" },
+  "slider": {
+    "economy":  { "tier": "cheap" },
+    "balanced": { "tier": "mid" },
+    "quality":  { "tier": "frontier" }
+  }
+}
+```
+
+It answers the four questions a user actually has: **where** it landed (`tier`),
+**why** (`summary` and which `boundary` cut decided it), **how close** the call
+was (`boundary.distance`), and **what would change it** (`slider` for each
+sensitivity preset, plus a `tiers` list giving every tier's real
+per-million-token price relative to the chosen one). Overrides are reported
+alongside the model's own choice. No provider call, no cache read or write, no
+request-log row — `/route` itself is unchanged.
+
 ### 🧠 Building a chatbot? Read this first
 
 RouteWise keeps **no conversation memory**. It stores no sessions and never reads
@@ -418,7 +450,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (248 tests) · node:test (48 CLI tests) · 296 total · GitHub Actions CI |
+| ✅ Testing | pytest (259 tests) · node:test (48 CLI tests) · 307 total · GitHub Actions CI |
 
 ---
 
