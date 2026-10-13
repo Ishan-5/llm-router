@@ -1511,6 +1511,7 @@ const ENDPOINT_GROUPS = [
     items: [
       { method: 'POST', path: '/route', desc: 'Standard routing — ML picks the tier' },
       { method: 'POST', path: '/route/stream', desc: 'Streaming routing — SSE chunks' },
+      { method: 'POST', path: '/route/explain', desc: 'Explain a routing decision — no model call' },
       { method: 'POST', path: '/v1/chat/completions', desc: 'OpenAI-compatible chat endpoint' },
       { method: 'GET', path: '/route/policies', desc: 'Routing policies, tiers and cutoffs' },
       { method: 'POST', path: '/route/feedback', desc: 'Thumbs up/down on a logged request' },
