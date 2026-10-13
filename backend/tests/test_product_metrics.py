@@ -17,7 +17,10 @@ from pathlib import Path
 
 import pytest
 
-REPO = Path(r"D:\llm-router")
+# Repo root, resolved relative to this file (backend/tests/x.py -> parents[2]).
+# It used to be the absolute Windows path r"D:\llm-router", which meant the whole
+# module silently skipped under CI on Linux -- the guard tests were never run.
+REPO = Path(__file__).resolve().parents[2]
 PM = REPO / "frontend" / "src" / "productMetrics.js"
 BACKEND = REPO / "backend"
 ROUTING = REPO / "customer-support" / "routing"
