@@ -1,0 +1,27 @@
+# RouteWise lint configuration.
+#
+# Scope is deliberately conservative. This backend re-exports several names so
+# tests can patch them BY DOTTED PATH -- e.g. `from router.classifier import
+# get_tier` in router/openai_compat.py looks unused to a linter, but it is the
+# target of `patch("router.openai_compat.get_tier")` in test_openai_compat.py,
+# and `from router.routes.route import get_tier` is the target of
+# `patch("router.routes.route.get_tier")` in the route tests. Turning on F401
+# would delete real patch targets, so F401/F841 stay off until those
+# re-exports carry explicit `# noqa: F401`.
+#
+# The rules below are flake8's "errors only" set: no false positives, catches
+# undefined names, syntax errors and redefinitions -- i.e. code that is broken.
+target-version = "py311"
+line-length = 100
+exclude = [
+  ".git",
+  ".venv",
+  "venv",
+  "node_modules",
+  "**/dist",
+  "**/build",
+  "**/*.egg-info",
+]
+
+[lint]
+select = ["E9", "F63", "F7", "F82", "F811"]
