@@ -1060,11 +1060,14 @@ llm-router/
 │   │   ├── explain.py            # /route/explain payload builder (no model call)
 │   │   ├── multiturn.py          # follow-up scoring with conversation context
 │   │   ├── support_policy.py     # lisa/kate support-mode policies
+│   │   ├── pricing_source.py     # per-tier prices → MODEL_CONFIG
+│   │   ├── prompts.py            # system + answer-style prompts
 │   │   ├── routes/
 │   │   │   ├── route.py          # /route, /route/stream (SSE), /route/explain, /route/feedback
 │   │   │   ├── keys.py           # /keys CRUD
 │   │   │   ├── config.py         # /config, /pricing, /providers
 │   │   │   ├── stats.py          # /stats, /logs, /analytics, /calibrate, /compare, /evaluate
+│   │   │   ├── calculator.py     # /calculator — savings what-if
 │   │   │   ├── alerts.py         # /alerts CRUD
 │   │   │   ├── settings.py       # /settings
 │   │   │   ├── admin.py          # /admin/* (incl. outage simulator)
@@ -1092,44 +1095,92 @@ llm-router/
 │   │   └── train_difficulty_model.py
 │   ├── models/
 │   │   ├── difficulty_regressor.joblib
-│   │   └── minilm/               # MiniLM-L6-v2 weights (local, no download at runtime)
-│   ├── tests/
-│   │   ├── conftest.py           # shared fixtures
-│   │   ├── test_tier_logic.py
-│   │   ├── test_cache_similarity.py
+│   │   └── minilm/               # MiniLM weights (gitignored; falls back to a HF download)
+│   ├── dataset_pipeline/         # labeling: raw queries → merged → Claude-gold CSVs
+│   ├── eval/                     # open-dataset harness (alpaca, dolly, ultrachat, …)
+│   ├── mlops/
+│   │   ├── retrain.py            # retrain entrypoint
+│   │   └── model_metrics.csv     # per-version MAE / Spearman / tier accuracy
+│   ├── tests/                    # pytest suite — one module per subsystem
+│   │   ├── conftest.py
+│   │   ├── test_answer_style.py
 │   │   ├── test_auth.py
+│   │   ├── test_byom_pricing.py
+│   │   ├── test_cache_context.py
+│   │   ├── test_cache_similarity.py
+│   │   ├── test_calculator.py
+│   │   ├── test_difficulty_model_gate.py
+│   │   ├── test_explain.py
+│   │   ├── test_key_budgets.py
+│   │   ├── test_multiturn.py
+│   │   ├── test_observability.py
+│   │   ├── test_openai_compat.py # /v1 streaming + cache/web SSE tests
+│   │   ├── test_policy_analytics.py
+│   │   ├── test_product_metrics.py  # README + displayed-number guards
+│   │   ├── test_quality_ab_test.py
 │   │   ├── test_rate_limiter.py  # incl. stream_model_with_failover live tier tests
 │   │   ├── test_route_integration.py
-│   │   └── test_openai_compat.py # /v1 streaming + cache/web SSE tests
-│   └── scripts/
-│       ├── create_api_key.py
-│       ├── load_test_requests.py
-│       ├── export_labeled_queries.py
-│       └── load_test_pricing.sql
+│   │   ├── test_security_headers.py
+│   │   ├── test_stats_metrics.py
+│   │   ├── test_support_policies.py
+│   │   └── test_tier_logic.py
+│   ├── scripts/
+│   │   ├── create_api_key.py
+│   │   ├── load_test_requests.py
+│   │   ├── export_labeled_queries.py
+│   │   ├── quality_ab_test.py
+│   │   └── load_test_pricing.sql
+│   ├── migrate_add_user_id.py    # one-off schema migrations
+│   └── migrate_add_response_column.py
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/           # QueryForm, RoutingDiagram, TierCircuit, DashboardPage,
-│   │   │                         #   OnboardingWizard, ApiPlayground, ResponseCard, ... (~30)
+│   │   ├── components/           # 42 components — RoutingDiagram, QueryForm, Markdown,
+│   │   │                         #   ResponseCard, DashboardPage, MetricsDashboard, ...
 │   │   ├── api.js                # REST + SSE streaming client (routeQueryStream)
 │   │   ├── App.jsx
-│   │   └── config.js
+│   │   ├── config.js             # API base, demo key, admin id
+│   │   ├── conversation.js       # chat bubbles → router transcript (shared by preview + send)
+│   │   ├── index.css             # Tailwind 4 theme tokens + animations
+│   │   ├── main.jsx
+│   │   ├── mathText.js           # light math/LaTeX tidying for rendered answers
+│   │   ├── models.js             # tier models, cuts and policy bands
+│   │   ├── productMetrics.js     # single source of truth for every displayed number
+│   │   ├── supabase.js           # auth client
+│   │   ├── useFocusTrap.js
+│   │   └── useTheme.js
+│   ├── index.html
 │   ├── package.json
+│   ├── tailwind.config.js
+│   ├── vercel.json
 │   └── vite.config.js
 │
 ├── cli/
-│   ├── src/                  # routewise npm CLI: ask, stream, chat, stats, byom, doctor, login
+│   ├── src/                      # routewise npm CLI: ask, stream, chat, stats, byom, doctor, login
+│   ├── test/                     # node:test suite (57 cases)
 │   └── package.json
 │
 ├── sdk/
 │   ├── routewise/                # PyPI package
 │   └── setup.py
 │
+├── customer-support/             # support routing: training, thresholds, evals
+│   ├── data/                     # labeled support tickets
+│   ├── models/                   # support difficulty models
+│   ├── routing/                  # feature_builder.py
+│   ├── docs/                     # eval reports (superseded runs carry a banner)
+│   ├── raw-datasets/
+│   └── README.md
+│
+├── docs/MODEL_CARD.md            # dataset, metrics, intended use
+├── observability/prometheus.yml  # Prometheus scrape config
+├── .github/workflows/            # ci.yml + codeql.yml
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .dockerignore
 ├── render.yaml
-└── requirements.txt
+├── requirements.txt
+└── requirements-dev.txt
 ```
 
 </details>
