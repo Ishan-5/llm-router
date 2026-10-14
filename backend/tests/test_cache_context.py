@@ -214,3 +214,32 @@ def test_openai_multiturn_skips_cache_by_default():
         )
         assert response.status_code == 200
     mock_cache.assert_not_called()
+
+
+def test_dashboard_does_not_send_the_current_question_twice():
+    """A dashboard bug made every chat request look like a follow-up.
+
+    `sendQuery` appends the current question to build the transcript, but both
+    callers already included it, so the request carried [..., user: q, user: q].
+    That non-empty transcript tripped the "history skips the cache" rule above,
+    which silently disabled the semantic cache for the whole dashboard: the cache
+    table filled with transcript-keyed rows that were never read.
+
+    Backend tests cover the semantics; this is the only guard on the frontend
+    call shape, because the frontend has no test runner of its own.
+    """
+    import re
+    from pathlib import Path
+
+    src = (
+        Path(__file__).resolve().parents[2]
+        / "frontend" / "src" / "components" / "RoutingDiagram.jsx"
+    ).read_text(encoding="utf-8", errors="replace")
+    compact = re.sub(r"\s+", " ", src)
+    assert "[...messages, { role: 'user', text: query }]" not in compact, (
+        "handleSubmit must pass the turns before the current question; sendQuery "
+        "appends the question itself"
+    )
+    assert "messages.slice(0, userIndex + 1)" not in compact, (
+        "handleRegenerate must exclude the current user turn; sendQuery re-adds it"
+    )

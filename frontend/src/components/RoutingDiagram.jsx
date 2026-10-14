@@ -287,7 +287,11 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     } catch {}
 
     setMessages((prev) => [...prev, { role: 'user', text: query }])
-    sendQuery(query, override, bypassCache, [...messages, { role: 'user', text: query }])
+    // historyBase is the turns *before* the current question; sendQuery appends
+    // the question itself. Appending it here too sent the question twice, which
+    // made every dashboard request look like a follow-up and silently disabled
+    // the semantic cache for the whole chat.
+    sendQuery(query, override, bypassCache, messages)
   }
 
   function handleRegenerate(index) {
@@ -298,7 +302,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     if (userIndex === -1) return
     const query = messages[userIndex].text
     setRegeneratingIndex(index)
-    sendQuery(query, 'auto', true, messages.slice(0, userIndex + 1), index)
+    sendQuery(query, 'auto', true, messages.slice(0, userIndex), index)
   }
 
   function handleExitChat() {
