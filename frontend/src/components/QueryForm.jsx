@@ -1,7 +1,19 @@
 import { useState, useRef, useEffect } from 'react'
 import { API_BASE } from '../config'
+import { explainRoute } from '../api'
+import { buildConversation } from '../conversation'
 
 const MAX_QUERY_LENGTH = 1000
+
+// Below this the preview is noise (and short strings can't be cached anyway).
+const MIN_PREVIEW_CHARS = 4
+const PREVIEW_DEBOUNCE_MS = 450
+
+const TIER_CHIP = {
+  cheap: { chip: 'border-cool/30 bg-cool/10 text-cool', dot: 'bg-cool' },
+  mid: { chip: 'border-signal/30 bg-signal/10 text-signal', dot: 'bg-signal' },
+  frontier: { chip: 'border-danger/30 bg-danger/10 text-danger', dot: 'bg-danger' },
+}
 
 const SUGGESTIONS = [
   'What is 2+2?',
@@ -29,16 +41,49 @@ function useQueryHistory() {
   return { history, clearHistory }
 }
 
-export default function QueryForm({ onSubmit, loading, tiers, activeConfig, onStop }) {
+export default function QueryForm({
+  onSubmit, loading, tiers, activeConfig, onStop,
+  threshold = null, supportMode = null, messages = [],
+}) {
   const [query, setQuery] = useState('')
   const [override, setOverride] = useState('auto')
   const [bypassCache, setBypassCache] = useState(false)
   const [showOptions, setShowOptions] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [clientError, setClientError] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
   const textareaRef = useRef(null)
   const historyRef = useRef(null)
   const { history, clearHistory } = useQueryHistory()
+
+  // Live route preview. /route/explain scores with the same policy and the same
+  // cuts as /route and then stops — no provider call, no cache, no request log.
+  // It is debounced, and the transcript is built by the same helper sendQuery
+  // uses so the preview always describes the request that would really be sent.
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (loading || trimmed.length < MIN_PREVIEW_CHARS) {
+      setPreview(null)
+      setPreviewLoading(false)
+      return
+    }
+    let ignore = false
+    setPreview(null)
+    setPreviewLoading(true)
+    const timer = setTimeout(() => {
+      explainRoute(trimmed, {
+        overrideTier: override === 'auto' ? null : override,
+        threshold,
+        supportMode,
+        messages: buildConversation(messages, trimmed),
+      })
+        .then((data) => { if (!ignore) setPreview(data) })
+        .catch(() => { if (!ignore) setPreview(null) })
+        .finally(() => { if (!ignore) setPreviewLoading(false) })
+    }, PREVIEW_DEBOUNCE_MS)
+    return () => { ignore = true; clearTimeout(timer) }
+  }, [query, override, threshold, supportMode, messages, loading])
 
   useEffect(() => {
     const el = textareaRef.current
@@ -80,6 +125,11 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig, onSt
   function handleSuggestion(text) {
     onSubmit(text, 'auto', false)
   }
+
+  const chosenTier = preview?.tiers?.find((t) => t.chosen)
+  const tierChip = TIER_CHIP[preview?.tier] || { chip: 'border-line bg-base text-muted', dot: 'bg-muted' }
+  const previewModel = (chosenTier?.model_id || '').split('/').pop()
+  const previewPrice = chosenTier?.price_per_m_input
 
   return (
     <div className="relative">
@@ -169,6 +219,32 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig, onSt
           </div>
         )}
       </form>
+
+      {/* live route preview — the router's own decision, and it costs no model call */}
+      {!loading && (
+        <div className="flex min-h-[22px] items-center gap-x-2 gap-y-1 flex-wrap px-1 pt-2 font-mono text-[10px] text-muted">
+          {preview ? (
+            <>
+              <span className="uppercase tracking-[0.14em] text-muted/70">would route to</span>
+              <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 ${tierChip.chip}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${tierChip.dot}`} aria-hidden />
+                {preview.tier}
+              </span>
+              {previewModel && <span className="max-w-[180px] truncate text-primary">{previewModel}</span>}
+              {previewPrice != null && <span>${previewPrice}/M in</span>}
+              <span>score {Number(preview.difficulty_score).toFixed(1)}</span>
+              {preview.override && preview.predicted_tier && preview.predicted_tier !== preview.tier && (
+                <span className="text-muted/70">(model picks {preview.predicted_tier})</span>
+              )}
+              <span className="ml-auto hidden text-muted/60 sm:inline">no model call</span>
+            </>
+          ) : (
+            <span className="text-muted/60">
+              {previewLoading ? 'scoring…' : 'route preview appears as you type'}
+            </span>
+          )}
+        </div>
+      )}
 
       {showHistory && history.length > 0 && (
         <div

@@ -11,6 +11,7 @@ import { getModel, policyBandsFor, DEFAULT_MODEL_ID } from '../models'
 import { TIERS, TIER_ORDER, EMMA_CUTS, DATASETS } from '../productMetrics'
 import QueryForm from './QueryForm'
 import { UserBubble, AssistantBubble, TypingIndicator } from './ResponseCard'
+import { buildConversation } from '../conversation'
 
 // Tier names, models and providers come from productMetrics, which mirrors
 // router.config.MODEL_CONFIG. This used to carry its own hardcoded copy that
@@ -200,13 +201,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     const controller = new AbortController()
     abortRef.current = controller
 
-    // build conversation history for multi-turn
-    const history = historyBase.flatMap((m) =>
-      m.role === 'user'
-        ? [{ role: 'user', content: m.text }]
-        : m.result?.response ? [{ role: 'assistant', content: m.result.response }] : []
-    )
-    const conversationMessages = [...history, { role: 'user', content: query }]
+    // build conversation history for multi-turn (shared with the live preview)
+    const conversationMessages = buildConversation(historyBase, query)
 
     setLoading(true)
     setError(null)
@@ -567,6 +563,9 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 tiers={TIERS}
                 activeConfig={activeConfig}
                 onStop={handleStop}
+                threshold={threshold}
+                supportMode={supportMode}
+                messages={messages}
               />
               {/* Emma is the only model with economy/balanced/quality. Lisa and Kate
                   ship fixed cuts, so a threshold slider would be a control that does
