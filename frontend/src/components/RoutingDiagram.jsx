@@ -305,6 +305,12 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
     sendQuery(query, 'auto', true, messages.slice(0, userIndex), index)
   }
 
+  function handleStop() {
+    if (abortRef.current) abortRef.current.abort()
+    setLoading(false)
+    setRegeneratingIndex(null)
+  }
+
   function handleExitChat() {
     if (abortRef.current) abortRef.current.abort()
     setMessages([])
@@ -429,6 +435,15 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
           {/* chat state: header + welcome/messages */}
           {!isEmpty && (
             <>
+              {/* Screen readers get a single, low-noise cue instead of the token
+                  stream. role="status" announces only when this text changes. */}
+              <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                {loading
+                  ? (streaming ? 'Generating an answer' : 'Routing your query')
+                  : latestResult?.response
+                    ? 'Answer ready'
+                    : ''}
+              </div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <h2 className="font-display text-xl font-semibold">Chat with {model.name}</h2>
@@ -499,6 +514,8 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
               {messages.length > 0 && (
                 <div
                   ref={scrollRef}
+                  role="log"
+                  aria-label="Conversation"
                   className="flex flex-col max-h-[46vh] lg:max-h-[42vh] overflow-y-auto mb-4 scroll-smooth chat-scroll"
                 >
                   {messages.map((msg, i) =>
@@ -549,6 +566,7 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
                 loading={loading}
                 tiers={TIERS}
                 activeConfig={activeConfig}
+                onStop={handleStop}
               />
               {/* Emma is the only model with economy/balanced/quality. Lisa and Kate
                   ship fixed cuts, so a threshold slider would be a control that does

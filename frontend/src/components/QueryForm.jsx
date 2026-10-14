@@ -29,7 +29,7 @@ function useQueryHistory() {
   return { history, clearHistory }
 }
 
-export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
+export default function QueryForm({ onSubmit, loading, tiers, activeConfig, onStop }) {
   const [query, setQuery] = useState('')
   const [override, setOverride] = useState('auto')
   const [bypassCache, setBypassCache] = useState(false)
@@ -117,23 +117,31 @@ export default function QueryForm({ onSubmit, loading, tiers, activeConfig }) {
                 <span className="font-mono text-[10px] text-danger">{clientError}</span>
               )}
             </div>
-            <button
-              type="submit"
-              disabled={loading || !query.trim()}
-              className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-signal text-white disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-card-hover transition-all"
-              aria-label="Send"
-            >
-              {loading ? (
-                <svg width="15" height="15" viewBox="0 0 14 14" className="animate-spin">
-                  <circle cx="7" cy="7" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="20 14" />
+            {loading ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-full border border-line bg-base text-primary hover:border-danger hover:text-danger transition-all"
+                aria-label="Stop generating"
+                title="Stop generating"
+              >
+                <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor" aria-hidden>
+                  <rect x="3" y="3" width="8" height="8" rx="1.5" />
                 </svg>
-              ) : (
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!query.trim()}
+                className="w-11 h-11 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-signal text-white disabled:opacity-30 disabled:cursor-not-allowed hover:brightness-110 hover:shadow-card-hover transition-all"
+                aria-label="Send"
+              >
                 <svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
                   <line x1="2" y1="7" x2="12" y2="7" />
                   <polyline points="7,2 12,7 7,12" />
                 </svg>
-              )}
-            </button>
+              </button>
+            )}
           </div>
         </div>
 
