@@ -250,6 +250,8 @@ well?** The two compose.
 | Real-time tier diagram, cost, latency, tier distribution | Thumbs up/down on every answer feeds active learning | Drop-in `/v1/chat/completions` endpoint |
 | 🖥️ **Terminal-first** | ⚕️ **`routewise doctor`** | 📈 **Usage on demand** |
 | `npm i -g routewise` → ask, stream, and chat right in your shell, zero runtime deps | One command walks config, backend, providers, and a live ask | `stats`, `logs`, `analytics` — no browser needed |
+| 🎯 **Live route preview** | 🎨 **Readable answers** | ⏹️ **Stop mid-stream** |
+| The composer shows the tier, model and real price/M the router would pick as you type — via `/route/explain`, **no model call** | Markdown answers with syntax-highlighted code, per-block copy, and tables that scroll instead of overflowing | Cancel a long generation from the composer; the partial answer stays on screen |
 
 ---
 
@@ -366,6 +368,12 @@ per-million-token price relative to the chosen one). Overrides are reported
 alongside the model's own choice. No provider call, no cache read or write, no
 request-log row — `/route` itself is unchanged.
 
+The dashboard puts that same decision under the composer: as you type, a thin
+line reads **would route to `mid` — the model, its real price/M in, score 4.9**.
+It is debounced and uses the same policy and cuts as `/route`, so it always
+describes the request that would really be sent — and, like `/route/explain`
+itself, it **makes no model call**. Previewing a route costs nothing.
+
 ### 🧠 Building a chatbot? Read this first
 
 RouteWise keeps **no conversation memory**. It stores no sessions and never reads
@@ -448,7 +456,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚙️ Backend | FastAPI · SQLAlchemy · Supabase Postgres · MCP gateway |
 | 🔌 Providers | Groq · OpenRouter · Gemini · Ollama · Tavily · Anthropic · OpenAI · DeepSeek · Mistral · Perplexity · xAI |
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
-| 🎨 Frontend | React · Vite · Tailwind · Recharts |
+| 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
 | ✅ Testing | pytest (272 tests) · node:test (57 CLI tests) · 329 total · GitHub Actions CI |
 
