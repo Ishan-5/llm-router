@@ -298,6 +298,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-base font-body">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[60] focus:rounded-full focus:bg-signal focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+      >
+        Skip to content
+      </a>
       {!backendOnline && (
         <div className="w-full bg-danger/10 border-b border-danger/30 px-6 py-2.5 flex items-center gap-3">
           <span className="w-2 h-2 rounded-full bg-danger shrink-0" />
@@ -318,7 +324,7 @@ export default function App() {
           user={user}
         />
       )}
-      <div key={location.pathname} className="animate-[page-fade-in_0.25s_ease-out]">
+      <div id="main-content" key={location.pathname} className="animate-[page-fade-in_0.25s_ease-out]">
         <Suspense fallback={<PageSkeleton type={PAGE_SKELETONS[location.pathname]} />}>
           <Routes location={location}>
             <Route path="/" element={<HomePage configVersion={configVersion} backendOnline={backendOnline} isDark={isDark} />} />
