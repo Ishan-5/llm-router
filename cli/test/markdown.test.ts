@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  cleanMath,
   createStreamState,
   flushStream,
   formatMarkdown,
@@ -107,4 +108,51 @@ test("streaming colors bold when enabled", () => {
   const out =
     formatStreamChunk("**bold**\n", state, { color: true }) + flushStream(state, { color: true });
   assert.match(out, /\u001b\[1mbold\u001b\[0m/);
+});
+
+test("inline LaTeX is rewritten as readable text", () => {
+  assert.equal(cleanMath("The relation is $V = I \\times R$."), "The relation is V = I × R.");
+});
+
+test("display fractions become plain division", () => {
+  assert.equal(cleanMath("\\[ V = \\frac{W}{Q} \\]"), "V = W/Q");
+});
+
+test("greek commands become their symbols", () => {
+  assert.equal(cleanMath("angle $\\theta$ and $\\pi$"), "angle θ and π");
+});
+
+test("currency is not mistaken for math", () => {
+  assert.equal(cleanMath("It costs $5 and $10 today"), "It costs $5 and $10 today");
+});
+
+test("code fences are never rewritten", () => {
+  const out = formatMarkdown('```js\nconst s = "a\\n";\n```', { color: false });
+  assert.ok(out.includes('const s = "a\\n";'));
+});
+
+test("unknown backslash sequences survive", () => {
+  assert.equal(cleanMath("write \\n for a newline"), "write \\n for a newline");
+});
+
+test("bare LaTeX commands are cleaned even without delimiters", () => {
+  assert.equal(cleanMath("Use \\alpha and \\beta"), "Use α and β");
+});
+
+test("formatMarkdown renders a fraction without backslashes", () => {
+  const out = formatMarkdown("I = $\\frac{V}{R}$ by Ohm's law", { color: false });
+  assert.ok(out.includes("I = V/R by Ohm's law"));
+  assert.doesNotMatch(out, /\\frac/);
+});
+
+test("an aligned physics block renders without backslashes", () => {
+  const block =
+    "\\[\n\\begin{aligned}\n" +
+    "V(t) &= V_m \\sin(\\omega t + \\phi) \\\\\n" +
+    "I(t) &= \\frac{V_m}{R} \\sin(\\omega t + \\phi)\n" +
+    "\\end{aligned}\n\\]";
+  const out = cleanMath(block);
+  assert.doesNotMatch(out, /\\/);
+  assert.ok(out.includes("V(t) = V_m sin(ω t + φ)"));
+  assert.ok(out.includes("I(t) = V_m/R sin(ω t + φ)"));
 });
