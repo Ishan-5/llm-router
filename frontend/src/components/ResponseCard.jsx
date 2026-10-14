@@ -1,7 +1,5 @@
 import { useState, useRef } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { prettifyMath } from '../mathText'
+import Markdown from './Markdown'
 import { explainRoute, sendFeedback } from '../api'
 
 function formatCost(cost) {
@@ -481,9 +479,7 @@ export function AssistantBubble({ result, logId, onRegenerate, regenerating, str
               prose-strong:font-semibold
               prose-blockquote:border-l-2 prose-blockquote:border-signal prose-blockquote:pl-3 prose-blockquote:text-muted
             ">
-              {result.response ? (
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{prettifyMath(result.response)}</ReactMarkdown>
-              ) : null}
+              {result.response ? <Markdown>{result.response}</Markdown> : null}
             </div>
             {streaming && (
               <div className="mt-2 flex items-center gap-2">
