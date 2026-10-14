@@ -55,18 +55,18 @@ function PageSkeleton({ type }) {
   if (type === 'pricing') {
     return (
       <div className="max-w-6xl mx-auto px-6 py-20 border-t border-line">
-        <div className="h-4 w-24 bg-line rounded animate-pulse mb-4" />
-        <div className="h-8 w-72 bg-line rounded animate-pulse mb-2" />
-        <div className="h-4 w-96 bg-line rounded animate-pulse mb-8" />
+        <div className="h-4 w-24 skeleton rounded mb-4" />
+        <div className="h-8 w-72 skeleton rounded mb-2" />
+        <div className="h-4 w-96 skeleton rounded mb-8" />
         <div className="flex gap-3 mb-8">
-          <div className="h-8 w-48 bg-line rounded animate-pulse" />
-          <div className="h-8 w-16 bg-line rounded-full animate-pulse" />
-          <div className="h-8 w-20 bg-line rounded-full animate-pulse" />
-          <div className="h-8 w-24 bg-line rounded-full animate-pulse" />
+          <div className="h-8 w-48 skeleton rounded" />
+          <div className="h-8 w-16 skeleton rounded-full" />
+          <div className="h-8 w-20 skeleton rounded-full" />
+          <div className="h-8 w-24 skeleton rounded-full" />
         </div>
-        <div className="h-10 w-full bg-line rounded animate-pulse mb-4" />
+        <div className="h-10 w-full skeleton rounded mb-4" />
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-12 w-full bg-line/50 rounded animate-pulse mb-2" />
+          <div key={i} className="h-12 w-full skeleton rounded mb-2" />
         ))}
       </div>
     )
@@ -97,11 +97,11 @@ function PageSkeleton({ type }) {
         </div>
         <div className="flex-1 flex items-center justify-center px-6 py-16">
           <div className="w-full max-w-md flex flex-col gap-4">
-            <div className="h-10 w-full bg-line rounded-lg animate-pulse" />
-            <div className="h-5 w-40 bg-line rounded animate-pulse mt-2" />
-            <div className="h-4 w-56 bg-line rounded animate-pulse" />
-            <div className="h-12 w-full bg-line rounded animate-pulse" />
-            <div className="h-12 w-full bg-line rounded animate-pulse" />
+            <div className="h-10 w-full skeleton rounded-lg" />
+            <div className="h-5 w-40 skeleton rounded mt-2" />
+            <div className="h-4 w-56 skeleton rounded" />
+            <div className="h-12 w-full skeleton rounded" />
+            <div className="h-12 w-full skeleton rounded" />
             <div className="h-10 w-full bg-signal/30 rounded-lg animate-pulse" />
           </div>
         </div>
@@ -111,28 +111,28 @@ function PageSkeleton({ type }) {
   if (type === 'dashboard') {
     return (
       <div className="max-w-3xl mx-auto px-6 py-20">
-        <div className="h-4 w-24 bg-line rounded animate-pulse mb-4" />
-        <div className="h-8 w-48 bg-line rounded animate-pulse mb-2" />
-        <div className="h-4 w-80 bg-line rounded animate-pulse mb-12" />
+        <div className="h-4 w-24 skeleton rounded mb-4" />
+        <div className="h-8 w-48 skeleton rounded mb-2" />
+        <div className="h-4 w-80 skeleton rounded mb-12" />
         <div className="flex gap-3 mb-8">
-          <div className="h-12 flex-1 bg-line rounded animate-pulse" />
+          <div className="h-12 flex-1 skeleton rounded" />
           <div className="h-12 w-32 bg-signal/30 rounded-lg animate-pulse" />
         </div>
         <div className="h-px w-full bg-line mb-4" />
         {[1, 2].map((i) => (
-          <div key={i} className="h-16 w-full bg-line/50 rounded animate-pulse mb-2" />
+          <div key={i} className="h-16 w-full skeleton rounded mb-2" />
         ))}
       </div>
     )
   }
   return (
     <div className="max-w-3xl mx-auto px-6 py-20">
-      <div className="h-4 w-24 bg-line rounded animate-pulse mb-4" />
-      <div className="h-10 w-80 bg-line rounded animate-pulse mb-8" />
+      <div className="h-4 w-24 skeleton rounded mb-4" />
+      <div className="h-10 w-80 skeleton rounded mb-8" />
       <div className="flex flex-col gap-4">
-        <div className="h-4 w-full bg-line rounded animate-pulse" />
-        <div className="h-4 w-5/6 bg-line rounded animate-pulse" />
-        <div className="h-4 w-4/6 bg-line rounded animate-pulse" />
+        <div className="h-4 w-full skeleton rounded" />
+        <div className="h-4 w-5/6 skeleton rounded" />
+        <div className="h-4 w-4/6 skeleton rounded" />
       </div>
     </div>
   )

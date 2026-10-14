@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
 import { fetchStats, fetchCompare } from '../api'
 import Money from './Money'
+import AnimatedCounter from './AnimatedCounter'
 import { TIER_ORDER as CORE_TIER_ORDER, savingsBreakdown } from '../productMetrics'
 
 // Core routing tiers plus the two tiers that exist outside the routing decision
@@ -66,14 +67,14 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
   if (!stats) {
     return (
       <section id="metrics" className="max-w-6xl mx-auto px-6 py-20">
-        <div className="h-7 w-48 bg-line rounded animate-pulse mb-2" />
-        <div className="h-4 w-72 bg-line rounded animate-pulse mb-12" />
+        <div className="h-7 w-48 skeleton rounded mb-2" />
+        <div className="h-4 w-72 skeleton rounded mb-12" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 bg-line rounded-lg animate-pulse" />)}
+          {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 skeleton rounded-lg" />)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="h-64 bg-line rounded-lg animate-pulse" />
-          <div className="h-64 bg-line rounded-lg animate-pulse" />
+          <div className="h-64 skeleton rounded-lg" />
+          <div className="h-64 skeleton rounded-lg" />
         </div>
       </section>
     )
@@ -148,12 +149,12 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
               <Money value={stats.total_savings_usd || 0} size="xl" className="text-signal" />
               {savedPct > 0 && (
                 <span className="font-mono text-sm font-semibold text-signal bg-signal/10 border border-signal/20 rounded-full px-3 py-1">
-                  {savedPct}% saved
+                  <AnimatedCounter value={savedPct} suffix="% saved" />
                 </span>
               )}
               {stats.judged_quality_avg != null && stats.judged_quality_avg > 0 && (
                 <span className="font-mono text-sm font-semibold text-cool bg-cool/10 border border-cool/20 rounded-full px-3 py-1">
-                  {(stats.judged_quality_avg * 100).toFixed(0)}% quality
+                  <AnimatedCounter value={Math.round(stats.judged_quality_avg * 100)} suffix="% quality" />
                 </span>
               )}
             </div>
