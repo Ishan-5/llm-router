@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchLogs, fetchLogDetail } from '../api'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { prettifyMath } from '../mathText'
 
 const TIER_STYLES = {
   cheap: 'text-cool bg-cool/10 border-cool/30',
@@ -99,7 +100,7 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
                     prose-code:font-mono prose-code:text-[10px] prose-code:bg-base prose-code:px-1 prose-code:py-0.5 prose-code:rounded
                     prose-pre:bg-base prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto
                   ">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{detail.response}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{prettifyMath(detail.response)}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-muted italic">No response recorded</p>

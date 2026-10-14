@@ -6,6 +6,87 @@ const RESET = "\u001b[0m";
 
 const MAX_CELL = 60;
 
+// Mirrors frontend/src/mathText.js. Models occasionally ignore the router's
+// "no LaTeX" instruction; this turns common markup into readable text. Only
+// delimited regions are expanded, then a whitelist of known math commands is
+// replaced, so code samples (\n, \t) and currency ("costs $5") are untouched.
+const MATH_COMMANDS: Record<string, string> = {
+  times: "×", cdot: "·", div: "÷", pm: "±", mp: "∓",
+  le: "≤", leq: "≤", ge: "≥", geq: "≥", ne: "≠", neq: "≠",
+  approx: "≈", propto: "∝", infty: "∞", sum: "Σ", prod: "∏",
+  int: "∫", partial: "∂", nabla: "∇", sqrt: "√", angle: "∠",
+  circ: "°", deg: "°", prime: "′", perp: "⊥", parallel: "∥",
+  equiv: "≡", cong: "≅", sim: "∼", simeq: "≃",
+  in: "∈", notin: "∉", subset: "⊂", supset: "⊃", subseteq: "⊆", supseteq: "⊇",
+  forall: "∀", exists: "∃", emptyset: "∅", therefore: "∴", because: "∵",
+  langle: "⟨", rangle: "⟩",
+  sin: "sin", cos: "cos", tan: "tan", cot: "cot", sec: "sec", csc: "csc",
+  arcsin: "arcsin", arccos: "arccos", arctan: "arctan",
+  sinh: "sinh", cosh: "cosh", tanh: "tanh",
+  log: "log", ln: "ln", exp: "exp", lim: "lim", max: "max", min: "min",
+  det: "det", gcd: "gcd", mod: "mod",
+  rightarrow: "→", to: "→", Rightarrow: "⇒",
+  leftarrow: "←", Leftarrow: "⇐",
+  leftrightarrow: "↔", Leftrightarrow: "⇔",
+  ldots: "…", cdots: "⋯", dots: "…", vdots: "⋮",
+  alpha: "α", beta: "β", gamma: "γ", delta: "δ", Delta: "Δ",
+  epsilon: "ε", varepsilon: "ε", zeta: "ζ", eta: "η", theta: "θ",
+  Theta: "Θ", iota: "ι", kappa: "κ", lambda: "λ", Lambda: "Λ",
+  mu: "μ", nu: "ν", xi: "ξ", pi: "π", Pi: "Π", rho: "ρ", sigma: "σ",
+  Sigma: "Σ", tau: "τ", upsilon: "υ", phi: "φ", varphi: "φ", chi: "χ",
+  psi: "ψ", Psi: "Ψ", omega: "ω", Omega: "Ω",
+};
+
+function mathParen(s: string): string {
+  return /[+\-/\s]/.test(s) ? `(${s})` : s;
+}
+
+// Structural + symbol replacements that are safe to run anywhere in a line.
+function applyMathTokens(s: string): string {
+  let out = s;
+  out = out.replace(/\\begin\{[^}]*\}|\\end\{[^}]*\}/g, "");
+  out = out.replace(/\\left|\\right/g, "");
+  out = out.replace(
+    /\\(?:boxed|text|mathrm|mathbf|mathit|operatorname)\s*\{([^{}]*)\}/g,
+    "$1",
+  );
+  out = out.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_m: string, a: string, b: string) =>
+    `${mathParen(a)}/${mathParen(b)}`,
+  );
+  out = out.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)");
+  out = out.replace(/\\(?:qquad|quad|,|;|:|!)/g, " ");
+  out = out.replace(/\\([A-Za-z]+)/g, (m: string, name: string) =>
+    Object.prototype.hasOwnProperty.call(MATH_COMMANDS, name) ? MATH_COMMANDS[name] : m,
+  );
+  out = out.replace(/\^\{([^{}]*)\}/g, "^$1");
+  out = out.replace(/_\{([^{}]*)\}/g, "_$1");
+  return out;
+}
+
+function convertMathRegion(expr: string): string {
+  let out = applyMathTokens(expr);
+  out = out.replace(/\\\\/g, " "); // LaTeX row break
+  out = out.replace(/&=/g, "= ").replace(/\s*&\s*/g, " / "); // alignment columns
+  return out.replace(/\s+/g, " ").trim();
+}
+
+export function cleanMath(text: string): string {
+  if (!text) {
+    return text;
+  }
+  return applyMathTokens(
+    text
+      .replace(/\$\$([\s\S]+?)\$\$/g, (_m: string, e: string) => convertMathRegion(e))
+      .replace(/\\\[([\s\S]+?)\\\]/g, (_m: string, e: string) => convertMathRegion(e))
+      .replace(/\\\(([\s\S]+?)\\\)/g, (_m: string, e: string) => convertMathRegion(e))
+      .replace(/\$([^\s$\n](?:[^$\n]*[^\s$\n])?)\$/g, (_m: string, e: string) =>
+        convertMathRegion(e),
+      )
+      // delimiters left behind by an unclosed region
+      .replace(/\\\[|\\\]|\\\(|\\\)/g, ""),
+  );
+}
+
 export interface FormatOptions {
   color: boolean;
 }
@@ -77,7 +158,8 @@ function renderTable(rows: string[][]): string[] {
   return out;
 }
 
-function transformLine(line: string, color: boolean): string {
+function transformLine(rawLine: string, color: boolean): string {
+  const line = cleanMath(rawLine);
   const lead = line.match(/^\s*/)?.[0] ?? "";
   const trimmed = line.trim();
   if (trimmed === "") {

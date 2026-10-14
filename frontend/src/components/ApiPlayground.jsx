@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { prettifyMath } from '../mathText'
 import { routeQuery, routeQueryStream, getSharedThreshold, setSharedThreshold } from '../api'
 import { API_BASE, API_KEY } from '../config'
 import ThresholdSlider from './ThresholdSlider'
@@ -392,7 +393,7 @@ export default function ApiPlayground() {
             prose-pre:bg-base prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto
             max-h-96 overflow-y-auto
           ">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{fullStreamText}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{prettifyMath(fullStreamText)}</ReactMarkdown>
             <div ref={responseEndRef} />
           </div>
         </div>
@@ -433,7 +434,7 @@ export default function ApiPlayground() {
               prose-code:font-mono prose-code:text-[10px] prose-code:bg-base prose-code:px-1 prose-code:py-0.5 prose-code:rounded
               prose-pre:bg-base prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto
             ">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{response.response || ''}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{prettifyMath(response.response || '')}</ReactMarkdown>
             </div>
           </div>
         </div>

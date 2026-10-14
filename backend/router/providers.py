@@ -5,6 +5,7 @@ from router.config import GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY, MODE
 from router.providers_registry import PROVIDERS_REGISTRY
 from router.ollama_client import call_ollama
 from router.load_balancer import get_key_for_tier, report_rate_limit_from_error
+from router.prompts import with_answer_style
 
 log = logging.getLogger("routewise.providers")
 
@@ -115,7 +116,7 @@ def _stream_openai_compatible(
     price_out: float,
     api_key: str,
     base_url: str,
-    max_tokens: int = 1000,
+    max_tokens: int = 4096,
     messages: list[dict] | None = None,
     temperature: float | None = None,
 ):
@@ -153,7 +154,7 @@ def _call_anthropic(
     price_in: float,
     price_out: float,
     api_key: str,
-    max_tokens: int = 1000,
+    max_tokens: int = 4096,
     messages: list[dict] | None = None,
 ) -> dict:
     """Anthropic has its own SDK and API format -- handled separately."""
@@ -188,7 +189,7 @@ def call_provider(
     api_key: str,
     price_in: float = 0.0,
     price_out: float = 0.0,
-    max_tokens: int = 1000,
+    max_tokens: int = 4096,
     messages: list[dict] | None = None,
 ) -> dict:
     """
@@ -213,6 +214,7 @@ def call_model(tier: str, query: str, user_config: dict | None = None, messages:
     provider/model/api_key. Otherwise falls back to the hardcoded defaults.
     Uses load balancer for key rotation when multiple keys are configured.
     """
+    messages = with_answer_style(messages, query)
     if user_config:
         provider = user_config["provider"]
         model_id = user_config["model_id"]
@@ -271,7 +273,7 @@ def call_gemini(query: str) -> dict:
     client = _get_client(GEMINI_API_KEY, PROVIDERS_REGISTRY["gemini"]["base_url"])
     response = client.chat.completions.create(
         model=cfg["model_id"],
-        max_tokens=1000,
+        max_tokens=4096,
         messages=[{"role": "user", "content": query}],
     )
     input_tokens = response.usage.prompt_tokens
@@ -297,7 +299,8 @@ def stream_model(tier: str, query: str, user_config: dict | None = None, message
     Uses load balancer for key rotation when multiple keys are configured.
     """
     default_cfg = MODEL_CONFIG[tier]
-    effective_max = max_tokens or 1000
+    messages = with_answer_style(messages, query)
+    effective_max = max_tokens or 4096
 
     if user_config:
         # Only tiers genuinely overridden by the user (BYOM/onboarding) take the
