@@ -183,3 +183,95 @@ body {
 .auth-float {
   animation: auth-float 5s ease-in-out infinite;
 }
+
+/* syntax highlighting (rehype-highlight / highlight.js token classes).
+   Colours are theme tokens so code reads the same in light and dark. */
+:root {
+  --code-comment: #7A828C;
+  --code-keyword: #9333EA;
+  --code-string: #0F766E;
+  --code-number: #B45309;
+  --code-function: #1D4ED8;
+  --code-type: #0E7490;
+  --code-tag: #B91C1C;
+  --code-attr: #B45309;
+  --code-builtin: #0F766E;
+}
+
+.dark {
+  --code-comment: #6B7A8A;
+  --code-keyword: #C792EA;
+  --code-string: #7FD1A8;
+  --code-number: #F6A96B;
+  --code-function: #82AAFF;
+  --code-type: #FFCB6B;
+  --code-tag: #F07178;
+  --code-attr: #FFCB6B;
+  --code-builtin: #3FB8AF;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  color: var(--code-keyword);
+}
+
+.hljs-string,
+.hljs-doctag,
+.hljs-regexp,
+.hljs-addition {
+  color: var(--code-string);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-attr,
+.hljs-attribute {
+  color: var(--code-number);
+}
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section {
+  color: var(--code-function);
+}
+
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: var(--code-type);
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-meta .hljs-keyword,
+.hljs-property {
+  color: var(--code-tag);
+}
+
+.hljs-deletion {
+  color: var(--color-danger);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
