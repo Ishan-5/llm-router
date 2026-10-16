@@ -259,15 +259,16 @@ well?** The two compose.
 
 A router that scores *every* query with one general-difficulty model is a good start. But a
 support ticket is not "general chat" — a hard refund dispute and a hard coding question are
-different kinds of hard. So RouteWise ships **three routing personalities**, each with its own
-difficulty model and thresholds, and you switch between them **per request** across every
+different kinds of hard. So RouteWise ships **three routing policies** — `emma`'s
+general-difficulty model, plus **one** support-trained model exposed as two threshold policies
+(`lisa` and `kate`) — and you switch between them **per request** across every
 surface — REST, OpenAI-compatible, SDK, CLI, and the dashboard picker.
 
 | | 🍋 **emma** · general-purpose | 💠 **lisa** · support · balanced | 🛡️ **kate** · support · max care |
 |---|---|---|---|
 | **Best for** | General chat, dev tools, agents | Customer support, default | Support where a miss is expensive |
 | **Trained on** | 8,200 Claude-gold queries | 17,600 labeled support tickets | 17,600 labeled support tickets |
-| **Difficulty model** | General | Support-scored, domain-aware | Support-scored, domain-aware |
+| **Difficulty model** | General | Support-scored (shared) | Support-scored (shared) |
 | **Tier ladder** | cheap · mid · frontier | cheap · mid · frontier | cheap · frontier (no mid) |
 | **Cutoffs** | ≤4.5 / ≥6.0 — slider-movable | ≤2.0 / ≥4.5 — fixed | ≤4.0 — fixed, single cut |
 | **Frontier recall** | 58% | **80.4%** | **86.0%** |

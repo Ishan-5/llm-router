@@ -10,7 +10,7 @@ reserve the frontier tier for the queries that actually need it.
 | **Bundle name** | `v20_ensemble_v18_v19` |
 | **Status** | deployed (v20), supersedes v15 |
 | **Owner** | RouteWise — [`Ishan-5/llm-router`](https://github.com/Ishan-5/llm-router) |
-| **Scope** | general chat / generation traffic (`emma`). The support-domain policies `lisa` and `kate` are separate models — see `customer-support/docs/`. |
+| **Scope** | general chat / generation traffic (`emma`). The support-domain policies `lisa` and `kate` **share one support-trained regressor** and differ only in their tier cutoffs — see `customer-support/docs/`. |
 
 ## Overview
 

@@ -550,7 +550,7 @@ model does not silently inherit the default tier's price.`,
   policies: {
     title: 'Policies — emma · lisa · kate',
     description:
-      'Three routing personalities, each with its own difficulty model and thresholds. Switch per request across every surface.',
+      'Three routing policies — one general-difficulty model plus one support-trained model exposed as two threshold policies. Switch per request across every surface.',
     sections: [
       {
         label: 'Pick a policy',
