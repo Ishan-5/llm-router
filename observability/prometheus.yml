@@ -1,4 +1,4 @@
-# Scrape config for a self-hosted RouteWise instance.
+# Scrape config for RouteWise metrics.
 #
 # RouteWise keeps the JSON rollup at GET /metrics (read by the dashboard) and
 # exposes the Prometheus text exposition at GET /metrics/prometheus, so the
@@ -7,13 +7,24 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: routewise
+  # The backend running in this docker-compose network (service name `backend`).
+  - job_name: routewise-local
     metrics_path: /metrics/prometheus
     static_configs:
-      # Local `uvicorn router.main:app` on the host, scraped from a Prometheus
-      # container (Docker Desktop resolves host.docker.internal).
-      - targets: ["host.docker.internal:8000"]
+      - targets: ["backend:8000"]
         labels:
           env: local
-      # If Prometheus runs in the same docker-compose network, use the service
-      # name instead:  - targets: ["backend:8000"]
+
+  # The deployed instance, so the Grafana dashboard has data even when the local
+  # stack is idle. Remove this block if you only want local scraping.
+  - job_name: routewise-render
+    metrics_path: /metrics/prometheus
+    scheme: https
+    static_configs:
+      - targets: ["llm-router-d2b2.onrender.com"]
+        labels:
+          env: render
+
+  # If you run `uvicorn router.main:app` directly on the host instead of in
+  # compose, point Prometheus at the host gateway instead:
+  #   - targets: ["host.docker.internal:8000"]

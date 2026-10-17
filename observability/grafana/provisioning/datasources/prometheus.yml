@@ -1,0 +1,15 @@
+# Grafana datasource provisioned on boot: points at the Prometheus sidecar in
+# docker-compose. The uid is fixed so the provisioned dashboard can reference it
+# by name without a manual "save datasource" step.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: routewise-prom
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s

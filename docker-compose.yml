@@ -22,3 +22,33 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+
+  # Metrics stack — scrapes the backend's Prometheus exposition and renders the
+  # provisioned RouteWise dashboard. Both are optional: the backend runs fine on
+  # its own (docker compose up backend). Anonymous viewer access, so the Grafana
+  # board opens without a login.
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    depends_on:
+      - prometheus
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  grafana-data:
