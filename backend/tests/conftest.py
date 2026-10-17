@@ -31,3 +31,24 @@ def _quiet_background_cache_writes():
     with patch("router.routes.route.add_to_cache", return_value=None), \
          patch("router.openai_compat.add_to_cache", return_value=None):
         yield
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _refuse_a_real_database():
+    """Fail loudly if the session is not on the throwaway SQLite DB.
+
+    DATABASE_URL is pinned above, but the engine is built on the first import of
+    router.db -- so anything that rewrites the variable during collection points
+    the whole suite at a real database. That is not hypothetical:
+    scripts/quality_ab_test.py used load_dotenv(override=True), which rewrote
+    DATABASE_URL with the production Postgres URL from backend/.env, and every
+    test module that inserts an API key at import time then wrote to production.
+    This turns the next such clobber into an immediate, obvious error.
+    """
+    from router.db import engine
+
+    backend = engine.url.get_backend_name()
+    assert backend == "sqlite", (
+        f"tests must run against the temp SQLite DB, not {backend!r}: "
+        "DATABASE_URL was overwritten after conftest set it."
+    )

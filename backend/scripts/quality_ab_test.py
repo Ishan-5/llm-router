@@ -47,10 +47,16 @@ sys.path.insert(0, str(REPO / "backend" / "router"))
 # router.config calls a bare load_dotenv(), which only finds backend/.env when the
 # cwd happens to be backend/. Pin the path so this script behaves the same from
 # anywhere -- otherwise the judge key silently reads as missing.
+#
+# override=False on purpose. This module is also imported by
+# tests/test_quality_ab_test.py during collection, and overriding rewrote
+# DATABASE_URL -- which conftest pins to a throwaway SQLite file -- with the
+# production Postgres URL from backend/.env. Several test modules insert an API
+# key at import time, so the whole suite then wrote to production.
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(REPO / "backend" / ".env", override=True)
+    load_dotenv(REPO / "backend" / ".env", override=False)
 except ImportError:
     pass
 
