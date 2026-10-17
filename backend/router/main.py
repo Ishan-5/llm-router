@@ -7,11 +7,11 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func, String
 from router.db import SessionLocal, RequestLog, ApiKey, AlertRule
-from router.config import ALLOWED_ORIGINS
+from router.config import ALLOWED_ORIGINS, METRICS_BASIC_PASSWORD, METRICS_BASIC_USER
 from router.openai_compat import router as openai_compat_router
 from router.routes.route import router as route_router
 from router.routes.keys import router as keys_router
@@ -23,7 +23,7 @@ from router.routes.settings import router as settings_router
 from router.routes.news import router as news_router
 from router.routes.demo import router as demo_router
 from router.routes.calculator import router as calculator_router
-from router.metrics import PrometheusMiddleware, metrics_response, set_model_info
+from router.metrics import PrometheusMiddleware, basic_auth_ok, metrics_response, set_model_info
 from router.security import SecurityHeadersMiddleware
 
 log = logging.getLogger("routewise")
@@ -182,8 +182,22 @@ def health_ready(response: Response):
 
 
 @app.get("/metrics/prometheus")
-def metrics_prometheus():
-    """Prometheus text exposition. The JSON rollup stays at GET /metrics."""
+def metrics_prometheus(authorization: str | None = Header(default=None)):
+    """Prometheus text exposition. The JSON rollup stays at GET /metrics.
+
+    Gated behind HTTP Basic only when METRICS_BASIC_USER is configured. Grafana
+    Cloud's Metrics Endpoint integration will not scrape a URL that answers
+    anonymous requests, so production sets the credentials and the scrape then
+    has to authenticate; local runs and tests leave the gate off.
+    """
+    if METRICS_BASIC_USER and not basic_auth_ok(
+        authorization, METRICS_BASIC_USER, METRICS_BASIC_PASSWORD
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Metrics require HTTP Basic authentication",
+            headers={"WWW-Authenticate": 'Basic realm="routewise-metrics"'},
+        )
     return metrics_response()
 
 

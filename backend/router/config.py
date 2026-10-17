@@ -20,6 +20,14 @@ ALLOWED_ORIGINS = os.getenv(
     "http://localhost:5173,http://localhost:4173"
 ).split(",")
 
+# HTTP Basic auth for the Prometheus exposition at GET /metrics/prometheus.
+# Off unless METRICS_BASIC_USER is set, so local runs and the test suite scrape
+# anonymously. The deployed instance sets both: Grafana Cloud's Metrics
+# Endpoint integration refuses to scrape a URL that answers unauthenticated
+# requests, so the endpoint must challenge with 401 before it will be accepted.
+METRICS_BASIC_USER = os.getenv("METRICS_BASIC_USER", "").strip()
+METRICS_BASIC_PASSWORD = os.getenv("METRICS_BASIC_PASSWORD", "")
+
 # Multi-key support: comma-separated keys per tier for load balancing
 GROQ_KEYS_CHEAP = os.getenv("GROQ_KEYS_CHEAP", "")
 GROQ_KEYS_MID = os.getenv("GROQ_KEYS_MID", "")

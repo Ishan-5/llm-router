@@ -11,6 +11,8 @@ metrics elsewhere.
 """
 from __future__ import annotations
 
+import base64
+import secrets
 import time
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
@@ -110,6 +112,24 @@ def set_model_info(model_name: str) -> None:
 
 def metrics_response() -> Response:
     return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
+
+
+def basic_auth_ok(authorization: str | None, username: str, password: str) -> bool:
+    """True when ``authorization`` carries matching HTTP Basic credentials.
+
+    Kept out of the route so it is unit-testable without a request. Both fields
+    are compared with ``compare_digest`` so neither leaks through timing.
+    """
+    if not authorization or not authorization.lower().startswith("basic "):
+        return False
+    try:
+        decoded = base64.b64decode(authorization.split(None, 1)[1].strip(), validate=True).decode()
+    except ValueError:  # binascii.Error and UnicodeDecodeError are both ValueError
+        return False
+    supplied_user, _, supplied_password = decoded.partition(":")
+    return secrets.compare_digest(supplied_user, username) and secrets.compare_digest(
+        supplied_password, password
+    )
 
 
 # Paths whose own traffic should not skew the request metrics (dashboard polls
