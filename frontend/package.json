@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "^5.0.3",
-    "@supabase/supabase-js": "^2.117.3",
+    "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/typography": "^0.5.20",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
@@ -25,7 +25,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@vitejs/plugin-react": "^4.2.0",
-    "postcss": "^8.5.29",
+    "postcss": "^8.5.30",
     "tailwindcss": "^4.3.3",
     "vite": "^5.0.0"
   }
