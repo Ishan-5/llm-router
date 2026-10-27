@@ -1,5 +1,27 @@
 import { API_BASE, API_KEY } from './config'
 
+// fetch() rejecting is NOT an HTTP error: the request never got a reply at all
+// (dropped connection, the service restarting, or CORS). The browser only
+// reports "Failed to fetch", which reads to a visitor as if the site were
+// broken rather than as a blip, so translate it -- and the raw rate-limit text
+// -- into something they can act on.
+const NETWORK_ERROR =
+  "Couldn't reach the router — it may be restarting or your connection dropped. Try again in a few seconds."
+const RATE_LIMIT_ERROR = "Too many requests — wait a moment and try again."
+
+export function describeRequestError(err) {
+  // Callers hand us either an Error (a rejected fetch) or a bare detail string
+  // from a stream's error event, so normalise both before matching.
+  const raw = typeof err === 'string' ? err : String(err?.message ?? '')
+  if (err?.name === 'AbortError') return raw
+  // Chrome, Firefox and Safari word the same failure differently:
+  // "Failed to fetch" / "NetworkError when attempting to fetch resource." /
+  // "Load failed".
+  if (/failed to fetch|networkerror|load failed/i.test(raw)) return NETWORK_ERROR
+  if (/rate limit|too many requests/i.test(raw)) return RATE_LIMIT_ERROR
+  return raw || 'Request failed'
+}
+
 function _getUserKeys() {
   try {
     const saved = localStorage.getItem('byom_config')
