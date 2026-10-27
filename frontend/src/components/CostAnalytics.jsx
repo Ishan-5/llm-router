@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchAnalytics } from '../api'
+import { fetchAnalytics, describeRequestError } from '../api'
 import { useTheme } from '../useTheme'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -58,7 +58,7 @@ export default function CostAnalytics({ apiKey }) {
   const pieColors = isDark ? PIE_COLORS_DARK : PIE_COLORS_LIGHT
 
   useEffect(() => {
-    fetchAnalytics(apiKey).then(setData).catch((e) => setError(e.message))
+    fetchAnalytics(apiKey).then(setData).catch((e) => setError(describeRequestError(e)))
   }, [apiKey])
 
   if (error) return <p className="font-mono text-xs text-danger">Failed to load analytics: {error}</p>

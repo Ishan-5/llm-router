@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, LabelList } from 'recharts'
-import { fetchStats, fetchCompare } from '../api'
+import { fetchStats, fetchCompare, describeRequestError } from '../api'
 import Money from './Money'
 import AnimatedCounter from './AnimatedCounter'
 import { TIER_ORDER as CORE_TIER_ORDER, savingsBreakdown } from '../productMetrics'
@@ -27,7 +27,7 @@ export default function MetricsDashboard({ isDark, backendOnline = true }) {
   const [lastUpdated, setLastUpdated] = useState(null)
 
   function loadStats() {
-    return fetchStats().then((s) => { setStats(s); setLastUpdated(new Date()) }).catch((e) => setError(e.message))
+    return fetchStats().then((s) => { setStats(s); setLastUpdated(new Date()) }).catch((e) => setError(describeRequestError(e)))
   }
 
   function loadCompare() {

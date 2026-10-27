@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchStats } from '../api'
+import { fetchStats, describeRequestError } from '../api'
 import AnimatedCounter from './AnimatedCounter'
 import Money from './Money'
 import { savingsBreakdown } from '../productMetrics'
@@ -26,7 +26,7 @@ export default function MetricsBand() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchStats().then(setStats).catch((e) => setError(e.message))
+    fetchStats().then(setStats).catch((e) => setError(describeRequestError(e)))
   }, [])
 
   const savedPct = stats ? Math.round(stats.savings_pct || 0) : 0
