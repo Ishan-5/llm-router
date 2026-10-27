@@ -4,16 +4,66 @@ import logging
 import httpx
 from collections import defaultdict
 from datetime import datetime, date
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Request
 from router.db import SessionLocal, ApiKey, RequestLog
 from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_USER_ID
 from sqlalchemy import func
 
 log = logging.getLogger("routewise.auth")
 
-RATE_LIMIT_PER_MINUTE = 20
+# Two budgets, on purpose.
+#
+# A provider call spends the user's money, so it gets the tight limit. The
+# dashboard's own free traffic -- the /route/explain preview that scores as you
+# type, and the /stats and /config polls -- gets a much larger SEPARATE budget,
+# so it can never spend the real requests' budget.
+#
+# Before this split there was one 20/min budget shared by every authenticated
+# endpoint on a single key, and the public demo's key is baked into the
+# frontend bundle, so it was also shared by every visitor. The dashboard polls
+# /stats every 12-15s and called /route/explain on a 450ms debounce, so two
+# people opening the site emptied the bucket and every genuine question came
+# back 429 Too Many Requests.
+RATE_LIMIT_PER_MINUTE = 60
+READ_RATE_LIMIT_PER_MINUTE = 240
 
-# api_key -> list of request timestamps (sliding window)
+# Endpoints that never reach a provider. Classified by prefix so a brand new
+# route defaults to costing money until someone says otherwise: an
+# over-permissive list would let a caller drain the model budget for free.
+_READ_ONLY_PREFIXES = (
+    # /route and /openai are deliberately absent: anything not listed here is
+    # treated as a provider call, so a route added later costs money until
+    # someone classifies it.
+    "/route/explain",
+    "/route/policies",
+    "/route/feedback",
+    "/stats",
+    "/logs",
+    "/analytics",
+    "/policy-analytics",
+    "/calibrate",
+    "/compare",
+    "/config",
+    "/settings",
+    "/keys",
+    "/admin",
+    "/alerts",
+    "/catalog",
+    "/tiers",
+    "/pricing",
+    "/providers",
+    "/project",
+    "/evaluate",
+    "/demo/chaos",
+)
+
+
+def rate_limit_bucket(path: str) -> str:
+    """Which budget a request path spends: 'read' (free) or 'call' (costs money)."""
+    return "read" if path.startswith(_READ_ONLY_PREFIXES) else "call"
+
+
+# (bucket, api_key) -> list of request timestamps (sliding window)
 _request_log: dict[str, list[float]] = defaultdict(list)
 _MAX_TRACKED_KEYS = 10_000  # prevent unbounded memory growth
 
@@ -31,13 +81,18 @@ def invalidate_key_cache(key_string: str = None):
         _key_cache.clear()
 
 
-def check_rate_limit(api_key: str):
+def check_rate_limit(api_key: str, bucket: str = "call"):
+    limit = READ_RATE_LIMIT_PER_MINUTE if bucket == "read" else RATE_LIMIT_PER_MINUTE
     now = time.time()
     window_start = now - 60
-    _request_log[api_key] = [t for t in _request_log[api_key] if t > window_start]
-    if len(_request_log[api_key]) >= RATE_LIMIT_PER_MINUTE:
-        raise HTTPException(status_code=429, detail=f"Rate limit: max {RATE_LIMIT_PER_MINUTE} requests/minute per key")
-    _request_log[api_key].append(now)
+    tracked = f"{bucket}:{api_key}"
+    _request_log[tracked] = [t for t in _request_log[tracked] if t > window_start]
+    if len(_request_log[tracked]) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit: max {limit} requests/minute per key",
+        )
+    _request_log[tracked].append(now)
     # Evict oldest tracked keys if memory growing too large
     if len(_request_log) > _MAX_TRACKED_KEYS:
         cutoff = now - 120  # remove keys with no activity in 2 minutes
@@ -78,7 +133,7 @@ def _lookup_key_cached(key: str) -> ApiKey | None:
     return record
 
 
-async def require_api_key(authorization: str = Header(None)) -> ApiKey:
+async def require_api_key(request: Request, authorization: str = Header(None)) -> ApiKey:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing or malformed Authorization header. Expected: Bearer <key>")
 
@@ -88,7 +143,9 @@ async def require_api_key(authorization: str = Header(None)) -> ApiKey:
     if record is None:
         raise HTTPException(status_code=401, detail="Invalid or inactive API key")
 
-    check_rate_limit(key)
+    # Pick the budget from the path so the dashboard's free traffic cannot
+    # exhaust the budget the provider calls need.
+    check_rate_limit(key, rate_limit_bucket(request.url.path))
     return record
 
 
@@ -115,7 +172,7 @@ async def require_user(authorization: str = Header(None)) -> str:
         raise HTTPException(status_code=401, detail="Could not verify session")
 
 
-async def require_admin_any(authorization: str = Header(None)) -> str:
+async def require_admin_any(request: Request, authorization: str = Header(None)) -> str:
     """Accepts either API key (rw_...) or Supabase JWT. Returns admin user_id."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing auth")
@@ -125,7 +182,9 @@ async def require_admin_any(authorization: str = Header(None)) -> str:
     if token.startswith("rw_"):
         record = _lookup_key_cached(token)
         if record and record.user_id and is_admin_user_id(record.user_id):
-            check_rate_limit(token)
+            # Admin reads (/admin/stats, /admin/keys, ...) are dashboard
+            # traffic: they must spend the read budget, not the model budget.
+            check_rate_limit(token, rate_limit_bucket(request.url.path))
             return record.user_id
         raise HTTPException(status_code=403, detail="Admin access required (API key)")
 
@@ -140,7 +199,7 @@ def is_admin_user_id(user_id: str | None) -> bool:
     return bool(user_id) and user_id == ADMIN_USER_ID
 
 
-async def require_any_auth(authorization: str = Header(None)):
+async def require_any_auth(request: Request, authorization: str = Header(None)):
     """Accepts either API key (rw_...) or Supabase JWT. Returns the auth identity."""
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing auth")
@@ -150,7 +209,7 @@ async def require_any_auth(authorization: str = Header(None)):
     if token.startswith("rw_"):
         record = _lookup_key_cached(token)
         if record:
-            check_rate_limit(token)
+            check_rate_limit(token, rate_limit_bucket(request.url.path))
             return {"type": "api_key", "record": record, "user_id": record.user_id}
         raise HTTPException(status_code=401, detail="Invalid API key")
 
