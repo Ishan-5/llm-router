@@ -3,6 +3,7 @@ import {
   fetchStats, fetchConfig, fetchSettings, fetchChaosStatus,
   setSharedThreshold, getSharedThreshold,
   fetchRoutePolicies, getSharedModelId, setSharedModelId,
+  describeRequestError,
 } from '../api'
 import TierCircuit from './TierCircuit'
 import ThresholdSlider from './ThresholdSlider'
@@ -250,8 +251,12 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
           if (abortRef.current === controller) setLoading(false)
         },
         (detail) => {
-          setError(detail)
-          patchResult((r) => ({ ...r, response: r.response || `Error: ${detail}`, routed_to: 'error', cost_usd: 0, latency_ms: Date.now() - startTime }))
+          // Stream errors arrive as a bare detail string; translate them the
+          // same way the thrown path does, so a rate limit reads the same in
+          // both.
+          const message = describeRequestError(detail)
+          setError(message)
+          patchResult((r) => ({ ...r, response: r.response || `Error: ${message}`, routed_to: 'error', cost_usd: 0, latency_ms: Date.now() - startTime }))
           if (abortRef.current === controller) setLoading(false)
         },
         controller.signal,
@@ -263,8 +268,12 @@ export default function RoutingDiagram({ configVersion = 0, backendOnline = true
       fetchConfig().then(setActiveConfig).catch(() => {})
     } catch (err) {
       if (!(err.name === 'AbortError' && controller.signal.aborted)) {
-        setError(err.message)
-        patchResult((r) => ({ ...r, response: r.response || `Error: ${err.message}`, routed_to: 'error', cost_usd: 0, latency_ms: Date.now() - startTime }))
+        // A dropped connection reaches here as a bare "Failed to fetch", which
+        // tells the user nothing. Translate it so the card reads as a blip
+        // rather than as a broken product.
+        const message = describeRequestError(err)
+        setError(message)
+        patchResult((r) => ({ ...r, response: r.response || `Error: ${message}`, routed_to: 'error', cost_usd: 0, latency_ms: Date.now() - startTime }))
       }
     } finally {
       if (abortRef.current === controller) {

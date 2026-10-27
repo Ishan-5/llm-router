@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import Markdown from './Markdown'
-import { routeQuery, routeQueryStream, getSharedThreshold, setSharedThreshold } from '../api'
+import { routeQuery, routeQueryStream, getSharedThreshold, setSharedThreshold, describeRequestError } from '../api'
 import { API_BASE, API_KEY } from '../config'
 import ThresholdSlider from './ThresholdSlider'
 
@@ -227,10 +227,16 @@ export default function ApiPlayground() {
           })
           setLoading(false)
         },
-        (err) => { setError(err); setLoading(false) },
+        (err) => { setError(describeRequestError(err)); setLoading(false) },
         controller.signal,
         threshold,
       )
+        // Unhandled, a dropped connection left the spinner spinning forever.
+        .catch((err) => {
+          setLoading(false)
+          if (err?.name === 'AbortError') return
+          setError(describeRequestError(err))
+        })
     } else {
       routeQuery(trimmed, tier === 'auto' ? null : tier, bypassCache, controller.signal, threshold)
         .then((data) => {
@@ -249,7 +255,11 @@ export default function ApiPlayground() {
             timestamp: new Date().toISOString(),
           })
         })
-        .catch((err) => setError(err.message))
+        .catch((err) => {
+          // Cancelling a request is not a failure: surfacing the abort here
+          // put an error banner up the moment the user pressed Stop.
+          if (err?.name !== 'AbortError') setError(describeRequestError(err))
+        })
         .finally(() => setLoading(false))
     }
   }
