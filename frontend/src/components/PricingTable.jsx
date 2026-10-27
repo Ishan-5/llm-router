@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchPricing } from '../api'
+import { fetchPricing, describeRequestError } from '../api'
 import TopModels from './TopModels'
 
 const PROVIDER_ORDER = ['groq', 'openrouter', 'openai', 'anthropic', 'gemini', 'deepseek', 'mistral', 'perplexity', 'xai', 'ollama']
@@ -15,7 +15,7 @@ export default function PricingTable({ onBack }) {
   const [activeProvider, setActiveProvider] = useState('all')
 
   useEffect(() => {
-    fetchPricing().then(setPricing).catch((e) => setError(e.message))
+    fetchPricing().then(setPricing).catch((e) => setError(describeRequestError(e)))
   }, [])
 
   const providers = PROVIDER_ORDER.filter((p) => pricing.some((r) => r.provider === p))

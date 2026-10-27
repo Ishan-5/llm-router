@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LabelList,
 } from 'recharts'
-import { fetchPolicyAnalytics } from '../api'
+import { fetchPolicyAnalytics, describeRequestError } from '../api'
 import { MODEL_LIST } from '../models'
 import { DATASETS } from '../productMetrics'
 
@@ -145,7 +145,7 @@ export default function PolicyAnalytics({ isDark }) {
           setError(null)
           setUpdated(new Date())
         })
-        .catch((e) => { if (!cancelled) setError(e.message) })
+        .catch((e) => { if (!cancelled) setError(describeRequestError(e)) })
         .finally(() => { if (!cancelled) setLoading(false) })
     }
     load()
@@ -186,7 +186,7 @@ export default function PolicyAnalytics({ isDark }) {
             </span>
           )}
           <button
-            onClick={() => { setLoading(true); fetchPolicyAnalytics().then(setData).catch((e) => setError(e.message)).finally(() => setLoading(false)) }}
+            onClick={() => { setLoading(true); fetchPolicyAnalytics().then(setData).catch((e) => setError(describeRequestError(e))).finally(() => setLoading(false)) }}
             className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
           >
             ↻ refresh

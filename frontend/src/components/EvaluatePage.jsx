@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { evaluateQueries } from '../api'
+import { evaluateQueries, describeRequestError } from '../api'
 import { EMMA_CUTS } from '../productMetrics'
 
 const SAMPLE_QUERIES = [
@@ -61,7 +61,7 @@ export default function EvaluatePage() {
       setResults(data.results)
       setThresholds(data.thresholds || null)
     } catch (e) {
-      setError(e.message)
+      setError(describeRequestError(e))
     } finally {
       setLoading(false)
     }
