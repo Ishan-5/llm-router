@@ -9,6 +9,14 @@ import './index.css'
 
 inject()
 
+// PWA: register the service worker in production only, so dev/HMR is never
+// served from a stale cache. Offline shell + cache-first for static assets.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {})
+  })
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ErrorBoundary>
