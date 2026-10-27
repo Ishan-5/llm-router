@@ -6,6 +6,7 @@ const NAV = [
   { label: 'Home', path: '/', key: 'h' },
   { label: 'Models', path: '/models', key: 'p' },
   { label: 'Policy analytics', path: '/policies', key: 'y' },
+  { label: 'Reliability', path: '/reliability', key: 'r' },
   { label: 'About', path: '/about', key: 'a' },
   { label: 'Dashboard', path: '/dashboard', key: 'd' },
   { label: 'Sign in', path: '/auth', key: 's' },
