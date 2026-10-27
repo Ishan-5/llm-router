@@ -1,1 +1,47 @@
-﻿{"name": "RouteWise", "short_name": "RouteWise", "icons": [{"src": "/favicon-512.svg", "sizes": "512x512", "type": "image/svg+xml"}], "theme_color": "#0b1225", "background_color": "#0b1225", "display": "standalone"}
+{
+  "name": "Routewise — Cost-Aware LLM Request Router",
+  "short_name": "Routewise",
+  "description": "Cost-aware LLM router. Scores query difficulty, routes to the cheapest model tier, caches near-duplicates. Saves 40%+ vs always using frontier models.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#0b1225",
+  "theme_color": "#0b1225",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
