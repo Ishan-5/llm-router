@@ -480,3 +480,178 @@ def evaluate(req: EvaluateRequest):
         for mode_name, margin in margins
     ]
     return {"results": results, "thresholds": thresholds}
+
+
+# --- Difficulty calibration --------------------------------------------------
+#
+# Routing turns one number into a price, so that number has to mean something.
+# This endpoint answers "when the classifier says 6/10, how hard was the query
+# really?" by comparing the predicted score against the independent
+# LLM-as-labeler score (llm_difficulty_score) written for a sample of requests,
+# and reports how each tier actually performed once it was chosen.
+#
+# Read-only: it never scores new text and never calls a provider.
+
+_CALIBRATION_BINS = 10  # one bin per point of the 0-10 difficulty scale
+
+
+@router.get("/stats/reliability")
+def reliability(auth=Depends(require_any_auth)):
+    session = SessionLocal()
+    try:
+        if auth["type"] == "api_key" and auth["record"]:
+            scope = [RequestLog.api_key_id == auth["record"].id]
+        else:
+            key_ids = [
+                k.id
+                for k in session.query(ApiKey.id)
+                .filter(ApiKey.user_id == auth["user_id"], ApiKey.is_active == True)
+                .all()
+            ]
+            if not key_ids:
+                return {
+                    "message": "No API keys found. Create one in Settings first.",
+                    "sample": {"total": 0, "scored": 0, "labeled": 0, "judged": 0, "with_feedback": 0},
+                }
+            scope = [RequestLog.api_key_id.in_(key_ids)]
+
+        rows = (
+            session.query(
+                RequestLog.difficulty_score,
+                RequestLog.llm_difficulty_score,
+                RequestLog.intended_tier,
+                RequestLog.tier,
+                RequestLog.fallback_used,
+                RequestLog.cost_usd,
+                RequestLog.latency_ms,
+                RequestLog.quality_score,
+                RequestLog.quality_judged,
+                RequestLog.feedback,
+            )
+            .filter(*scope, RequestLog.cache_hit == False, RequestLog.tier != "web")
+            .order_by(RequestLog.created_at.desc())
+            .limit(2000)
+            .all()
+        )
+
+        if not rows:
+            return {
+                "message": "No routed requests yet. Send a few questions first.",
+                "sample": {"total": 0, "scored": 0, "labeled": 0, "judged": 0, "with_feedback": 0},
+            }
+
+        _, cheap_ceil, frontier_floor = score_to_tier(0.0, margin=1.0)
+
+        bins = [{"pred": 0.0, "actual": 0.0, "n": 0} for _ in range(_CALIBRATION_BINS)]
+        histogram = [0] * _CALIBRATION_BINS
+        abs_errors = []
+        scored = labeled = judged = with_feedback = borderline = 0
+        tiers: dict[str, dict] = {}
+        confusion: dict[tuple, int] = {}
+
+        def _bin(value):
+            return max(0, min(_CALIBRATION_BINS - 1, int(value)))
+
+        for row in rows:
+            (pred, label, intended, served, fell_back, cost,
+             latency, quality, is_judged, feedback) = row
+
+            if pred is not None:
+                scored += 1
+                histogram[_bin(pred)] += 1
+                if abs(pred - cheap_ceil) <= 0.25 or abs(pred - frontier_floor) <= 0.25:
+                    borderline += 1
+
+            if pred is not None and label is not None:
+                labeled += 1
+                slot = bins[_bin(pred)]
+                slot["pred"] += pred
+                slot["actual"] += label
+                slot["n"] += 1
+                abs_errors.append(abs(pred - label))
+
+            if is_judged and quality is not None:
+                judged += 1
+            if feedback:
+                with_feedback += 1
+
+            name = served or "unknown"
+            tier = tiers.setdefault(
+                name,
+                {
+                    "tier": name, "n": 0, "cost": 0.0, "latency": 0.0, "fallbacks": 0,
+                    "quality_sum": 0.0, "quality_n": 0, "up": 0, "down": 0,
+                },
+            )
+            tier["n"] += 1
+            tier["cost"] += cost or 0.0
+            tier["latency"] += latency or 0.0
+            if fell_back:
+                tier["fallbacks"] += 1
+            if is_judged and quality is not None:
+                tier["quality_sum"] += quality
+                tier["quality_n"] += 1
+            if feedback == "up":
+                tier["up"] += 1
+            elif feedback == "down":
+                tier["down"] += 1
+
+            if intended and served:
+                confusion[(intended, served)] = confusion.get((intended, served), 0) + 1
+
+        calibration = []
+        ece = 0.0
+        for i, slot in enumerate(bins):
+            if not slot["n"]:
+                continue
+            mean_pred = slot["pred"] / slot["n"]
+            mean_actual = slot["actual"] / slot["n"]
+            calibration.append(
+                {
+                    "bin": f"{i}-{i + 1}",
+                    "predicted": round(mean_pred, 2),
+                    "actual": round(mean_actual, 2),
+                    "n": slot["n"],
+                }
+            )
+            # Expected calibration error: weight each bin by how much of the
+            # labelled sample it holds, so it is comparable across runs.
+            if labeled:
+                ece += (slot["n"] / labeled) * abs(mean_actual - mean_pred)
+
+        tier_rows = [
+            {
+                "tier": t["tier"],
+                "requests": t["n"],
+                "avg_cost": round(t["cost"] / t["n"], 6),
+                "avg_latency_ms": round(t["latency"] / t["n"], 0),
+                "fallback_rate": round(t["fallbacks"] / t["n"], 3),
+                "avg_quality": round(t["quality_sum"] / t["quality_n"], 2) if t["quality_n"] else None,
+                "feedback_up": t["up"],
+                "feedback_down": t["down"],
+            }
+            for t in sorted(tiers.values(), key=lambda x: x["n"], reverse=True)
+        ]
+
+        return {
+            "sample": {
+                "total": len(rows),
+                "scored": scored,
+                "labeled": labeled,
+                "judged": judged,
+                "with_feedback": with_feedback,
+            },
+            "thresholds": {"cheap_ceil": cheap_ceil, "frontier_floor": frontier_floor},
+            "mae": round(sum(abs_errors) / len(abs_errors), 3) if abs_errors else None,
+            "ece": round(ece, 3) if labeled else None,
+            "borderline_share": round(borderline / scored, 3) if scored else None,
+            "reliability": calibration,
+            "histogram": [{"score": i, "count": c} for i, c in enumerate(histogram)],
+            "tiers": tier_rows,
+            "confusion": [
+                {"intended": pair[0], "served": pair[1], "requests": n}
+                for pair, n in sorted(confusion.items(), key=lambda kv: kv[1], reverse=True)
+            ],
+        }
+    finally:
+        session.close()
