@@ -376,6 +376,23 @@ export async function fetchCompare() {
   return res.json()
 }
 
+export async function fetchReliability() {
+  const headers = {}
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) headers['Authorization'] = `Bearer ${session.access_token}`
+  } catch {}
+  if (!headers['Authorization'] && API_KEY) headers['Authorization'] = `Bearer ${API_KEY}`
+  if (!headers['Authorization']) throw new Error('Sign in or configure an API key to load calibration data')
+  const res = await fetch(`${API_BASE}/stats/reliability`, { headers })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || 'Failed to load calibration data')
+  }
+  return res.json()
+}
+
 export async function fetchPolicyAnalytics() {
   const headers = {}
   try {
