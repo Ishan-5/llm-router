@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
-import { fetchProviders, fetchSettings, saveSettings, fetchCalibrate, setSharedThreshold } from '../api'
+import { fetchProviders, fetchSettings, saveSettings, fetchCalibrate, setSharedThreshold, describeRequestError } from '../api'
 import { API_BASE } from '../config'
 import TierConfigSection from './TierConfigSection'
 import ThresholdSlider from './ThresholdSlider'
@@ -114,7 +114,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
       const data = await fetchCalibrate()
       setCalibrateResult(data)
     } catch (e) {
-      setError(e.message)
+      setError(describeRequestError(e))
     } finally {
       setCalibrating(false)
     }
@@ -173,7 +173,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
       setSuccess('Reset to defaults.')
       setTimeout(() => { onSaved && onSaved() }, 800)
     } catch (e) {
-      setError(e.message)
+      setError(describeRequestError(e))
     } finally {
       setSaving(false)
     }
@@ -230,7 +230,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
       setSuccess('Config and router threshold saved successfully.')
       setTimeout(() => { onSaved && onSaved() }, 800)
     } catch (e) {
-      setError(e.message)
+      setError(describeRequestError(e))
     } finally {
       setSaving(false)
     }

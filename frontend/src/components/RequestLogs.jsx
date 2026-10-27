@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchLogs, fetchLogDetail } from '../api'
+import { fetchLogs, fetchLogDetail, describeRequestError } from '../api'
 import Markdown from './Markdown'
 
 const TIER_STYLES = {
@@ -138,7 +138,7 @@ export default function RequestLogs({ apiKey }) {
 
   function load() {
     setError(null)
-    fetchLogs(limit, apiKey).then(setLogs).catch((e) => setError(e.message))
+    fetchLogs(limit, apiKey).then(setLogs).catch((e) => setError(describeRequestError(e)))
   }
 
   useEffect(load, [limit, apiKey])

@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { fetchCatalog, projectSavings } from '../api'
+import { fetchCatalog, projectSavings, describeRequestError } from '../api'
 
 /**
  * Savings calculator.
@@ -126,7 +126,7 @@ export default function SavingsCalculator() {
         const astra = d.models.find((m) => m.id === 'gpt-6-astra')
         if (astra) setFrontierModel((cur) => cur || astra.id)
       })
-      .catch((e) => alive && setCatalogError(e.message))
+      .catch((e) => alive && setCatalogError(describeRequestError(e)))
     return () => { alive = false }
   }, [])
 
@@ -188,7 +188,7 @@ export default function SavingsCalculator() {
         )
         setResult(await projectSavings(payload))
       } catch (e) {
-        setError(e.message)
+        setError(describeRequestError(e))
       } finally {
         setBusy(false)
       }
