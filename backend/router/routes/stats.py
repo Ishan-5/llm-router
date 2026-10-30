@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func
 from router.db import SessionLocal, RequestLog, ApiKey
 from router.auth import require_api_key, require_any_auth
+from router.budgets import budget_status, month_start
 from router.config import MODEL_CONFIG
 from router.auth import is_admin_user_id
 from predict_difficulty import score_to_tier
@@ -92,6 +93,7 @@ def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
                 "output_tokens": r.output_tokens, "cost_usd": r.cost_usd, "latency_ms": r.latency_ms,
                 "cache_hit": r.cache_hit, "cache_similarity": r.cache_similarity,
                 "fallback_used": r.fallback_used, "tokens_saved_usd": r.tokens_saved_usd,
+                "budget_capped": bool(r.budget_capped), "budget_scope": r.budget_scope,
                 "llm_difficulty_score": r.llm_difficulty_score, "llm_predicted_tier": r.llm_predicted_tier,
                 "created_at": r.created_at.isoformat() if r.created_at else None,
             }
@@ -116,6 +118,7 @@ def get_log_detail(log_id: int, api_key: ApiKey = Depends(require_api_key)):
             "output_tokens": r.output_tokens, "cost_usd": r.cost_usd, "latency_ms": r.latency_ms,
             "cache_hit": r.cache_hit, "cache_similarity": r.cache_similarity,
             "fallback_used": r.fallback_used, "tokens_saved_usd": r.tokens_saved_usd,
+            "budget_capped": bool(r.budget_capped), "budget_scope": r.budget_scope,
             "llm_difficulty_score": r.llm_difficulty_score, "llm_predicted_tier": r.llm_predicted_tier,
             "created_at": r.created_at.isoformat() if r.created_at else None,
         }
@@ -279,6 +282,17 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
         token_rows = session.query(RequestLog.input_tokens, RequestLog.output_tokens).filter(*base_filter).all()
         hypothetical = sum((in_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_input"] + (out_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_output"] for in_tok, out_tok in token_rows)
         teams, team_count = _team_breakdown(session, base_filter, frontier_cfg)
+        budget = budget_status(api_key, session)
+        downgraded = (
+            session.query(func.count(RequestLog.id))
+            .filter(
+                *base_filter,
+                RequestLog.created_at >= month_start(),
+                RequestLog.budget_capped == True,
+            )
+            .scalar()
+            or 0
+        )
         return {
             "summary": {
                 "total_requests": total_requests, "total_cost": round(total_cost, 6),
@@ -294,6 +308,8 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
             "latency_by_tier": {k: round(float(v or 0), 1) for k, v in latency_by_tier.items()},
             "top_expensive": top_expensive_list,
             "teams": teams, "team_count": team_count,
+            "budget": budget.as_dict(),
+            "budget_downgrades_this_month": int(downgraded),
         }
     finally:
         session.close()
