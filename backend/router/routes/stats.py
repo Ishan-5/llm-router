@@ -13,6 +13,63 @@ router = APIRouter()
 log = logging.getLogger("routewise")
 
 
+def _team_breakdown(session, base_filter, frontier_cfg, limit=25):
+    """Spend grouped by team tag, which is the thing a budget belongs to.
+
+    The comparison is the same one /analytics uses at the top level: what these
+    requests actually cost versus what the same tokens would have cost on the
+    frontier tier. Cache hits log zero tokens and zero cost, so they contribute
+    to neither side and cannot invent savings for a team.
+
+    Groups are ordered by spend because the expensive team is the one someone
+    will be asked about. The list is capped and the true count returned with it:
+    tags are caller-supplied on a public endpoint, so the number of distinct
+    values is not something this query should be allowed to grow without bound.
+    """
+    price_in = frontier_cfg["price_per_m_input"]
+    price_out = frontier_cfg["price_per_m_output"]
+
+    rows = (
+        session.query(
+            RequestLog.team_id,
+            func.count(RequestLog.id),
+            func.sum(RequestLog.cost_usd),
+            func.sum(RequestLog.input_tokens),
+            func.sum(RequestLog.output_tokens),
+        )
+        .filter(*base_filter)
+        .group_by(RequestLog.team_id)
+        .all()
+    )
+    cache_hits_by_team = dict(
+        session.query(RequestLog.team_id, func.count(RequestLog.id))
+        .filter(*base_filter, RequestLog.cache_hit == True)
+        .group_by(RequestLog.team_id)
+        .all()
+    )
+
+    teams = []
+    for team_id, requests, cost, in_tok, out_tok in rows:
+        cost = float(cost or 0.0)
+        hypothetical = (
+            (in_tok or 0) / 1_000_000 * price_in
+            + (out_tok or 0) / 1_000_000 * price_out
+        )
+        teams.append({
+            "team_id": team_id,
+            "requests": int(requests or 0),
+            "cost_usd": round(cost, 6),
+            "hypothetical_cost_usd": round(hypothetical, 6),
+            "saved_usd": round(max(0.0, hypothetical - cost), 6),
+            "savings_pct": round((1 - cost / hypothetical) * 100, 1) if hypothetical > 0 else 0.0,
+            "cache_hits": int(cache_hits_by_team.get(team_id, 0)),
+        })
+
+    teams.sort(key=lambda team: team["cost_usd"], reverse=True)
+    return teams[:limit], len(teams)
+
+
+
 @router.get("/logs")
 def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
     limit = max(1, min(limit, 100))
@@ -28,6 +85,7 @@ def get_logs(limit: int = 50, api_key: ApiKey = Depends(require_api_key)):
         return [
             {
                 "id": r.id, "query": r.query,
+                "team_id": r.team_id, "feature_tag": r.feature_tag,
                 "response": (r.response[:500] + "...") if r.response and len(r.response) > 500 else r.response,
                 "tier": r.tier, "intended_tier": r.intended_tier, "model_id": r.model_id,
                 "difficulty_score": r.difficulty_score, "input_tokens": r.input_tokens,
@@ -52,6 +110,7 @@ def get_log_detail(log_id: int, api_key: ApiKey = Depends(require_api_key)):
             raise HTTPException(status_code=404, detail="Log entry not found")
         return {
             "id": r.id, "query": r.query, "response": r.response,
+            "team_id": r.team_id, "feature_tag": r.feature_tag,
             "tier": r.tier, "intended_tier": r.intended_tier, "model_id": r.model_id,
             "difficulty_score": r.difficulty_score, "input_tokens": r.input_tokens,
             "output_tokens": r.output_tokens, "cost_usd": r.cost_usd, "latency_ms": r.latency_ms,
@@ -213,12 +272,13 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
         cache_savings = float(session.query(func.sum(RequestLog.tokens_saved_usd)).filter(*base_filter, RequestLog.cache_hit == True).scalar() or 0.0)
         fallbacks = session.query(func.count(RequestLog.id)).filter(*base_filter, RequestLog.fallback_used == True).scalar() or 0
         latency_by_tier = dict(session.query(RequestLog.tier, func.avg(RequestLog.latency_ms)).filter(*base_filter).group_by(RequestLog.tier).all())
-        top_expensive = session.query(RequestLog.id, RequestLog.query, RequestLog.tier, RequestLog.model_id, RequestLog.cost_usd, RequestLog.input_tokens, RequestLog.output_tokens, RequestLog.created_at).filter(*base_filter).order_by(RequestLog.cost_usd.desc()).limit(5).all()
-        top_expensive_list = [{"id": r.id, "query": r.query[:100] + "..." if r.query and len(r.query) > 100 else r.query, "tier": r.tier, "model": r.model_id, "cost": float(r.cost_usd or 0), "tokens": (r.input_tokens or 0) + (r.output_tokens or 0), "created_at": r.created_at.isoformat() if r.created_at else None} for r in top_expensive]
+        top_expensive = session.query(RequestLog.id, RequestLog.query, RequestLog.tier, RequestLog.model_id, RequestLog.cost_usd, RequestLog.input_tokens, RequestLog.output_tokens, RequestLog.created_at, RequestLog.team_id).filter(*base_filter).order_by(RequestLog.cost_usd.desc()).limit(5).all()
+        top_expensive_list = [{"id": r.id, "query": r.query[:100] + "..." if r.query and len(r.query) > 100 else r.query, "tier": r.tier, "model": r.model_id, "cost": float(r.cost_usd or 0), "tokens": (r.input_tokens or 0) + (r.output_tokens or 0), "team_id": r.team_id, "created_at": r.created_at.isoformat() if r.created_at else None} for r in top_expensive]
         total_cost = float(session.query(func.sum(RequestLog.cost_usd)).filter(*base_filter).scalar() or 0.0)
         frontier_cfg = MODEL_CONFIG["frontier"]
         token_rows = session.query(RequestLog.input_tokens, RequestLog.output_tokens).filter(*base_filter).all()
         hypothetical = sum((in_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_input"] + (out_tok or 0) / 1_000_000 * frontier_cfg["price_per_m_output"] for in_tok, out_tok in token_rows)
+        teams, team_count = _team_breakdown(session, base_filter, frontier_cfg)
         return {
             "summary": {
                 "total_requests": total_requests, "total_cost": round(total_cost, 6),
@@ -233,6 +293,7 @@ def get_analytics(api_key: ApiKey = Depends(require_api_key)):
             "tier_tokens": tier_tokens, "daily": daily,
             "latency_by_tier": {k: round(float(v or 0), 1) for k, v in latency_by_tier.items()},
             "top_expensive": top_expensive_list,
+            "teams": teams, "team_count": team_count,
         }
     finally:
         session.close()
