@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
-import { fetchLogs, fetchLogDetail, fetchAnalytics, fetchTeams } from '../api'
+import { fetchLogs, fetchLogDetail, fetchAnalytics, fetchTeams, fetchProviders } from '../api'
 import RequestLogs from './RequestLogs'
 import CostAnalytics from './CostAnalytics'
 import ApiPlayground from './ApiPlayground'
@@ -63,6 +63,175 @@ const POLICY_CHOICES = [
     title: 'kate: customer support without a mid band - cheap below the cut, frontier above it.',
   },
 ]
+
+const BYOM_TIERS = [
+  { value: 'cheap', label: 'cheap' },
+  { value: 'mid', label: 'mid' },
+  { value: 'frontier', label: 'frontier' },
+]
+
+// Stable identity so the editor is not rebuilt by unrelated parent renders.
+const EMPTY_BYOM = {}
+
+function emptyByomRows() {
+  return Object.fromEntries(
+    BYOM_TIERS.map(({ value }) => [
+      value,
+      { enabled: false, provider: '', model_id: '', api_key: '', price_in: '', price_out: '' },
+    ])
+  )
+}
+
+function byomRowsFromSummary(byom) {
+  const rows = emptyByomRows()
+  BYOM_TIERS.forEach(({ value }) => {
+    const saved = byom?.[value]
+    if (!saved) return
+    rows[value] = {
+      enabled: true,
+      provider: saved.provider || '',
+      model_id: saved.model_id || '',
+      api_key: '',
+      price_in: saved.price_per_m_input ?? '',
+      price_out: saved.price_per_m_output ?? '',
+    }
+  })
+  return rows
+}
+
+// PUT replaces the whole config, so a disabled tier must be sent as null.
+function buildByomPayload(rows) {
+  const payload = {}
+  BYOM_TIERS.forEach(({ value }) => {
+    const row = rows[value]
+    if (!row.enabled || !row.provider || !row.model_id.trim()) {
+      payload[value] = null
+      return
+    }
+    const entry = { provider: row.provider, model_id: row.model_id.trim() }
+    const secret = row.api_key.trim()
+    if (secret) entry.api_key = secret
+    const priceIn = String(row.price_in).trim()
+    const priceOut = String(row.price_out).trim()
+    if (priceIn !== '') entry.price_per_m_input = Number(priceIn)
+    if (priceOut !== '') entry.price_per_m_output = Number(priceOut)
+    payload[value] = entry
+  })
+  return payload
+}
+
+function byomSummaryText(byom) {
+  const configured = BYOM_TIERS.filter(({ value }) => byom?.[value])
+  if (configured.length === 0) return null
+  return configured
+    .map(({ value }) => `${value} ${byom[value].provider}/${byom[value].model_id}`)
+    .join(' · ')
+}
+
+function describeDetail(payload) {
+  const detail = payload?.detail
+  if (Array.isArray(detail)) return detail[0]?.msg || 'invalid input'
+  return detail || 'request failed'
+}
+
+// A tier row with its own provider, model and credential. The credential is
+// write-only: the API returns a hint, and a blank field keeps the saved one.
+function ByomEditor({ providers, initial, onChange }) {
+  const [rows, setRows] = useState(() => byomRowsFromSummary(initial))
+
+  // Publish the starting point too, so saving an untouched editor rewrites the
+  // current config instead of sending an empty (clear-everything) map.
+  useEffect(() => {
+    onChange(buildByomPayload(rows))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function update(tier, field, value) {
+    const next = { ...rows, [tier]: { ...rows[tier], [field]: value } }
+    setRows(next)
+    onChange(buildByomPayload(next))
+  }
+
+  const providerOptions = Object.entries(providers || {})
+  const fieldClass = 'bg-surface border border-line rounded-md px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50'
+
+  return (
+    <div className="flex flex-col gap-2">
+      {BYOM_TIERS.map(({ value, label }) => {
+        const row = rows[value]
+        const savedHint = initial?.[value]?.api_key_masked
+        return (
+          <div key={value} className="rounded-lg border border-line bg-base p-2.5">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={row.enabled}
+                onChange={(e) => update(value, 'enabled', e.target.checked)}
+                className="accent-[var(--color-signal)]"
+              />
+              <span className="font-mono text-[10px] uppercase tracking-wide text-primary">{label}</span>
+              <span className="font-mono text-[9px] text-muted">override this tier</span>
+            </label>
+            {row.enabled && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mt-2">
+                <select
+                  value={row.provider}
+                  onChange={(e) => update(value, 'provider', e.target.value)}
+                  className={fieldClass}
+                >
+                  <option value="">Provider…</option>
+                  {providerOptions.map(([slug, info]) => (
+                    <option key={slug} value={slug}>{info.label || slug}</option>
+                  ))}
+                </select>
+                <input
+                  value={row.model_id}
+                  onChange={(e) => update(value, 'model_id', e.target.value)}
+                  placeholder="model id"
+                  className={fieldClass}
+                />
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={row.api_key}
+                  onChange={(e) => update(value, 'api_key', e.target.value)}
+                  placeholder={savedHint ? `saved ${savedHint} - blank keeps it` : 'provider key'}
+                  className={fieldClass}
+                />
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={row.price_in}
+                    onChange={(e) => update(value, 'price_in', e.target.value)}
+                    placeholder="in $/M"
+                    title="Optional. Used to cost requests against your model; the price table fills it in when the model is known."
+                    className={`${fieldClass} min-w-0 w-1/2`}
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={row.price_out}
+                    onChange={(e) => update(value, 'price_out', e.target.value)}
+                    placeholder="out $/M"
+                    title="Optional output price per million tokens."
+                    className={`${fieldClass} min-w-0 w-1/2`}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+      <p className="font-mono text-[9px] text-muted leading-relaxed">
+        Encrypted at rest and never shown again. Leave the key blank to keep the saved one.
+        Uncheck every tier and save to remove BYOM.
+      </p>
+    </div>
+  )
+}
 
 function describeBudget(budget) {
   if (!budget || budget.state === 'unlimited') return null
@@ -461,6 +630,12 @@ export default function DashboardPage() {
   const [keyMaxTier, setKeyMaxTier] = useState('')
   const [keyThreshold, setKeyThreshold] = useState('')
   const [keyCache, setKeyCache] = useState(true)
+  const [showByomForm, setShowByomForm] = useState(false)
+  const [keyByom, setKeyByom] = useState({})
+  const [providers, setProviders] = useState({})
+  const [editingByomId, setEditingByomId] = useState(null)
+  const [byomDraft, setByomDraft] = useState({})
+  const [savingByom, setSavingByom] = useState(false)
   const [editingBudget, setEditingBudget] = useState(null)
   const [budgetDraft, setBudgetDraft] = useState('')
   const [savingBudget, setSavingBudget] = useState(false)
@@ -469,7 +644,10 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedKeyId, setSelectedKeyId] = useState(null)
 
-  useEffect(() => { loadKeys(); loadTeams() }, [])
+  useEffect(() => {
+    loadKeys(); loadTeams()
+    fetchProviders().then(setProviders).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (keys.length > 0 && !selectedKeyId) {
@@ -533,6 +711,19 @@ export default function DashboardPage() {
     })
     if (res.ok) {
       const data = await res.json()
+      // BYOM is a second write because it lives in its own table and can hold
+      // credentials; a failure here must not hide the key that was created.
+      if (Object.values(keyByom || {}).some(Boolean)) {
+        const byomRes = await fetch(`${API_BASE}/keys/${data.id}/byom`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(keyByom),
+        })
+        if (!byomRes.ok) {
+          const err = await byomRes.json().catch(() => ({}))
+          setError(`Key created, but BYOM was not saved: ${describeDetail(err)}`)
+        }
+      }
       setNewKey(data.key)
       setKeyName('')
       setKeyBudget('')
@@ -542,6 +733,8 @@ export default function DashboardPage() {
       setKeyMaxTier('')
       setKeyThreshold('')
       setKeyCache(true)
+      setShowByomForm(false)
+      setKeyByom({})
       loadKeys()
       loadTeams()
     } else {
@@ -549,6 +742,26 @@ export default function DashboardPage() {
       setError(err.detail || 'Failed to create key')
     }
     setCreating(false)
+  }
+
+  async function saveByom(keyId) {
+    setSavingByom(true)
+    setError(null)
+    const headers = await authHeaders()
+    const res = await fetch(`${API_BASE}/keys/${keyId}/byom`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(byomDraft),
+    })
+    if (res.ok) {
+      setEditingByomId(null)
+      setByomDraft({})
+      loadKeys()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setError(`BYOM was not saved: ${describeDetail(err)}`)
+    }
+    setSavingByom(false)
   }
 
   function startEditBudget(k, field) {
@@ -886,8 +1099,9 @@ export default function DashboardPage() {
         <>
           <p className="text-muted text-sm mb-8">
             Use these keys in the <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code> header when calling <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">/route</code>.
-            A key can belong to a team, carry optional daily and monthly caps, and hold its own routing policy,
-            tier ceiling, sensitivity and cache switch. When a cap is exhausted the key keeps working on the cheap tier.
+            A key can belong to a team, carry optional daily and monthly caps, hold its own routing policy,
+            tier ceiling, sensitivity and cache switch, and bring its own provider and model per tier.
+            When a cap is exhausted the key keeps working on the cheap tier.
           </p>
 
           {/* Create key */}
@@ -1014,6 +1228,30 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* BYOM: the key can call the customer's own model on any tier. */}
+            <div className="w-full rounded-lg border border-line bg-surface/70 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Bring your own model</p>
+                  <p className="font-mono text-[10px] text-muted mt-1">
+                    optional · overrides these tiers for every client using the key · encrypted at rest
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowByomForm((open) => !open)}
+                  className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
+                >
+                  {showByomForm ? 'hide' : 'configure'}
+                </button>
+              </div>
+              {showByomForm && (
+                <div className="mt-3">
+                  <ByomEditor providers={providers} initial={EMPTY_BYOM} onChange={setKeyByom} />
+                </div>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={creating}
@@ -1077,7 +1315,8 @@ export default function DashboardPage() {
               keys.map((k) => {
                 const chip = describeBudget(k.budget)
                 return (
-                <div key={k.id} className="group flex items-start justify-between gap-4 bg-surface border border-line rounded-xl shadow-card px-4 py-4 hover:border-signal/30 hover:shadow-card-hover transition-all">
+                <div key={k.id} className="group bg-surface border border-line rounded-xl shadow-card px-4 py-4 hover:border-signal/30 hover:shadow-card-hover transition-all">
+                  <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-body text-sm font-medium group-hover:text-signal transition-colors">{k.name}</p>
@@ -1153,6 +1392,21 @@ export default function DashboardPage() {
                       <span className="mx-1.5">·</span>
                       cache {k.cache_enabled ? 'on' : 'off'}
                     </p>
+                    <p className="font-mono text-[10px] text-muted mt-1">
+                      BYOM: {byomSummaryText(k.byom) || 'account default'}
+                      <span className="mx-1.5">·</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingByomId(editingByomId === k.id ? null : k.id)
+                          setByomDraft({})
+                          setError(null)
+                        }}
+                        className="underline decoration-dotted hover:text-signal transition"
+                      >
+                        {editingByomId === k.id ? 'close' : 'edit'}
+                      </button>
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
@@ -1169,6 +1423,29 @@ export default function DashboardPage() {
                       {revoking === k.id ? 'revoking…' : 'revoke'}
                     </button>
                   </div>
+                  </div>
+                  {editingByomId === k.id && (
+                    <div className="mt-3 rounded-lg border border-line bg-panel/40 p-3">
+                      <ByomEditor providers={providers} initial={k.byom} onChange={setByomDraft} />
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={() => saveByom(k.id)}
+                          disabled={savingByom}
+                          className="bg-signal text-white font-semibold text-xs px-4 py-2 rounded-lg hover:brightness-110 transition disabled:opacity-50"
+                        >
+                          {savingByom ? 'saving…' : 'Save BYOM'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingByomId(null)}
+                          className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
+                        >
+                          cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 )
               })
