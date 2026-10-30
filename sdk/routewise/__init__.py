@@ -439,6 +439,22 @@ class RouteWiseClient:
         """
         return self.get_analytics().get("teams", [])
 
+    def get_budget(self) -> dict:
+        """
+        Current budget posture for this key.
+
+        Returns the binding cap (`scope`), spend so far (`spent_usd`), what is
+        left (`remaining_usd`), the state (ok / warning / exhausted /
+        unlimited) and how many requests were downgraded this month.
+
+        The same block is inline on every ask(): result["budget"], and on the
+        OpenAI-compatible endpoint as response["x-routewise-budget"].
+        """
+        analytics = self.get_analytics()
+        budget = dict(analytics.get("budget") or {})
+        budget["downgrades_this_month"] = analytics.get("budget_downgrades_this_month", 0)
+        return budget
+
     def get_pricing(self) -> list[dict]:
         """
         Fetch all active model pricing rows.

@@ -97,6 +97,30 @@ Tags are optional and never fail a request. Untagged calls group under
 `team_id: None`. The server lowercases them and keeps `a-z`, digits, dots and
 hyphens, so `Growth Team` and `growth_team` land in one row.
 
+## Budgets
+
+Every response carries a `budget` block. It names the cap that decided the
+answer (`scope`), how much is spent, what is left and the state. When a cap runs
+out the request is **downgraded to the cheap tier, never rejected**, and the
+block explains why:
+
+```python
+result = client.ask("design a distributed rate limiter")
+print(result["routed_to"])              # "cheap" -- forced by the budget
+print(result["budget"]["state"])        # "exhausted"
+print(result["budget"]["scope"])        # "team_monthly"
+print(result["budget"]["remaining_usd"])  # 0.0
+
+# or ask for just the budget posture
+budget = client.get_budget()
+print(budget["state"], budget["downgrades_this_month"])
+```
+
+States are `ok`, `warning` (from 80%), `exhausted` and `unlimited`. The
+OpenAI-compatible path exposes the same block as
+`response["x-routewise-budget"]` and via `x-routewise-budget-*` headers, so a
+client that logs headers still sees why a cheaper model answered.
+
 ## All methods
 
 ```python
@@ -109,6 +133,7 @@ client.ask("query", user_api_keys={"frontier": "sk-..."})  # per-request key ove
 # spend tags -- grouped per team in the dashboard
 client.ask("query", team="growth", feature="onboarding")
 client.get_teams()      # per-team spend, all-frontier cost, savings
+client.get_budget()     # binding cap, spend, remaining, state, downgrades
 
 # byom config — set one, two, or all three tiers; unset tiers keep defaults
 client.configure(cheap={...}, mid={...}, frontier={...})  # set custom models
