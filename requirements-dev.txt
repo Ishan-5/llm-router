@@ -3,4 +3,4 @@ pytest-mock
 pytest-cov==7.1.0
 httpx
 mcp<2
-ruff==0.17.0
+ruff==0.17.3
