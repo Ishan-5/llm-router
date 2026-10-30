@@ -1,10 +1,13 @@
 import secrets
 import logging
+from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, field_validator
-from router.db import SessionLocal, ApiKey, Team
+from router.db import SessionLocal, ApiKey, Team, KeyProviderConfig
 from router.auth import require_user, invalidate_key_cache
 from router.key_prefs import POLICIES, TIERS
+from router.config import SUPPORTED_PROVIDERS
+from router import secret_store
 from router.budgets import (
     budget_status,
     get_team,
@@ -51,6 +54,14 @@ def _validate_threshold(v):
         return None
     if v < 0.0 or v > 2.0:
         raise ValueError("default_threshold must be between 0.0 and 2.0")
+    return v
+
+
+def _validate_price(v):
+    if v is None:
+        return None
+    if v != v or v in (float("inf"), float("-inf")) or v < 0:
+        raise ValueError("price must be a finite number, zero or greater")
     return v
 
 
@@ -117,6 +128,49 @@ class KeyUpdateRequest(BaseModel):
         return _validate_threshold(v)
 
 
+class ByomTierRequest(BaseModel):
+    """One tier's own model. ``api_key`` may be omitted to keep the stored one."""
+    provider: str
+    model_id: str
+    api_key: str | None = None
+    price_per_m_input: float | None = None
+    price_per_m_output: float | None = None
+
+    @field_validator("provider")
+    @classmethod
+    def check_provider(cls, v):
+        if v not in SUPPORTED_PROVIDERS:
+            raise ValueError(f"provider must be one of {SUPPORTED_PROVIDERS}")
+        return v
+
+    @field_validator("model_id")
+    @classmethod
+    def check_model_id(cls, v):
+        v = v.strip()
+        if not v:
+            raise ValueError("model_id cannot be empty")
+        return v
+
+    @field_validator("api_key")
+    @classmethod
+    def check_api_key(cls, v):
+        if v is None:
+            return None
+        return v.strip() or None
+
+    @field_validator("price_per_m_input", "price_per_m_output")
+    @classmethod
+    def check_price(cls, v):
+        return _validate_price(v)
+
+
+class KeyByomRequest(BaseModel):
+    """Replace the key's BYOM config. A null or omitted tier uses the account default."""
+    cheap: ByomTierRequest | None = None
+    mid: ByomTierRequest | None = None
+    frontier: ByomTierRequest | None = None
+
+
 def _own_team(session, team_id, user_id) -> Team | None:
     if team_id is None:
         return None
@@ -126,6 +180,33 @@ def _own_team(session, team_id, user_id) -> Team | None:
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
     return team
+
+
+def _own_key(session, key_id, user_id) -> ApiKey:
+    record = session.query(ApiKey).filter(
+        ApiKey.id == key_id, ApiKey.user_id == user_id, ApiKey.is_active == True
+    ).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Key not found")
+    return record
+
+
+def _byom_summary(session, key_id) -> dict:
+    """Read-only view: provider/model/prices plus a hint, never the credential."""
+    rows = session.query(KeyProviderConfig).filter(
+        KeyProviderConfig.api_key_id == key_id
+    ).all()
+    return {
+        row.tier: {
+            "provider": row.provider,
+            "model_id": row.model_id,
+            "api_key_masked": row.api_key_hint or "",
+            "has_api_key": bool(row.api_key_encrypted),
+            "price_per_m_input": row.price_per_m_input,
+            "price_per_m_output": row.price_per_m_output,
+        }
+        for row in rows
+    }
 
 
 def _serialize(record: ApiKey, session) -> dict:
@@ -144,6 +225,7 @@ def _serialize(record: ApiKey, session) -> dict:
         "max_tier": record.max_tier,
         "default_threshold": record.default_threshold,
         "cache_enabled": record.cache_enabled is not False,
+        "byom": _byom_summary(session, record.id),
         "spent_this_month": round(spent_month, 6),
         "budget": status.as_dict(),
         "created_at": record.created_at.isoformat(),
@@ -245,3 +327,78 @@ def revoke_key(key_id: int, user_id: str = Depends(require_user)):
     finally:
         session.close()
     return {"revoked": key_id}
+
+
+@router.get("/keys/{key_id}/byom")
+def get_key_byom(key_id: int, user_id: str = Depends(require_user)):
+    """The key's own models. Returns hints only, so the secret can be edited blind."""
+    session = SessionLocal()
+    try:
+        _own_key(session, key_id, user_id)
+        return {
+            "byom": _byom_summary(session, key_id),
+            "storage_ready": secret_store.available(),
+        }
+    finally:
+        session.close()
+
+
+@router.put("/keys/{key_id}/byom")
+def set_key_byom(key_id: int, req: KeyByomRequest, user_id: str = Depends(require_user)):
+    """Replace the key's BYOM config: a tier that is null or omitted uses the account default.
+
+    Provider credentials are encrypted before they are stored and are never
+    returned. Omitting ``api_key`` keeps the one already saved for that tier, so
+    the dashboard can re-save a row without ever holding the secret in the page.
+    """
+    session = SessionLocal()
+    try:
+        _own_key(session, key_id, user_id)
+        for tier in TIERS:
+            cfg = getattr(req, tier)
+            existing = session.query(KeyProviderConfig).filter(
+                KeyProviderConfig.api_key_id == key_id, KeyProviderConfig.tier == tier
+            ).first()
+            if cfg is None:
+                if existing:
+                    session.delete(existing)
+                continue
+
+            keep_existing = (
+                cfg.api_key is None
+                and existing is not None
+                and existing.provider == cfg.provider
+                and bool(existing.api_key_encrypted)
+            )
+            if cfg.api_key is None and not keep_existing and cfg.provider != "ollama":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"api_key is required for {tier} when the provider changes",
+                )
+
+            row = existing or KeyProviderConfig(api_key_id=key_id, tier=tier)
+            if existing is None:
+                session.add(row)
+            row.provider = cfg.provider
+            row.model_id = cfg.model_id
+            row.price_per_m_input = cfg.price_per_m_input
+            row.price_per_m_output = cfg.price_per_m_output
+            if cfg.api_key is not None:
+                encrypted = secret_store.encrypt(cfg.api_key)
+                if encrypted is None:
+                    raise HTTPException(
+                        status_code=503,
+                        detail="BYOM storage is not configured on this server (BYOM_ENCRYPTION_KEY)",
+                    )
+                row.api_key_encrypted = encrypted
+                row.api_key_hint = secret_store.mask(cfg.api_key)
+            elif cfg.provider == "ollama":
+                # Ollama needs no credential; clearing it is the correct state.
+                row.api_key_encrypted = None
+                row.api_key_hint = ""
+            row.updated_at = datetime.utcnow()
+
+        session.commit()
+        return {"byom": _byom_summary(session, key_id)}
+    finally:
+        session.close()
