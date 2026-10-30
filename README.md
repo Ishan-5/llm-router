@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-418%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-432%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -460,7 +460,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (351 tests) · node:test (67 CLI tests) · 418 total · GitHub Actions CI |
+| ✅ Testing | pytest (365 tests) · node:test (67 CLI tests) · 432 total · GitHub Actions CI |
 
 ---
 
@@ -800,6 +800,47 @@ curl -X POST https://your-backend/keys \
        "default_policy": "3tier", "max_tier": "mid",
        "default_threshold": 0.8, "cache_enabled": false}'
 ```
+
+### BYOM on a key
+
+BYOM (bring your own model) lets a key call the customer's provider and model on
+any tier. It used to live only in one browser's `localStorage`, so a server or a
+CLI could not use it. Now it belongs to the key: every client that holds the
+RouteWise key gets the same override.
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /keys/{id}/byom` | Per-tier `provider`, `model_id`, prices and an `api_key_masked` hint |
+| `PUT /keys/{id}/byom` | Replace the config. A tier sent as `null` (or omitted) falls back to the account default |
+
+The credential is **encrypted at rest** and is never returned by any endpoint —
+reads expose `gsk…1234` and a `has_api_key` boolean. Omitting `api_key` keeps the
+stored one, so the dashboard can re-save a row without ever holding the secret.
+Changing provider without sending a new credential is rejected; `ollama` needs no
+credential. The dashboard surfaces this under **Create a key → Bring your own
+model** and per key as **BYOM → edit**.
+
+```bash
+curl -X PUT https://your-backend/keys/12/byom \
+  -H "Authorization: Bearer <supabase-session>" \
+  -H "Content-Type: application/json" \
+  -d '{"cheap": {"provider": "groq", "model_id": "llama-3.1-8b-instant",
+                 "api_key": "gsk_...", "price_per_m_input": 0.05,
+                 "price_per_m_output": 0.08},
+       "mid": null, "frontier": null}'
+```
+
+Resolution per tier is **request BYOM → key BYOM → account config → server
+default**. A request may still override the key; if it switches provider, the
+key's stored credential is dropped rather than sent to the new provider, and
+the caller can supply its own key via `user_api_keys`, which always wins.
+
+Encryption uses `BYOM_ENCRYPTION_KEY` (a Fernet key). If it is unset the server
+derives one from `SUPABASE_SERVICE_KEY`, so an existing deployment works without
+another secret; if neither exists, saving a credential returns `503` instead of
+storing plaintext. Rotating the encryption key makes old credentials
+undecryptable — the router logs it and falls back to the account config instead
+of sending the wrong provider's key, and the owner can re-save the credential.
 
 ---
 
