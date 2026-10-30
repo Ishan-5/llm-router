@@ -9,6 +9,12 @@ const TIER_STYLES = {
   web: 'text-cool bg-cool/10 border-cool/30',
 }
 
+const SCOPE_LABELS = {
+  key_daily: "this key's daily budget",
+  key_monthly: "this key's monthly budget",
+  team_monthly: "the team's monthly budget",
+}
+
 function formatTime(iso) {
   if (!iso) return ''
   const d = new Date(iso)
@@ -45,6 +51,14 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
             {log.team_id}
           </span>
         )}
+        {log.budget_capped && (
+          <span
+            title={SCOPE_LABELS[log.budget_scope] || 'a spend cap'}
+            className="font-mono text-[10px] text-danger bg-danger/10 border border-danger/30 px-1.5 py-0.5 rounded-md shrink-0"
+          >
+            budget capped
+          </span>
+        )}
         <span className="text-primary truncate flex-1 font-mono">
           {log.query}
         </span>
@@ -68,6 +82,12 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
       {/* Expanded detail */}
       {isExpanded && (
         <div className="border-t border-line bg-panel px-4 py-3 space-y-3 text-xs animate-[slide-in_0.15s_ease-out]">
+          {log.budget_capped && (
+            <p className="font-mono text-[11px] text-danger bg-danger/5 border border-danger/30 rounded-lg px-3 py-2 leading-relaxed">
+              Downgraded to the cheap tier because {SCOPE_LABELS[log.budget_scope] || 'a spend cap'} was exhausted.
+              The request was still answered — the cap changes the model, it does not reject traffic.
+            </p>
+          )}
           {/* Metadata grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <MetaCell label="Model" value={log.model_id} />
@@ -85,6 +105,10 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
               value={log.tokens_saved_usd != null ? `$${log.tokens_saved_usd.toFixed(4)}` : '—'}
             />
             <MetaCell label="Fallback" value={log.fallback_used ? 'Yes' : 'No'} />
+            <MetaCell
+              label="Budget capped"
+              value={log.budget_capped ? (SCOPE_LABELS[log.budget_scope] || 'yes') : 'No'}
+            />
             <MetaCell label="Team" value={log.team_id ?? '-'} />
             <MetaCell label="Feature" value={log.feature_tag ?? '-'} />
             <MetaCell label="Intended tier" value={log.intended_tier ?? '—'} />

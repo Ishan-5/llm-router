@@ -6,6 +6,84 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts'
 
+const SCOPE_LABELS = {
+  key_daily: "This key's daily budget",
+  key_monthly: "This key's monthly budget",
+  team_monthly: 'Team monthly budget',
+}
+
+// The one thing a finance owner opens this page to see: how much room is left,
+// and whether the router has already started choosing cheaper models because
+// there is none. The cap never rejects traffic, so the banner has to say what
+// actually happens instead.
+function BudgetBanner({ budget, downgrades }) {
+  if (!budget || budget.state === 'unlimited') return null
+
+  const exhausted = budget.state === 'exhausted'
+  const warning = budget.state === 'warning'
+  const tone = exhausted
+    ? { wrap: 'border-danger/40 bg-danger/5', text: 'text-danger', bar: 'bg-danger' }
+    : warning
+      ? { wrap: 'border-signal/40 bg-signal/5', text: 'text-signal', bar: 'bg-signal' }
+      : { wrap: 'border-line bg-surface', text: 'text-cool', bar: 'bg-cool' }
+
+  const scope = SCOPE_LABELS[budget.scope] || 'Spend budget'
+  const percent = budget.percent_used ?? 0
+  const period = budget.period === 'day' ? 'day' : 'month'
+
+  return (
+    <div className={`border rounded-xl px-4 py-4 ${tone.wrap}`}>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="font-mono text-[10px] text-muted uppercase tracking-wide">{scope}</p>
+        <span className={`font-mono text-[10px] uppercase tracking-wide ${tone.text}`}>
+          {exhausted ? 'exhausted' : warning ? 'warning · above 80%' : 'healthy'}
+        </span>
+      </div>
+
+      <div className="flex items-baseline justify-between gap-3 flex-wrap mt-1.5">
+        <p className="font-mono text-sm text-primary">
+          ${Number(budget.spent_usd).toFixed(2)}
+          <span className="text-muted"> of ${Number(budget.budget_usd).toFixed(2)}</span>
+        </p>
+        <p className={`font-mono text-xs ${tone.text}`}>{percent}% used</p>
+      </div>
+
+      <div className="bg-line rounded-full h-2 overflow-hidden mt-1.5">
+        <div className={`h-2 rounded-full transition-all ${tone.bar}`} style={{ width: `${Math.min(100, Math.max(0, percent))}%` }} />
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-wrap font-mono text-[10px] text-muted mt-1.5">
+        <span>${Number(budget.remaining_usd ?? 0).toFixed(2)} left this {period}</span>
+        {budget.team_name && <span>team: {budget.team_name}</span>}
+      </div>
+
+      <p className="font-mono text-[11px] text-primary leading-relaxed mt-2.5">
+        {exhausted ? (
+          <>
+            The {scope.toLowerCase()} is used up. Nothing is blocked — requests keep
+            working on the <span className="text-cool">cheap tier</span> until the {period} resets.
+            Every response and log row says this budget caused the downgrade.
+          </>
+        ) : warning ? (
+          <>
+            {scope} is above 80%. At 100% requests keep working, but the router
+            switches them to the <span className="text-cool">cheap tier</span> instead of
+            rejecting them.
+          </>
+        ) : (
+          <>Spend is tracked against this cap. At 100% requests fall back to the cheap tier rather than failing.</>
+        )}
+      </p>
+
+      {downgrades > 0 && (
+        <p className={`font-mono text-[10px] mt-1.5 ${tone.text}`}>
+          {downgrades.toLocaleString()} request{downgrades === 1 ? '' : 's'} downgraded to cheap this month.
+        </p>
+      )}
+    </div>
+  )
+}
+
 const DARK_PALETTE = { line: '#1e293b', tick: '#64748b', grid: '#1e293b', bar: '#38bdf8', lineStroke: '#facc15', tooltipBg: '#0f172a', tooltipBorder: '#1e293b' }
 const LIGHT_PALETTE = { line: '#E2E2DD', tick: '#6B7078', grid: '#E2E2DD', bar: '#0F766E', lineStroke: '#C2570C', tooltipBg: '#FFFFFF', tooltipBorder: '#E2E2DD' }
 
@@ -64,7 +142,7 @@ export default function CostAnalytics({ apiKey }) {
   if (error) return <p className="font-mono text-xs text-danger">Failed to load analytics: {error}</p>
   if (!data) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-line rounded-xl animate-pulse" />)}</div>
 
-  const { summary, tier_costs, model_costs, daily, latency_by_tier, top_expensive, teams = [], team_count = 0 } = data
+  const { summary, tier_costs, model_costs, daily, latency_by_tier, top_expensive, teams = [], team_count = 0, budget, budget_downgrades_this_month = 0 } = data
 
   const tierPieData = Object.entries(tier_costs).map(([name, value]) => ({ name, value: Math.round(value * 10000) / 10000 }))
   const modelBarData = Object.entries(model_costs)
@@ -73,6 +151,8 @@ export default function CostAnalytics({ apiKey }) {
 
   return (
     <div className="space-y-6">
+      <BudgetBanner budget={budget} downgrades={budget_downgrades_this_month} />
+
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Stat label="Total Spent" value={`$${summary.total_cost.toFixed(4)}`} />
         <Stat label="Savings" value={`$${summary.savings.toFixed(4)}`} sub={`${summary.savings_pct}% vs frontier`} />
