@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-364%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-384%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -85,6 +85,7 @@
 **Integrate & operate**
 - [Bring your own model (BYOM)](#-bring-your-own-model-byom)
 - [SDK](#-sdk) · [Terminal CLI](#-terminal-cli) · [MCP gateway](#-mcp-gateway)
+- [Observability](#-observability) · [Spend tags](#spend-tags-by-team-or-feature)
 - [Security](#-security) · [Alerting](#-alerting)
 - [Running it locally](#-running-it-locally) · [Docker](#-running-it-with-docker)
 
@@ -459,7 +460,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (307 tests) · node:test (57 CLI tests) · 364 total · GitHub Actions CI |
+| ✅ Testing | pytest (321 tests) · node:test (63 CLI tests) · 384 total · GitHub Actions CI |
 
 ---
 
@@ -690,6 +691,34 @@ Series include `routewise_requests_total`, `routewise_request_duration_seconds`,
 model name. A ready-to-edit scrape config lives in
 [`observability/prometheus.yml`](observability/prometheus.yml).
 
+### Spend tags by team or feature
+
+A total tells you what you spent; a tag tells you **who** spent it. Two optional
+headers add that without changing the request body:
+
+```bash
+curl -X POST https://your-backend/route \
+  -H "Authorization: Bearer rw_..." \
+  -H "X-RouteWise-Team: growth" \
+  -H "X-RouteWise-Feature: onboarding-copy" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "write a launch tweet"}'
+```
+
+Both are stored on the request log, so the **Analytics** tab groups spend by team:
+requests, actual spend, what the same tokens would have cost on the frontier tier,
+and the difference. `/logs` returns the same two fields, and each log row shows the
+team it belongs to.
+
+- **Optional, and never fatal.** A missing or malformed tag cannot fail a request —
+  it is dropped. Untagged requests aggregate under `untagged`, which is usually the
+  number worth chasing first.
+- **One spelling per team.** Tags are lowercased and reduced to `a-z`, digits, dots
+  and hyphens, so `Growth Team`, `growth_team` and `growth-team` become one row
+  instead of three. Maximum 64 characters.
+- **Both endpoints.** `/route`, `/route/stream` and the OpenAI-compatible
+  `/v1/chat/completions` all record tags.
+
 ---
 
 ## ⚙️ Engineering decisions
@@ -797,6 +826,11 @@ client.reset()
 
 # Stats
 client.stats()          # requests, cost saved, tier distribution
+
+# Spend tags: who is paying, stored with each request
+client = RouteWiseClient(api_key="rw_your_key", team="growth", feature="onboarding")
+client.ask("query", team="support")     # per-call tag beats the client default
+client.get_teams()                      # spend per team, most expensive first
 ```
 
 ---
@@ -815,6 +849,8 @@ routewise ask "design a rate limiter" --tier frontier   # force a tier, or --thr
 routewise ask "i want a refund" --model lisa            # pick a policy: emma (default) · lisa · kate
 routewise stream "write a haiku about routing"          # tokens as they arrive
 routewise chat                                          # multi-turn REPL
+routewise config set-team growth                        # tag every request after this
+routewise ask "draft a refund" --feature refunds        # or tag a single call
 ```
 
 Answers print to **stdout**; routing metadata — tier, difficulty score, cost, latency,
@@ -838,6 +874,10 @@ markup stripped with **zero ANSI codes** (`--no-color` / `NO_COLOR` forces plain
 
 Keys never enter shell history (`login` masks the paste), and BYOM keys live only in your
 local config file — never on the server. Full command reference: [cli/README](./cli/README.md).
+
+Spend tags work the same way as in the SDK: `routewise config set-team growth` (or
+`ROUTEWISE_TEAM=growth`) labels every request from then on, and `--team` / `--feature`
+override it for a single call. `routewise analytics` prints the per-team breakdown.
 
 ---
 
