@@ -52,6 +52,13 @@ class ApiKey(Base):
     # Optional per-key cap inside the team budget: enough for a contractor or a
     # CI job without giving it a whole team's worth of headroom.
     monthly_budget_usd = Column(Float, nullable=True)
+    # Routing defaults for this key. A request can override them; they exist so
+    # one key is a complete profile (policy, ceiling, sensitivity, cache) rather
+    # than only a spend cap. NULL means "use the request or the account default".
+    default_policy = Column(String, nullable=True)      # generic | 2tier | 3tier
+    max_tier = Column(String, nullable=True)            # cheap | mid | frontier
+    default_threshold = Column(Float, nullable=True)    # 0.0 .. 2.0
+    cache_enabled = Column(Boolean, nullable=True, default=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -177,6 +184,10 @@ _LATE_COLUMNS = (
     ("request_logs", "budget_scope", "VARCHAR"),
     ("api_keys", "team_id", "INTEGER"),
     ("api_keys", "monthly_budget_usd", "FLOAT"),
+    ("api_keys", "default_policy", "VARCHAR"),
+    ("api_keys", "max_tier", "VARCHAR"),
+    ("api_keys", "default_threshold", "FLOAT"),
+    ("api_keys", "cache_enabled", "BOOLEAN DEFAULT TRUE"),
 )
 
 _LATE_INDEXES = (
