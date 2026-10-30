@@ -100,14 +100,14 @@ or redirected, the markdown markup is stripped but **no ANSI codes are emitted**
 
 | Command | What it does |
 |---|---|
-| `routewise ask "<q>"` | Route one query. Flags: `--model`, `--support-mode`, `--tier`, `--threshold`, `--bypass-cache`, `--no-byom`, `--json`, `--quiet`, `--stream` |
+| `routewise ask "<q>"` | Route one query. Flags: `--model`, `--support-mode`, `--tier`, `--threshold`, `--bypass-cache`, `--no-byom`, `--json`, `--quiet`, `--stream`, `--team`, `--feature` |
 | `routewise stream "<q>"` | Stream tokens as they arrive |
 | `routewise chat` | Multi-turn REPL. `/tier cheap`, `/json on`, `/reset`, `/exit` |
 | `routewise models` | List available models + policies (cuts, tiers, evals) |
 | `routewise stats` | Usage, cost, savings, cache rate, tier split |
 | `routewise logs [--limit N]` | Recent request log lines |
 | `routewise log <id>` | Full detail (incl. response) for one log entry |
-| `routewise analytics` | Cost analytics + per-day breakdown |
+| `routewise analytics` | Cost analytics + per-day breakdown + spend by team |
 | `routewise compare` / `calibrate` | Threshold-vs-cost recommendations (JSON) |
 | `routewise feedback <id> <up\|down> [reason]` | Submit thumbs up/down on an answer |
 | `routewise pricing` | Model price list |
@@ -124,8 +124,9 @@ or redirected, the markdown markup is stripped but **no ANSI codes are emitted**
 
 Settings are read in this order:
 
-1. CLI flag: `--key <key>` / `--base-url <url>`
-2. Environment: `ROUTEWISE_API_KEY`, `ROUTEWISE_BASE_URL` (or `ROUTEWISE_API_BASE`)
+1. CLI flag: `--key <key>` / `--base-url <url>` / `--team <name>` / `--feature <name>`
+2. Environment: `ROUTEWISE_API_KEY`, `ROUTEWISE_BASE_URL` (or `ROUTEWISE_API_BASE`),
+   `ROUTEWISE_TEAM`, `ROUTEWISE_FEATURE`
 3. Config file: `~/.config/routewise/config.json` (⭐ `%APPDATA%\routewise\config.json` on Windows)
 
 ```bash
@@ -134,6 +135,22 @@ routewise config set-base https://your-backend.example.com
 routewise config                        # view current effective config
 routewise config unset key              # clear the saved key
 ```
+
+## Spend tags
+
+Two optional tags tell the dashboard who is paying, so spend groups by team
+instead of collapsing into one number. They are sent as HTTP headers:
+
+```bash
+routewise config set-team growth        # every request from now on
+routewise config set-feature app        # narrower default, if you want one
+routewise ask "draft a refund reply" --feature refunds   # one-off override
+routewise config unset team
+routewise analytics                     # prints the per-team breakdown
+```
+
+`--team` and `--feature` also work on `stream` and `chat`. Tags never fail a
+request, and calls without one appear as `untagged` in the analytics output.
 
 ## Pick a model / policy
 
