@@ -76,14 +76,31 @@ def _raise_for_status(response: requests.Response):
 
 
 class RouteWiseClient:
-    def __init__(self, api_key: str, base_url: str = DEFAULT_BASE_URL, timeout: int = 30):
+    def __init__(self, api_key: str, base_url: str = DEFAULT_BASE_URL, timeout: int = 30,
+                 team: Optional[str] = None, feature: Optional[str] = None):
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.team = team
+        self.feature = feature
         self._byom_config: dict = {}
 
-    def _headers(self) -> dict:
-        return {"Authorization": f"Bearer {self.api_key}"}
+    def _headers(self, team: Optional[str] = None, feature: Optional[str] = None) -> dict:
+        """Auth plus the optional spend tags.
+
+        Tags are sent as headers, not fields, so the request payload stays
+        byte-identical to what a caller would send without them. A per-call
+        value wins over the client-level default, and an empty one is omitted
+        entirely rather than sent blank.
+        """
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        resolved_team = team if team is not None else self.team
+        resolved_feature = feature if feature is not None else self.feature
+        if resolved_team:
+            headers["X-RouteWise-Team"] = resolved_team
+        if resolved_feature:
+            headers["X-RouteWise-Feature"] = resolved_feature
+        return headers
 
     def _apply_byom(self, payload: dict, user_api_keys: dict | None = None):
         """Merge in-memory BYOM config (set via configure()) into a request payload.
@@ -111,6 +128,8 @@ class RouteWiseClient:
         user_api_keys: Optional[dict] = None,
         model: Optional[str] = None,
         support_mode: Optional[str] = None,
+        team: Optional[str] = None,
+        feature: Optional[str] = None,
     ) -> dict:
         """
         Send a query through the router. Returns the full response dict
@@ -125,6 +144,8 @@ class RouteWiseClient:
                "emma" (generic, default), "lisa" (3-tier support), "kate" (2-tier support)
         support_mode: raw policy id ("generic", "2tier", "3tier"). If given it
                       wins over model.
+        team / feature: optional spend tags, so the dashboard can group this
+                        request's cost. Client-level defaults are used if omitted.
         """
         payload = {"query": query}
         if override_tier:
@@ -140,7 +161,7 @@ class RouteWiseClient:
 
         response = requests.post(
             f"{self.base_url}/route",
-            headers=self._headers(),
+            headers=self._headers(team, feature),
             json=payload,
             timeout=self.timeout,
         )
@@ -155,6 +176,8 @@ class RouteWiseClient:
         user_api_keys: Optional[dict] = None,
         model: Optional[str] = None,
         support_mode: Optional[str] = None,
+        team: Optional[str] = None,
+        feature: Optional[str] = None,
     ):
         """
         Streaming version of ask(). Yields text chunks, then a final dict
@@ -184,7 +207,7 @@ class RouteWiseClient:
 
         response = requests.post(
             f"{self.base_url}/route/stream",
-            headers=self._headers(),
+            headers=self._headers(team, feature),
             json=payload,
             timeout=self.timeout,
             stream=True,
@@ -227,6 +250,8 @@ class RouteWiseClient:
         stream: bool = False,
         max_tokens: Optional[int] = None,
         temperature: Optional[float] = None,
+        team: Optional[str] = None,
+        feature: Optional[str] = None,
     ) -> dict:
         """
         OpenAI-compatible /v1/chat/completions endpoint.
@@ -239,6 +264,7 @@ class RouteWiseClient:
         stream: if True, returns an iterator of chunk dicts
         max_tokens: optional token limit
         temperature: optional temperature
+        team / feature: optional spend tags (client defaults apply if omitted)
 
         Returns a dict matching the OpenAI chat completion response format.
         """
@@ -252,7 +278,7 @@ class RouteWiseClient:
 
         response = requests.post(
             f"{self.base_url}/v1/chat/completions",
-            headers={**self._headers(), "Content-Type": "application/json"},
+            headers={**self._headers(team, feature), "Content-Type": "application/json"},
             json=payload,
             timeout=self.timeout,
             stream=stream,
@@ -402,6 +428,16 @@ class RouteWiseClient:
         )
         _raise_for_status(response)
         return response.json()
+
+    def get_teams(self) -> list[dict]:
+        """
+        Spend grouped by the team tag, most expensive first.
+
+        Each row: team_id, requests, cost_usd, hypothetical_cost_usd,
+        saved_usd, savings_pct, cache_hits. Requests sent without a
+        X-RouteWise-Team header are grouped under team_id None.
+        """
+        return self.get_analytics().get("teams", [])
 
     def get_pricing(self) -> list[dict]:
         """

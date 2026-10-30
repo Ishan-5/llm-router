@@ -75,6 +75,28 @@ print(result["response"])
 
 `configure()` applies the config client-side on every request (works with a plain `rw_` API key — no sign-in needed). `reset()` clears it.
 
+## Spend tags
+
+Two optional tags label who is paying, so the dashboard can group spend by team
+instead of showing a single total. They travel as HTTP headers, so the request
+body is unchanged.
+
+```python
+# default for every call on this client
+client = RouteWiseClient(api_key="rw_your_key_here", team="growth", feature="onboarding")
+
+# per-call override (team wins over the client default)
+client.ask("draft a launch tweet", team="marketing", feature="launch")
+
+# read the grouped spend back, most expensive team first
+for row in client.get_teams():
+    print(row["team_id"], row["cost_usd"], row["saved_usd"], row["savings_pct"])
+```
+
+Tags are optional and never fail a request. Untagged calls group under
+`team_id: None`. The server lowercases them and keeps `a-z`, digits, dots and
+hyphens, so `Growth Team` and `growth_team` land in one row.
+
 ## All methods
 
 ```python
@@ -83,6 +105,10 @@ client.ask("query")                          # auto-route by difficulty
 client.ask("query", override_tier="frontier") # force a specific tier
 client.ask("query", model="lisa")             # use the 3-tier support policy
 client.ask("query", user_api_keys={"frontier": "sk-..."})  # per-request key override
+
+# spend tags -- grouped per team in the dashboard
+client.ask("query", team="growth", feature="onboarding")
+client.get_teams()      # per-team spend, all-frontier cost, savings
 
 # byom config — set one, two, or all three tiers; unset tiers keep defaults
 client.configure(cheap={...}, mid={...}, frontier={...})  # set custom models
