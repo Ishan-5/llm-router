@@ -359,7 +359,7 @@ curl -X DELETE ${API_BASE}/alerts/1 -H "Authorization: Bearer <your-jwt>"`,
         rows: [
           ['/logs, /stats, /analytics', 'their own key only', 'any developer'],
           ['/compare, /calibrate, /policy-analytics', 'their own key', 'any developer'],
-          ['/keys, /settings, /alerts', 'their own user', 'any developer'],
+          ['/keys, /teams, /settings, /alerts', 'their own user', 'any developer'],
           ['/admin/*', 'every user on the instance', 'ADMIN_USER_ID only'],
         ],
         body: `Because analytics are scoped per API key, each developer sees only their
@@ -367,19 +367,22 @@ own traffic. To review the whole team you need the admin surface, which is
 gated on the ADMIN_USER_ID environment variable.`,
       },
       {
-        label: 'Budget caps — what actually exists',
+        label: 'Budget caps and teams',
         kind: 'warn',
-        title: 'Per-key daily budgets are enforced, but not settable over the API yet',
-        body: `Every API key has a daily_budget_usd column and the router honours it:
-when a key's spend for the day crosses the cap, the router forces that key to
-the cheap tier and reports "budget exceeded - forced to cheap" in route_reason.
+        title: 'Budgets downgrade to cheap; they never reject a request',
+        body: `A key can carry a daily cap and a monthly cap, and can belong to a team that
+carries one monthly cap shared by every key under it. The tightest cap wins,
+null means no cap, and 0 means spend nothing.
 
-However no endpoint writes that column today. It is only readable via the admin
-surface. So for a team rollout today, use daily_spend alerts for visibility and
-per-key revocation for enforcement — not per-key hard caps.
+When a cap is exhausted the router forces that request to the cheap tier for the
+rest of the period and says which budget tripped it:
+"budget exceeded - team monthly budget ($12.40 of $10.00) forced to cheap".
+Nothing returns 429. The same scope is on the response's budget block, in /logs
+as budget_capped / budget_scope, and on the Analytics banner.
 
-  Read only:  GET /admin/keys  → includes daily_budget_usd
-  Not writable by any public endpoint today.
+Owner-only, Supabase session:
+  GET/POST/PATCH/DELETE /teams        name + monthly_budget_usd
+  POST/PATCH /keys                    team_id + daily/monthly_budget_usd
 
 A teammate on their own key who exhausts their own provider quota hits the
 normal failover chain (frontier → mid → cheap → Gemini), not an error.`,
@@ -916,7 +919,7 @@ routewise ask "..."      # auto-applies your saved models; unset tiers keep defa
     "support_mode": "generic"
   }'
 
-# Response — exactly these 19 fields:
+# Response — exactly these 20 fields:
 # {
 #   "response":              "TCP is connection-oriented...",
 #   "routed_to":            "cheap",      # what actually served it
@@ -936,7 +939,12 @@ routewise ask "..."      # auto-applies your saved models; unset tiers keep defa
 #   "available_tiers":      ["cheap", "mid", "frontier"],
 #   "model_id":             "openai/gpt-oss-20b",
 #   "route_reason":         "score 1.09 <= cheap ceiling 4.5",
-#   "request_log_id":       4821          # pass this to /route/feedback
+#   "request_log_id":       4821,         # pass this to /route/feedback
+#   "budget": {                           # which cap applied, and what is left
+#     "scope": "team_monthly", "state": "ok",
+#     "budget_usd": 50.0, "spent_usd": 12.4, "remaining_usd": 37.6,
+#     "percent_used": 24.8, "team_name": "growth"
+#   }
 # }
 #
 # intended_tier != routed_to means a failover happened, and route_reason

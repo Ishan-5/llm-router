@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-384%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-402%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -85,7 +85,7 @@
 **Integrate & operate**
 - [Bring your own model (BYOM)](#-bring-your-own-model-byom)
 - [SDK](#-sdk) · [Terminal CLI](#-terminal-cli) · [MCP gateway](#-mcp-gateway)
-- [Observability](#-observability) · [Spend tags](#spend-tags-by-team-or-feature)
+- [Observability](#-observability) · [Spend tags](#spend-tags-by-team-or-feature) · [Teams and budgets](#teams-and-monthly-budgets)
 - [Security](#-security) · [Alerting](#-alerting)
 - [Running it locally](#-running-it-locally) · [Docker](#-running-it-with-docker)
 
@@ -161,7 +161,7 @@ client.chat.completions.create(
 |---|---|
 | Browse every integration surface, searchable, with copy-paste snippets | **[/guide](frontend/src/components/GuidePage.jsx)** in the app |
 | Put RouteWise behind a **customer support chatbot** | [`customer-support/README.md`](customer-support/README.md) |
-| Roll it out to a **team** — keys, alerts, one threshold | [Teams](#-alerting) + [Known limitations](#-known-limitations) |
+| Roll it out to a **team** — keys, budgets, alerts, one threshold | [Teams and budgets](#teams-and-monthly-budgets) + [Known limitations](#-known-limitations) |
 | Understand the full request pipeline and scoring math | [How it works](#-how-it-works) |
 
 > [!WARNING]
@@ -460,7 +460,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (321 tests) · node:test (63 CLI tests) · 384 total · GitHub Actions CI |
+| ✅ Testing | pytest (339 tests) · node:test (63 CLI tests) · 402 total · GitHub Actions CI |
 
 ---
 
@@ -719,6 +719,54 @@ team it belongs to.
 - **Both endpoints.** `/route`, `/route/stream` and the OpenAI-compatible
   `/v1/chat/completions` all record tags.
 
+### Teams and monthly budgets
+
+A tag tells you who spent the money. A **team** is the budget that spend is
+checked against: one monthly cap shared by every key under it. Keys carry a
+person or a service, so a team can use one shared key or give each member their
+own — the enforcement is identical either way.
+
+| Cap | Set on | Period |
+| --- | --- | --- |
+| Team monthly budget | `POST` / `PATCH /teams` | calendar month, UTC |
+| Key monthly budget | `POST` / `PATCH /keys` | calendar month, UTC |
+| Key daily budget | `POST` / `PATCH /keys` | UTC day |
+
+The **tightest cap wins**, and a key with no team and no caps is unlimited. A cap
+of `0` means "spend nothing" and trips immediately.
+
+**Running out does not block traffic.** When any cap is exhausted, routing is
+forced to the `cheap` tier for the rest of the period. The request still gets an
+answer, and the reason is visible in four places:
+
+- `route_reason` on the response:
+  `budget exceeded - team monthly budget ($12.40 of $10.00) forced to cheap (score 7.31)`.
+- a `budget` block on `/route`, `/route/stream` meta and `/v1/chat/completions`,
+  carrying `scope`, `state` (`ok` / `warning` / `exhausted` / `unlimited`),
+  `budget_usd`, `spent_usd`, `remaining_usd` and `percent_used`.
+- the `budget_capped` / `budget_scope` fields returned by `/logs`.
+- the dashboard: a banner on **Analytics**, a chip on each affected log row, and
+  a spent-vs-budget bar on the **Teams** tab.
+
+The warning state starts at **80%**, so there is time to raise the cap before
+quality drops. Keys inherit their team's name as the default `team_id` tag; an
+explicit `X-RouteWise-Team` header still wins. Deleting a team detaches its keys
+instead of revoking them, so a key already baked into someone's config keeps
+working.
+
+```bash
+# Owner-only: both endpoints take a Supabase session, not an rw_ key.
+curl -X POST https://your-backend/teams \
+  -H "Authorization: Bearer <supabase-session>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "growth", "monthly_budget_usd": 50}'
+
+curl -X POST https://your-backend/keys \
+  -H "Authorization: Bearer <supabase-session>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "alice", "team_id": 3, "monthly_budget_usd": 10}'
+```
+
 ---
 
 ## ⚙️ Engineering decisions
@@ -771,11 +819,12 @@ team it belongs to.
 - 🔐 **BYOM is scoped per user, not per-API-key.** Config loads per user
   (`get_active_config(user_id)`), so two keys of the same user share config; script-created
   keys without a `user_id` share the global config.
-- 💵 **Per-key daily budgets downgrade routing, they don't block it.** Every key
-  has a `daily_budget_usd`, settable via `POST /keys` or `PATCH /keys/{key_id}`
-  (`null` = no cap). Once a key's spend *today* passes the cap, the router forces
-  that key to `cheap` for the rest of the UTC day — it does not return 429. Use
-  `daily_spend` alerts alongside it for a hard stop.
+- 💵 **Budgets downgrade routing, they do not block it.** A key has optional daily
+  and monthly caps, and may belong to a team with a monthly cap; the tightest one
+  wins and `null` means no cap. Once a cap is exhausted the router forces that
+  request to `cheap` for the rest of the period — it does not return 429. The
+  response, log row and dashboard name the scope that tripped. Use `daily_spend`
+  alerts alongside it when a human needs to be paged, rather than a model swap.
 - 🧮 **The difficulty model is weakest on short, jargon-heavy math/physics one-liners** — few
   of those in the training pool, so it leans on sparse lexical cues. System-design error is now
   mid-pack after the 300-query frontier expansion.
