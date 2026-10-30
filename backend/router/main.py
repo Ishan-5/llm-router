@@ -15,6 +15,7 @@ from router.config import ALLOWED_ORIGINS, METRICS_BASIC_PASSWORD, METRICS_BASIC
 from router.openai_compat import router as openai_compat_router
 from router.routes.route import router as route_router
 from router.routes.keys import router as keys_router
+from router.routes.teams import router as teams_router
 from router.routes.config import router as config_router
 from router.routes.stats import router as stats_router
 from router.routes.alerts import router as alerts_router
@@ -139,6 +140,7 @@ app.add_middleware(PrometheusMiddleware)
 app.include_router(openai_compat_router)
 app.include_router(route_router)
 app.include_router(keys_router)
+app.include_router(teams_router)
 app.include_router(config_router)
 app.include_router(stats_router)
 app.include_router(alerts_router)
