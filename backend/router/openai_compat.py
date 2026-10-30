@@ -49,6 +49,21 @@ def _generate_id() -> str:
     return f"chatcmpl-{uuid.uuid4().hex}"
 
 
+def _budget_headers(budget) -> dict:
+    """Budget headers for callers that log headers instead of parsing bodies.
+
+    Mirrors the `x-routewise-budget` block so the reason for a downgrade is
+    visible even on a stream, where there is no body to inspect.
+    """
+    remaining = budget.remaining_usd
+    return {
+        "x-routewise-budget-state": budget.state,
+        "x-routewise-budget-scope": budget.scope or "",
+        "x-routewise-budget-capped": "true" if budget.capped else "false",
+        "x-routewise-budget-remaining": f"{remaining:.6f}" if remaining is not None else "",
+    }
+
+
 # Friendly product names for the difficulty policies. "emma" is the generic
 # router, "lisa" is the 3-tier support policy, "kate" is the 2-tier support
 # policy. All three are also accepted in /route and /route/stream.
@@ -111,8 +126,9 @@ def _build_chat_response(
     content: str,
     usage: dict,
     tier: str,
+    budget=None,
 ) -> dict:
-    return {
+    body = {
         "id": id,
         "object": "chat.completion",
         "created": int(time.time()),
@@ -131,9 +147,15 @@ def _build_chat_response(
         },
         "x-routewise-tier": tier,
     }
+    if budget is not None:
+        # Unknown top-level keys are ignored by OpenAI clients, so this stays a
+        # valid chat completion while telling RouteWise callers why a cheaper
+        # model was used.
+        body["x-routewise-budget"] = budget.as_dict()
+    return body
 
 
-def _build_stream_chunk(id: str, model: str, delta: dict, finish_reason: str | None = None) -> str:
+def _build_stream_chunk(id: str, model: str, delta: dict, finish_reason: str | None = None, extra: dict | None = None) -> str:
     chunk = {
         "id": id,
         "object": "chat.completion.chunk",
@@ -147,15 +169,18 @@ def _build_stream_chunk(id: str, model: str, delta: dict, finish_reason: str | N
             }
         ],
     }
+    if extra:
+        chunk.update(extra)
     return f"data: {json.dumps(chunk)}\n\n"
 
 
-def _sse_single_answer(chat_id: str, model: str, text: str):
+def _sse_single_answer(chat_id: str, model: str, text: str, budget=None):
     """Stream a pre-computed answer (cache hit / web search) as OpenAI-compatible SSE."""
     async def _body():
         yield _build_stream_chunk(chat_id, model, {"role": "assistant"})
         yield _build_stream_chunk(chat_id, model, {"content": text})
-        yield _build_stream_chunk(chat_id, model, {}, finish_reason="stop")
+        extra = {"x-routewise-budget": budget.as_dict()} if budget is not None else None
+        yield _build_stream_chunk(chat_id, model, {}, finish_reason="stop", extra=extra)
         yield "data: [DONE]\n\n"
     return _body()
 
@@ -169,6 +194,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     user_query = _extract_user_query(req.messages)
     _team = team_for_key(api_key)
     tags = request_tags(request, default_team=_team.name if _team else None)
+    budget = budget_status(api_key)
 
     # --- injection check ---
     if is_prompt_injection(user_query):
@@ -217,18 +243,21 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             response.headers["x-routewise-cost"] = "0"
             response.headers["x-routewise-cache-hit"] = "false"
             response.headers["x-routewise-difficulty"] = ""
+            for name, value in _budget_headers(budget).items():
+                response.headers[name] = value
             if req.stream:
                 return StreamingResponse(
-                    _sse_single_answer(chat_id, req.model, answer),
+                    _sse_single_answer(chat_id, req.model, answer, budget),
                     media_type="text/event-stream",
                     headers={
                         "x-routewise-tier": "web",
                         "x-routewise-cost": "0",
                         "x-routewise-cache-hit": "false",
                         "x-routewise-difficulty": "",
+                        **_budget_headers(budget),
                     },
                 )
-            return _build_chat_response(chat_id, req.model, answer, {"input_tokens": 0, "output_tokens": 0}, "web")
+            return _build_chat_response(chat_id, req.model, answer, {"input_tokens": 0, "output_tokens": 0}, "web", budget)
 
     # --- cache + classifier in parallel ---
     loop = asyncio.get_event_loop()
@@ -280,22 +309,24 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         response.headers["x-routewise-cost"] = "0"
         response.headers["x-routewise-cache-hit"] = "true"
         response.headers["x-routewise-difficulty"] = ""
+        for name, value in _budget_headers(budget).items():
+            response.headers[name] = value
         if req.stream:
             return StreamingResponse(
-                _sse_single_answer(chat_id, req.model, cached["response"]),
+                _sse_single_answer(chat_id, req.model, cached["response"], budget),
                 media_type="text/event-stream",
                 headers={
                     "x-routewise-tier": cached["tier"],
                     "x-routewise-cost": "0",
                     "x-routewise-cache-hit": "true",
                     "x-routewise-difficulty": "",
+                    **_budget_headers(budget),
                 },
             )
-        return _build_chat_response(chat_id, req.model, cached["response"], {"input_tokens": 0, "output_tokens": 0}, cached["tier"])
+        return _build_chat_response(chat_id, req.model, cached["response"], {"input_tokens": 0, "output_tokens": 0}, cached["tier"], budget)
 
     # --- resolve tier ---
     routing_tier = override_tier if override_tier else tier
-    budget = budget_status(api_key)
     over_budget = budget.capped
     if over_budget:
         routing_tier = "cheap"
@@ -338,7 +369,9 @@ executor, _cache_store, user_query, result["text"], result["tier"],
         response.headers["x-routewise-cost"] = str(result["cost_usd"])
         response.headers["x-routewise-cache-hit"] = "false"
         response.headers["x-routewise-difficulty"] = str(difficulty_score)
-        return _build_chat_response(chat_id, req.model, result["text"], usage, result["tier"])
+        for name, value in _budget_headers(budget).items():
+            response.headers[name] = value
+        return _build_chat_response(chat_id, req.model, result["text"], usage, result["tier"], budget)
 
     # --- streaming ---
     async def _stream():
@@ -386,7 +419,10 @@ executor, _cache_store, user_query, result["text"], result["tier"],
                 yield _build_stream_chunk(chat_id, req.model, {"content": item})
 
         # final chunk with finish_reason
-        yield _build_stream_chunk(chat_id, req.model, {}, finish_reason="stop")
+        yield _build_stream_chunk(
+            chat_id, req.model, {}, finish_reason="stop",
+            extra={"x-routewise-budget": budget.as_dict()},
+        )
         yield "data: [DONE]\n\n"
 
         if meta is None:
@@ -414,4 +450,4 @@ executor, _cache_store, user_query, full_response,
         meta["input_tokens"], meta["output_tokens"], api_key.id, context,
     )
 
-    return StreamingResponse(_stream(), media_type="text/event-stream")
+    return StreamingResponse(_stream(), media_type="text/event-stream", headers=_budget_headers(budget))

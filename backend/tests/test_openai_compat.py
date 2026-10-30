@@ -375,3 +375,77 @@ def test_all_tiers_failed_returns_503():
          patch("router.openai_compat.call_with_failover", side_effect=AllTiersFailedError("All tiers failed")):
         resp = client.post(ENDPOINT, json=_basic_body("test"), headers=_auth_header(key))
         assert resp.status_code == 503
+
+
+# --- Budget visibility -------------------------------------------------------
+
+
+def test_exhausted_budget_adds_headers_and_block_and_forces_cheap():
+    # A zero daily cap is exhausted before the request is routed.
+    key = _make_test_key("budget-capped", budget=0)
+    with patch("router.openai_compat.check_cache", return_value=None), \
+         patch("router.openai_compat.get_tier", return_value=(8.0, "frontier", 3.4, 4.6)), \
+         patch("router.openai_compat.call_with_failover") as mock_call:
+        mock_call.return_value = _fake_model_result("cheap answer")
+        resp = client.post(ENDPOINT, json=_basic_body("hard question"), headers=_auth_header(key))
+
+        assert resp.status_code == 200
+        assert resp.headers["x-routewise-budget-state"] == "exhausted"
+        assert resp.headers["x-routewise-budget-scope"] == "key_daily"
+        assert resp.headers["x-routewise-budget-capped"] == "true"
+        assert resp.headers["x-routewise-budget-remaining"] == "0.000000"
+
+        budget = resp.json()["x-routewise-budget"]
+        assert budget["state"] == "exhausted"
+        assert budget["scope"] == "key_daily"
+        assert budget["remaining_usd"] == 0
+        assert budget["allowed"] is False
+        # The provider was asked for cheap, not the frontier tier the scorer chose.
+        assert mock_call.call_args.args[0] == "cheap"
+
+
+def test_unlimited_budget_reports_state_on_headers():
+    key = _make_test_key("budget-unlimited")
+    with patch("router.openai_compat.check_cache", return_value=None), \
+         patch("router.openai_compat.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
+         patch("router.openai_compat.call_with_failover") as mock_call:
+        mock_call.return_value = _fake_model_result("ok")
+        resp = client.post(ENDPOINT, json=_basic_body(), headers=_auth_header(key))
+
+        assert resp.status_code == 200
+        assert resp.headers["x-routewise-budget-state"] == "unlimited"
+        assert resp.headers["x-routewise-budget-scope"] == ""
+        assert resp.headers["x-routewise-budget-capped"] == "false"
+        assert resp.headers["x-routewise-budget-remaining"] == ""
+        assert resp.json()["x-routewise-budget"]["state"] == "unlimited"
+
+
+def test_streaming_final_chunk_carries_budget_block():
+    key = _make_test_key("budget-stream", budget=0)
+    with patch("router.openai_compat.check_cache", return_value=None), \
+         patch("router.openai_compat.get_tier", return_value=(8.0, "frontier", 3.4, 4.6)), \
+         patch("router.openai_compat.stream_model_with_failover") as mock_stream:
+        def fake_stream(tier, query, user_config=None, messages=None, max_tokens=None, temperature=None):
+            yield "Hello"
+            yield {"tier": "cheap", "model_id": "test-model", "input_tokens": 5, "output_tokens": 3, "cost_usd": 0.0}
+
+        mock_stream.side_effect = fake_stream
+        resp = client.post(
+            ENDPOINT,
+            json={**_basic_body(), "stream": True},
+            headers=_auth_header(key),
+        )
+
+        assert resp.status_code == 200
+        assert resp.headers["x-routewise-budget-state"] == "exhausted"
+        assert resp.headers["x-routewise-budget-capped"] == "true"
+
+        chunks = [
+            json.loads(line.removeprefix("data: "))
+            for line in resp.text.split("\n")
+            if line.startswith("data: ") and "[DONE]" not in line
+        ]
+        final = chunks[-1]
+        assert final["choices"][0]["finish_reason"] == "stop"
+        assert final["x-routewise-budget"]["state"] == "exhausted"
+        assert final["x-routewise-budget"]["scope"] == "key_daily"
