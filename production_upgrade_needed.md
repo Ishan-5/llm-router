@@ -1,7 +1,8 @@
 # RouteWise — Production Scaling & Improvements Guide
 
 > A production roadmap for scaling the RouteWise LLM Router from a prototype to a high-availability, low-latency system capable of handling **1,000+ Requests Per Second (RPS)**.
-Cureently it is in developing phase and constantly imporving.
+
+**Cureently it is in developing phase and constantly imporving**.
 
 ---
 
