@@ -161,7 +161,7 @@ function DetailSection({ title, children }) {
   )
 }
 
-export default function RequestLogs({ apiKey }) {
+export default function RequestLogs({ apiKey, showTitle = true }) {
   const [logs, setLogs] = useState([])
   const [error, setError] = useState(null)
   const [expandedId, setExpandedId] = useState(null)
@@ -176,9 +176,9 @@ export default function RequestLogs({ apiKey }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-semibold">Request Logs</h3>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3">
+        {showTitle && <h3 className="font-display text-lg font-semibold">Request Logs</h3>}
+        <div className="flex items-center gap-2 ml-auto">
           <select
             value={limit}
             onChange={(e) => setLimit(Number(e.target.value))}

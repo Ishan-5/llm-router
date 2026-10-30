@@ -81,6 +81,138 @@ function summarizeBudget(keys) {
   }
 }
 
+const TAB_META = {
+  overview: {
+    eyebrow: 'FinOps console',
+    title: 'Workspace overview',
+    sub: 'Spend, budget health and the routing decisions behind them.',
+  },
+  keys: {
+    eyebrow: 'Access',
+    title: 'API keys',
+    sub: 'One key per person or service. Caps are optional; exhausted keys keep working.',
+  },
+  teams: {
+    eyebrow: 'Governance',
+    title: 'Teams',
+    sub: 'Shared monthly budgets. The tightest cap decides which tier answers.',
+  },
+  analytics: {
+    eyebrow: 'Cost',
+    title: 'Analytics',
+    sub: 'Where the money went, and what routing saved.',
+  },
+  logs: {
+    eyebrow: 'Audit',
+    title: 'Request logs',
+    sub: 'Every request, the tier it used and why it was downgraded.',
+  },
+  playground: {
+    eyebrow: 'Try it',
+    title: 'Playground',
+    sub: 'Send a live query and watch the router pick a tier.',
+  },
+  alerts: {
+    eyebrow: 'Ops',
+    title: 'Alerts',
+    sub: 'Webhooks for spend, error rate and latency thresholds.',
+  },
+}
+
+function Panel({ title, action, children, className = '' }) {
+  return (
+    <section className={`rounded-2xl border border-line bg-surface shadow-card ${className}`}>
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-line/70">
+        <h2 className="font-display text-sm font-semibold text-primary">{title}</h2>
+        {action}
+      </div>
+      <div className="p-4 sm:p-5">{children}</div>
+    </section>
+  )
+}
+
+function PanelLink({ onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className="font-mono text-[10px] text-muted hover:text-signal transition-colors"
+    >
+      {children}
+    </button>
+  )
+}
+
+function KeySwitcher({ keys, selectedKeyId, onChange, mask }) {
+  if (keys.length < 2) return null
+  return (
+    <label className="flex items-center gap-2 font-mono text-[10px] text-muted">
+      key
+      <select
+        value={selectedKeyId || ''}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="bg-base border border-line rounded px-2 py-1 text-[10px] text-primary font-mono focus:outline-none focus:ring-1 focus:ring-signal/50"
+      >
+        {keys.map((k) => (
+          <option key={k.id} value={k.id}>{k.name} ({mask(k.key)})</option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function TeamBudgetBar({ team }) {
+  const hasCap = team.monthly_budget_usd != null
+  const pct = Math.min(100, Math.max(0, Number(team.percent_used) || 0))
+  const tone =
+    team.state === 'exhausted'
+      ? 'bg-danger'
+      : team.state === 'warning'
+        ? 'bg-signal'
+        : 'bg-cool'
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-body text-xs text-primary truncate">{team.name}</p>
+        <p className="font-mono text-[10px] text-muted shrink-0">
+          ${Number(team.spent_this_month || 0).toFixed(2)}
+          {hasCap ? ` / $${Number(team.monthly_budget_usd).toFixed(2)}` : ' spent'}
+        </p>
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full bg-line overflow-hidden">
+        <div
+          className={`h-full rounded-full ${hasCap ? tone : 'bg-muted/40'}`}
+          style={{ width: `${hasCap ? pct : 0}%` }}
+        />
+      </div>
+      <p className="font-mono text-[10px] text-muted mt-1">
+        {hasCap
+          ? team.state === 'exhausted'
+            ? `${pct}% · cap exhausted, routing cheap`
+            : `${pct}% used · ${team.key_count} ${team.key_count === 1 ? 'key' : 'keys'}`
+          : `${team.key_count} ${team.key_count === 1 ? 'key' : 'keys'} · no cap`}
+      </p>
+    </div>
+  )
+}
+
+function SetupStep({ done, title, body }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border font-mono text-[10px] ${
+          done ? 'border-cool/40 bg-cool/10 text-cool' : 'border-line text-muted'
+        }`}
+      >
+        {done ? '✓' : '·'}
+      </span>
+      <div className="min-w-0">
+        <p className={`font-body text-xs ${done ? 'text-muted' : 'text-primary'}`}>{title}</p>
+        <p className="font-mono text-[10px] text-muted mt-0.5">{body}</p>
+      </div>
+    </div>
+  )
+}
+
 function BudgetControl({ label, suffix, value, editing, draft, saving, onStart, onChange, onSave, onCancel }) {
   if (editing) {
     return (
@@ -295,7 +427,7 @@ const [budgetDraft, setBudgetDraft] = useState('')
 const [savingBudget, setSavingBudget] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
-  const [activeTab, setActiveTab] = useState('keys')
+  const [activeTab, setActiveTab] = useState('overview')
   const [selectedKeyId, setSelectedKeyId] = useState(null)
 
   useEffect(() => { loadKeys(); loadTeams() }, [])
@@ -448,109 +580,254 @@ const [savingBudget, setSavingBudget] = useState(false)
   const budgetedTeams = teams.filter((t) => t.monthly_budget_usd != null).length
   const cappedTeams = teams.filter((t) => t.state === 'exhausted').length
 
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'keys', label: 'API keys', count: keys.length },
+    { id: 'teams', label: 'Teams', count: teams.length },
+    ...(hasKeys ? [
+      { id: 'playground', label: 'Playground' },
+      { id: 'analytics', label: 'Analytics' },
+      { id: 'logs', label: 'Request logs' },
+      { id: 'alerts', label: 'Alerts' },
+    ] : []),
+  ]
+  const meta = TAB_META[activeTab] || TAB_META.overview
+
   return (
-    <div className="max-w-6xl mx-auto px-5 sm:px-6 py-12 sm:py-16">
-      {/* Hero: the state of the workspace at a glance */}
-      <section className="relative overflow-hidden rounded-2xl border border-line bg-panel shadow-card mb-6">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 60% 90% at 90% 0%, color-mix(in srgb, var(--color-signal) 16%, transparent), transparent 70%)',
-          }}
-        />
-        <div className="relative px-5 py-6 sm:px-8 sm:py-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-xl">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal mb-2.5">FinOps console</p>
-              <h1 className="font-display text-3xl sm:text-4xl font-semibold text-primary">Workspace overview</h1>
-              <p className="text-muted text-sm mt-2">
-                Keys, team budgets and the reason a request was downgraded — one screen.
-              </p>
+    <div className="mx-auto max-w-[1440px] px-4 sm:px-6 py-6 sm:py-10">
+      <div className="flex flex-col lg:flex-row gap-5 lg:gap-6">
+        {/* Persistent workspace nav, the way a console is usually laid out */}
+        <aside className="lg:w-60 xl:w-64 shrink-0">
+          <div className="lg:sticky lg:top-24 space-y-3">
+            <div className="rounded-2xl border border-line bg-surface shadow-card p-3.5">
+              <div className="flex items-center gap-2.5 px-1">
+                <span className="grid h-9 w-9 place-items-center rounded-xl border border-signal/30 bg-signal/10 font-display text-base font-semibold text-signal">
+                  R
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-sm font-semibold leading-tight text-primary truncate">RouteWise</p>
+                  <p className="font-mono text-[10px] text-muted">FinOps console</p>
+                </div>
+              </div>
+              <nav aria-label="Dashboard sections" className="mt-3.5 flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0">
+                {tabs.map((tab) => {
+                  const on = activeTab === tab.id
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      aria-current={on ? 'page' : undefined}
+                      className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-lg border px-3 py-2 font-body text-[13px] transition-colors ${
+                        on
+                          ? 'border-signal/25 bg-signal/10 text-signal'
+                          : 'border-transparent text-muted hover:bg-panel hover:text-primary'
+                      }`}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.count != null && (
+                        <span className={`font-mono text-[10px] ${on ? 'text-signal' : 'text-muted'}`}>{tab.count}</span>
+                      )}
+                    </button>
+                  )
+                })}
+              </nav>
             </div>
-            <div className="flex flex-wrap gap-2">
+
+            <div className="hidden lg:block rounded-2xl border border-line bg-panel p-4">
+              <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Spend this month</p>
+              <p className="font-display text-2xl font-semibold text-primary mt-1">${monthSpend.toFixed(2)}</p>
+              <p className="font-mono text-[10px] text-muted mt-0.5">
+                {keys.length} {keys.length === 1 ? 'key' : 'keys'} · UTC month
+              </p>
+              <div className="mt-3 flex items-start gap-1.5">
+                <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-current ${budgetSummary.accent}`} aria-hidden />
+                <p className={`font-mono text-[10px] leading-relaxed ${budgetSummary.accent}`}>
+                  {budgetSummary.label} — {budgetSummary.hint}
+                </p>
+              </div>
+              <div className="mt-4 flex flex-col gap-1.5">
+                <Link to="/guide" className="font-mono text-[10px] text-muted hover:text-signal transition-colors">Read the guide →</Link>
+                <Link to="/models" className="font-mono text-[10px] text-muted hover:text-signal transition-colors">Model pricing →</Link>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 min-w-0">
+          <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal">{meta.eyebrow}</p>
+              <h1 className="font-display text-2xl sm:text-3xl font-semibold text-primary mt-1.5">{meta.title}</h1>
+              <p className="text-muted text-sm mt-1.5 max-w-2xl">{meta.sub}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              {activeTab !== 'keys' && (
+                <button
+                  onClick={() => setActiveTab('keys')}
+                  className="inline-flex items-center bg-signal text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:brightness-110 shadow-card transition"
+                >
+                  New key
+                </button>
+              )}
               <Link
                 to="/playground"
-                className="inline-flex items-center gap-2 bg-signal text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:brightness-110 shadow-card transition"
+                className="inline-flex items-center font-mono text-xs text-primary bg-surface border border-line px-4 py-2.5 rounded-lg hover:border-signal/50 hover:shadow-card transition"
               >
-                Open playground
-              </Link>
-              <Link
-                to="/guide"
-                className="inline-flex items-center gap-2 font-mono text-xs text-primary bg-base border border-line px-4 py-2.5 rounded-lg hover:border-signal/50 hover:shadow-card transition"
-              >
-                Read the guide
+                Playground
               </Link>
             </div>
-          </div>
+          </header>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-            <StatTile
-              label="API keys"
-              value={keys.length}
-              hint={hasKeys ? `${keys.filter((k) => k.team_id).length} attached to a team` : 'create one to start'}
-              accent={hasKeys ? 'text-cool' : 'text-muted'}
-            />
-            <StatTile
-              label="Teams"
-              value={teams.length}
-              hint={
-                cappedTeams > 0
-                  ? `${cappedTeams} ${cappedTeams === 1 ? 'budget is' : 'budgets are'} exhausted`
-                  : teams.length > 0
-                    ? `${budgetedTeams} with monthly caps`
-                    : 'no shared budgets yet'
-              }
-              accent={cappedTeams > 0 ? 'text-danger' : teams.length > 0 ? 'text-cool' : 'text-muted'}
-            />
-            <StatTile
-              label="Spend this month"
-              value={`$${monthSpend.toFixed(2)}`}
-              hint="sum of key spend, UTC month"
-              accent={monthSpend > 0 ? 'text-signal' : 'text-muted'}
-            />
-            <StatTile
-              label="Budget health"
-              value={budgetSummary.label}
-              hint={budgetSummary.hint}
-              accent={budgetSummary.accent}
-            />
-          </div>
-        </div>
-      </section>
+          {activeTab === 'overview' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+                <StatTile
+                  label="API keys"
+                  value={keys.length}
+                  hint={hasKeys ? `${keys.filter((k) => k.team_id).length} attached to a team` : 'create one to start'}
+                  accent={hasKeys ? 'text-cool' : 'text-muted'}
+                />
+                <StatTile
+                  label="Teams"
+                  value={teams.length}
+                  hint={
+                    cappedTeams > 0
+                      ? `${cappedTeams} ${cappedTeams === 1 ? 'budget is' : 'budgets are'} exhausted`
+                      : teams.length > 0
+                        ? `${budgetedTeams} with monthly caps`
+                        : 'no shared budgets yet'
+                  }
+                  accent={cappedTeams > 0 ? 'text-danger' : teams.length > 0 ? 'text-cool' : 'text-muted'}
+                />
+                <StatTile
+                  label="Spend this month"
+                  value={`$${monthSpend.toFixed(2)}`}
+                  hint="sum of key spend, UTC month"
+                  accent={monthSpend > 0 ? 'text-signal' : 'text-muted'}
+                />
+                <StatTile
+                  label="Budget health"
+                  value={budgetSummary.label}
+                  hint={budgetSummary.hint}
+                  accent={budgetSummary.accent}
+                />
+              </div>
 
-      {/* Tabs */}
-      <div role="group" aria-label="Dashboard sections" className="flex gap-1 p-1 bg-panel border border-line rounded-xl mb-8 overflow-x-auto max-w-full">
-        {[
-          { id: 'keys', label: 'API keys', count: keys.length },
-          { id: 'teams', label: 'Teams', count: teams.length },
-          ...(hasKeys ? [
-            { id: 'playground', label: 'Playground' },
-            { id: 'analytics', label: 'Analytics' },
-            { id: 'logs', label: 'Request logs' },
-            { id: 'alerts', label: 'Alerts' },
-          ] : []),
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            aria-pressed={activeTab === tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 px-4 py-2 font-mono text-xs rounded-lg transition-colors whitespace-nowrap shrink-0 ${
-              activeTab === tab.id
-                ? 'bg-surface text-primary shadow-card'
-                : 'text-muted hover:text-primary'
-            }`}
-          >
-            {tab.label}
-            {tab.count != null && (
-              <span className={`text-[10px] ${activeTab === tab.id ? 'text-signal' : 'text-muted'}`}>{tab.count}</span>
-            )}
-          </button>
-        ))}
-      </div>
+              <div className="grid gap-4 xl:grid-cols-3">
+                <div className="xl:col-span-2 space-y-4">
+                  <Panel
+                    title="Spend & routing"
+                    action={
+                      <KeySwitcher
+                        keys={keys}
+                        selectedKeyId={selectedKeyId}
+                        onChange={setSelectedKeyId}
+                        mask={maskKey}
+                      />
+                    }
+                  >
+                    {hasKeys && selectedKey ? (
+                      <CostAnalytics apiKey={selectedKey.key} />
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="space-y-3">
+                          <SetupStep done={keys.length > 0} title="Create an API key" body="One key per person or service." />
+                          <SetupStep done={teams.length > 0} title="Create a team with a monthly budget" body="Every key under it shares the cap." />
+                          <SetupStep done={false} title="Send your first request" body="Spend, savings and routing reasons land here." />
+                        </div>
+                        <button
+                          onClick={() => setActiveTab('keys')}
+                          className="font-mono text-[10px] px-3 py-1.5 rounded border border-signal/40 text-signal hover:bg-signal/10 transition"
+                        >
+                          Create a key
+                        </button>
+                      </div>
+                    )}
+                  </Panel>
 
-      {activeTab === 'keys' && (
+                  <Panel
+                    title="Recent requests"
+                    action={hasKeys ? <PanelLink onClick={() => setActiveTab('logs')}>View all</PanelLink> : null}
+                  >
+                    {hasKeys ? (
+                      <RequestLogs apiKey={selectedKey?.key} showTitle={false} />
+                    ) : (
+                      <p className="font-mono text-[11px] text-muted py-4">
+                        Nothing routed yet. Each request appears here with the tier used and the budget reason behind it.
+                      </p>
+                    )}
+                  </Panel>
+                </div>
+
+                <div className="space-y-4">
+                  <Panel
+                    title="Budget by team"
+                    action={<PanelLink onClick={() => setActiveTab('teams')}>{teams.length > 0 ? 'Manage' : 'Create'}</PanelLink>}
+                  >
+                    {teams.length === 0 ? (
+                      <p className="font-mono text-[11px] text-muted leading-relaxed">
+                        No teams yet. A team is the monthly budget bucket your keys share, so one number covers everyone under it.
+                      </p>
+                    ) : (
+                      <div className="space-y-3.5">
+                        {teams.slice(0, 4).map((team) => <TeamBudgetBar key={team.id} team={team} />)}
+                        {teams.length > 4 && (
+                          <PanelLink onClick={() => setActiveTab('teams')}>+{teams.length - 4} more teams</PanelLink>
+                        )}
+                      </div>
+                    )}
+                  </Panel>
+
+                  <Panel title="Keys" action={<PanelLink onClick={() => setActiveTab('keys')}>Manage</PanelLink>}>
+                    {keys.length === 0 ? (
+                      <p className="font-mono text-[11px] text-muted">No keys yet.</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {keys.slice(0, 4).map((k) => (
+                          <div key={k.id} className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-body text-xs text-primary truncate">{k.name}</p>
+                              <p className="font-mono text-[10px] text-muted truncate">
+                                {k.team_name || 'no team'} · ${Number(k.spent_this_month || 0).toFixed(2)}
+                              </p>
+                            </div>
+                            <span
+                              className={`font-mono text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${
+                                k.budget?.state === 'exhausted'
+                                  ? BUDGET_CHIP.exhausted
+                                  : k.budget?.state === 'warning'
+                                    ? BUDGET_CHIP.warning
+                                    : 'border-line text-muted'
+                              }`}
+                            >
+                              {k.budget?.state === 'exhausted'
+                                ? 'cheap'
+                                : k.budget?.state === 'warning'
+                                  ? `${k.budget.percent_used}%`
+                                  : 'ok'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Panel>
+
+                  <Panel title="Quickstart">
+                    <pre className="font-mono text-[10px] leading-relaxed text-muted bg-base border border-line rounded-lg p-3 overflow-x-auto whitespace-pre">{`curl ${API_BASE}/route \\
+  -H "Authorization: Bearer $ROUTEWISE_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{"query":"summarise this ticket"}'`}</pre>
+                    <p className="font-mono text-[10px] text-muted mt-2 leading-relaxed">
+                      OpenAI clients: point <span className="text-primary">base_url</span> at{' '}
+                      <span className="text-primary">{API_BASE}/v1</span>.
+                    </p>
+                  </Panel>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'keys' && (
         <>
           <p className="text-muted text-sm mb-8">
             Use these keys in the <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code> header when calling <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">/route</code>.
@@ -764,51 +1041,29 @@ const [savingBudget, setSavingBudget] = useState(false)
         />
       )}
 
-      {activeTab === 'playground' && hasKeys && <ApiPlayground />}
+          {activeTab === 'playground' && hasKeys && <ApiPlayground />}
 
-      {activeTab === 'analytics' && hasKeys && (
-        <div>
-          {/* Key selector */}
-          {keys.length > 1 && (
-            <div className="flex items-center gap-3 mb-6">
-              <label className="font-mono text-[10px] text-muted uppercase tracking-wide">Viewing key:</label>
-              <select
-                value={selectedKeyId || ''}
-                onChange={(e) => setSelectedKeyId(Number(e.target.value))}
-                className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono"
-              >
-                {keys.map((k) => (
-                  <option key={k.id} value={k.id}>{k.name} ({maskKey(k.key)})</option>
-                ))}
-              </select>
+          {activeTab === 'analytics' && hasKeys && (
+            <div>
+              <div className="mb-4">
+                <KeySwitcher keys={keys} selectedKeyId={selectedKeyId} onChange={setSelectedKeyId} mask={maskKey} />
+              </div>
+              <CostAnalytics apiKey={selectedKey?.key} />
             </div>
           )}
-          <CostAnalytics apiKey={selectedKey?.key} />
-        </div>
-      )}
 
-      {activeTab === 'logs' && hasKeys && (
-        <div>
-          {keys.length > 1 && (
-            <div className="flex items-center gap-3 mb-6">
-              <label className="font-mono text-[10px] text-muted uppercase tracking-wide">Viewing key:</label>
-              <select
-                value={selectedKeyId || ''}
-                onChange={(e) => setSelectedKeyId(Number(e.target.value))}
-                className="bg-surface border border-line rounded px-2 py-1 text-xs text-primary font-mono"
-              >
-                {keys.map((k) => (
-                  <option key={k.id} value={k.id}>{k.name} ({maskKey(k.key)})</option>
-                ))}
-              </select>
+          {activeTab === 'logs' && hasKeys && (
+            <div>
+              <div className="mb-4">
+                <KeySwitcher keys={keys} selectedKeyId={selectedKeyId} onChange={setSelectedKeyId} mask={maskKey} />
+              </div>
+              <RequestLogs apiKey={selectedKey?.key} showTitle={false} />
             </div>
           )}
-          <RequestLogs apiKey={selectedKey?.key} />
-        </div>
-      )}
 
-      {activeTab === 'alerts' && hasKeys && <AlertsTab />}
-
+          {activeTab === 'alerts' && hasKeys && <AlertsTab />}
+        </main>
+      </div>
     </div>
   )
 }
