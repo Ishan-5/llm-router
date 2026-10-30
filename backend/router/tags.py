@@ -36,12 +36,18 @@ def clean_tag(value: str | None) -> str | None:
     return cleaned[:TAG_MAX_LEN] or None
 
 
-def request_tags(request) -> dict:
-    """The two log columns for a request. Never raises, never rejects."""
+def request_tags(request, default_team: str | None = None) -> dict:
+    """The two log columns for a request. Never raises, never rejects.
+
+    A key that belongs to a team inherits that team's name as its tag, so a
+    shared key still reports spend the moment the team exists -- no header
+    required. An explicit header wins, because a caller may be charging one
+    request to a different budget on purpose.
+    """
     headers = getattr(request, "headers", None)
     if headers is None:
-        return dict(EMPTY_TAGS)
+        return {"team_id": clean_tag(default_team), "feature_tag": None}
     return {
-        "team_id": clean_tag(headers.get(TEAM_HEADER)),
+        "team_id": clean_tag(headers.get(TEAM_HEADER)) or clean_tag(default_team),
         "feature_tag": clean_tag(headers.get(FEATURE_HEADER)),
     }

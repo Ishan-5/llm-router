@@ -14,7 +14,8 @@ from router.multiturn import build_scoring_context, score_with_context
 from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSettings
-from router.auth import require_api_key, check_budget
+from router.auth import require_api_key
+from router.budgets import SCOPE_LABELS, budget_status, team_for_key
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.tags import request_tags
@@ -27,6 +28,12 @@ from router.explain import build_explanation
 router = APIRouter()
 log = logging.getLogger("routewise")
 executor = ThreadPoolExecutor()
+
+
+def _tags_for(request, api_key: ApiKey) -> dict:
+    """Header tags win; otherwise the key's team name is the default label."""
+    team = team_for_key(api_key)
+    return request_tags(request, default_team=team.name if team else None)
 
 DEFAULT_THRESHOLD = 1.0
 
@@ -114,6 +121,9 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     tags = tags or {}
     loop = asyncio.get_event_loop()
     threshold = req.threshold if req.threshold is not None else load_user_threshold(api_key.user_id)
+    # Resolved once and carried through every response, so a caller always
+    # knows how much of a budget is left, not just that it ran out.
+    budget = budget_status(api_key)
 
     if needs_web_search(req.query) and TAVILY_API_KEY:
         try:
@@ -129,7 +139,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             data = resp.json()
             answer = data.get("answer") or (
                 "\n\n".join(r["content"][:300] for r in data.get("results", [])[:3])
-                + "\n\n[web results truncated — showing first 300 chars per source]"
+                + "\n\n[web results truncated â€” showing first 300 chars per source]"
             )
         except Exception as e:
             log.debug("Web search failed, falling through to normal routing: %s", e)
@@ -143,7 +153,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
                 "model_id": "tavily/search", "input_tokens": 0, "output_tokens": 0,
                 "cost_usd": 0.0, "latency_ms": latency_ms,
             })
-            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "log_id": log_id}
+            return {"type": "web", "answer": answer, "latency_ms": latency_ms, "log_id": log_id, "budget": budget.as_dict()}
 
     # Build the conversation context once. The scorer needs it to judge a
     # follow-up fairly, and the cache needs it so a multi-turn request can never
@@ -211,7 +221,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             "model_id": cached["model_id"], "input_tokens": 0, "output_tokens": 0,
             "cost_usd": 0.0, "latency_ms": latency_ms, "tokens_saved_usd": tokens_saved_usd,
         })
-        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "log_id": log_id}
+        return {"type": "cache", "cached": cached, "tokens_saved_usd": tokens_saved_usd, "latency_ms": latency_ms, "log_id": log_id, "budget": budget.as_dict()}
 
     if req.override_tier and req.override_tier not in ("cheap", "mid", "frontier"):
         raise HTTPException(status_code=400, detail="invalid override_tier")
@@ -226,7 +236,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         )
 
     routing_tier = req.override_tier if req.override_tier else tier
-    over_budget = not check_budget(api_key)
+    over_budget = budget.capped
     if over_budget:
         routing_tier = "cheap"
 
@@ -234,23 +244,28 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     if req.override_tier:
         route_reason = f"override: forced to {req.override_tier}"
     elif over_budget:
-        route_reason = f"budget exceeded — forced to cheap (score {difficulty_score:.2f})"
+        label = SCOPE_LABELS.get(budget.scope, "Budget").lower()
+        route_reason = (
+            f"budget exceeded - {label} "
+            f"(${budget.spent_usd:.2f} of ${budget.budget_usd:.2f}) "
+            f"forced to cheap (score {difficulty_score:.2f})"
+        )
     elif resolved_mode != "generic":
         if routing_tier == "cheap":
-            route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} ≤ cheap ceiling {cheap_ceil:.2f}"
+            route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} â‰¤ cheap ceiling {cheap_ceil:.2f}"
         elif routing_tier == "frontier":
             if resolved_mode == "2tier":
-                route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} > cheap ceiling {cheap_ceil:.2f} → frontier"
+                route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} > cheap ceiling {cheap_ceil:.2f} â†’ frontier"
             else:
-                route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} ≥ frontier floor {frontier_floor:.2f}"
+                route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} â‰¥ frontier floor {frontier_floor:.2f}"
         else:
-            route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} → mid"
+            route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} â†’ mid"
     elif routing_tier == "cheap":
-        route_reason = f"score {difficulty_score:.2f} ≤ cheap ceiling {cheap_ceil:.2f}"
+        route_reason = f"score {difficulty_score:.2f} â‰¤ cheap ceiling {cheap_ceil:.2f}"
     elif routing_tier == "frontier":
-        route_reason = f"score {difficulty_score:.2f} ≥ frontier floor {frontier_floor:.2f}"
+        route_reason = f"score {difficulty_score:.2f} â‰¥ frontier floor {frontier_floor:.2f}"
     else:
-        route_reason = f"score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} → mid"
+        route_reason = f"score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} â†’ mid"
 
     user_config = get_active_config(api_key.user_id)
     if req.user_api_keys:
@@ -298,6 +313,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         "messages": req.messages,
         "context": context,
         "route_reason": route_reason,
+        "budget": budget.as_dict(),
     }
 
 
@@ -307,7 +323,7 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
         raise HTTPException(status_code=400, detail="Prompt injection detected")
 
     start = time.time()
-    tags = request_tags(request)
+    tags = _tags_for(request, api_key)
     pre = await _preprocess(req, api_key, start, executor, tags)
 
     if pre["type"] == "web":
@@ -317,6 +333,7 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
             "fallback_used": False, "cache_hit": False, "difficulty_score": None,
             "cost_usd": 0.0, "latency_ms": pre["latency_ms"],
             "model_id": "tavily/search", "request_log_id": pre["log_id"],
+            "budget": pre.get("budget"),
         }
 
     if pre["type"] == "cache":
@@ -328,11 +345,13 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
             "latency_ms": pre["latency_ms"], "model_id": cached["model_id"],
             "route_reason": f"cache hit (similarity {cached['similarity']:.2f})",
             "request_log_id": pre["log_id"],
+            "budget": pre.get("budget"),
         }
 
     routing_tier = pre["tier"]
     difficulty_score = pre["difficulty_score"]
     over_budget = pre["over_budget"]
+    budget = pre["budget"]
     loop = asyncio.get_event_loop()
 
     try:
@@ -348,6 +367,7 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
             "cache_hit": False, "cache_similarity": None, "model_id": None,
             "input_tokens": 0, "output_tokens": 0, "cost_usd": 0.0,
             "latency_ms": round((time.time() - start) * 1000, 2),
+            "budget_capped": over_budget, "budget_scope": budget["scope"] if over_budget else None,
         })
         raise HTTPException(status_code=503, detail="All model tiers failed to respond. Check your API keys or try again later.")
 
@@ -361,6 +381,7 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
         "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
         "cost_usd": result["cost_usd"],
         "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
+        "budget_capped": over_budget, "budget_scope": budget["scope"] if over_budget else None,
     })
     loop.run_in_executor(executor, _cache_store, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"], api_key.id, pre.get("context"))
     if log_id is not None:
@@ -380,6 +401,7 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
         "model_id": result["model_id"],
         "route_reason": pre["route_reason"] if not result["fallback_used"] else f"{pre['route_reason']} (fallback to {result['tier']})",
         "request_log_id": log_id,
+        "budget": budget,
     }
 
 
@@ -464,7 +486,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
         raise HTTPException(status_code=400, detail="Prompt injection detected")
 
     start = time.time()
-    tags = request_tags(request)
+    tags = _tags_for(request, api_key)
     pre = await _preprocess(req, api_key, start, executor, tags)
 
     if pre["type"] == "web":
@@ -472,7 +494,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
         latency_ms = pre["latency_ms"]
         log_id = pre.get("log_id")
         async def _web_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms, 'model_id': 'tavily/search', 'request_log_id': log_id})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': 'web', 'cache_hit': False, 'cost_usd': 0.0, 'latency_ms': latency_ms, 'model_id': 'tavily/search', 'request_log_id': log_id, 'budget': pre.get('budget')})}\n\n"
             yield f"data: {json.dumps({'type': 'chunk', 'text': answer})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return StreamingResponse(_web_stream(), media_type="text/event-stream")
@@ -483,7 +505,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
         latency_ms = pre["latency_ms"]
         log_id = pre.get("log_id")
         async def _cache_stream():
-            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms, 'model_id': cached['model_id'], 'request_log_id': log_id})}\n\n"
+            yield f"data: {json.dumps({'type': 'meta', 'routed_to': cached['tier'], 'cache_hit': True, 'cache_similarity': cached['similarity'], 'cost_usd': 0.0, 'tokens_saved_usd': tokens_saved_usd, 'latency_ms': latency_ms, 'model_id': cached['model_id'], 'request_log_id': log_id, 'budget': pre.get('budget')})}\n\n"
             yield f"data: {json.dumps({'type': 'chunk', 'text': cached['response']})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return StreamingResponse(_cache_stream(), media_type="text/event-stream")
@@ -491,6 +513,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
     routing_tier = pre["tier"]
     difficulty_score = pre["difficulty_score"]
     over_budget = pre["over_budget"]
+    budget = pre["budget"]
     user_config = pre["user_config"]
     loop = asyncio.get_event_loop()
 
@@ -516,6 +539,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
             "cheap_ceil": pre["cheap_ceil"],
             "frontier_floor": pre["frontier_floor"],
             "route_reason": pre["route_reason"],
+            "budget": budget,
         }
         yield f"data: {json.dumps(early_meta)}\n\n"
 
@@ -564,6 +588,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
             "cache_similarity": None, "model_id": meta["model_id"],
             "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
+            "budget_capped": over_budget, "budget_scope": budget["scope"] if over_budget else None,
         })
         loop.run_in_executor(executor, _cache_store, req.query, full_response,
             meta["tier"], meta["model_id"], meta["cost_usd"],
@@ -597,6 +622,7 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
                 if not fallback_used
                 else f"{pre['route_reason']} (fallback to {meta['tier']})"
             ),
+            "budget": budget,
         }
         yield f"data: {json.dumps(done_event)}\n\n"
 
