@@ -18,6 +18,13 @@ from router.db import log_request, ApiKey
 from router.auth import require_api_key
 from router.budgets import budget_status, team_for_key
 from router.tags import request_tags
+from router.key_prefs import (
+    cached_tier_allowed,
+    clamp_tier_to_key,
+    key_cache_bypassed,
+    key_support_mode,
+    key_threshold,
+)
 from router.config import MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii
 from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
@@ -202,6 +209,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
     # --- resolve tier ---
     override_tier, mode, support_mode = _resolve_tier(req.model)
+    # An explicit model (lisa/kate) wins; otherwise the key's saved policy.
+    support_mode = key_support_mode(api_key, support_mode)
     start = time.time()
     chat_id = _generate_id()
     response.headers["x-routewise-support-mode"] = support_mode or ""
@@ -267,6 +276,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     context = build_scoring_context(req.messages, user_query)
 
     async def _maybe_check_cache():
+        if key_cache_bypassed(api_key):
+            return None
         if context and not req.allow_context_cache:
             return None
         return await loop.run_in_executor(executor, _cache_lookup, user_query, api_key.id, context)
@@ -276,7 +287,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         session = SessionLocal()
         try:
             s = session.query(UserSettings).filter(UserSettings.user_id == str(api_key.user_id)).first()
-            return s.router_threshold if s else 1.0
+            return key_threshold(api_key, s.router_threshold if s else 1.0)
         finally:
             session.close()
 
@@ -293,6 +304,11 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         _maybe_check_cache(),
         loop.run_in_executor(executor, _score),
     )
+
+    # A cached answer from before the key's ceiling changed must not leak a
+    # tier the key is no longer allowed to use.
+    if cached is not None and not cached_tier_allowed(api_key, cached["tier"], support_mode):
+        cached = None
 
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
@@ -332,6 +348,9 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         routing_tier = "cheap"
     if support_mode == "2tier" and routing_tier == "mid":
         raise HTTPException(status_code=400, detail="override_tier 'mid' is not available under the 2tier support policy")
+    # Applied after budget and explicit overrides: a key capped at cheap stays
+    # cheap even when the caller asks for frontier.
+    routing_tier, _key_ceiling = clamp_tier_to_key(api_key, routing_tier, support_mode)
 
     user_config = get_active_config(api_key.user_id)
 
@@ -358,11 +377,12 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             "cost_usd": result["cost_usd"], "latency_ms": latency_ms,
             "budget_capped": over_budget, "budget_scope": budget.scope if over_budget else None,
         })
-        loop.run_in_executor(
-executor, _cache_store, user_query, result["text"], result["tier"],
-        result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"],
-        api_key.id, context,
-    )
+        if not key_cache_bypassed(api_key):
+            loop.run_in_executor(
+                executor, _cache_store, user_query, result["text"], result["tier"],
+                result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"],
+                api_key.id, context,
+            )
 
         usage = {"input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"]}
         response.headers["x-routewise-tier"] = result["tier"]
@@ -444,10 +464,11 @@ executor, _cache_store, user_query, result["text"], result["tier"],
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
             "budget_capped": over_budget, "budget_scope": budget.scope if over_budget else None,
         })
-        loop.run_in_executor(
-executor, _cache_store, user_query, full_response,
-        meta["tier"], meta["model_id"], meta["cost_usd"],
-        meta["input_tokens"], meta["output_tokens"], api_key.id, context,
-    )
+        if not key_cache_bypassed(api_key):
+            loop.run_in_executor(
+                executor, _cache_store, user_query, full_response,
+                meta["tier"], meta["model_id"], meta["cost_usd"],
+                meta["input_tokens"], meta["output_tokens"], api_key.id, context,
+            )
 
     return StreamingResponse(_stream(), media_type="text/event-stream", headers=_budget_headers(budget))

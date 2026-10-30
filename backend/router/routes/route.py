@@ -19,6 +19,14 @@ from router.budgets import SCOPE_LABELS, budget_status, team_for_key
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
 from router.tags import request_tags
+from router.key_prefs import (
+    available_tiers_for_key,
+    cached_tier_allowed,
+    clamp_tier_to_key,
+    key_cache_bypassed,
+    key_support_mode,
+    key_threshold,
+)
 from router.model_config_loader import get_active_config, get_pricing_for_model, resolve_tier_pricing
 from router.quality_judge import update_quality_score
 from router.difficulty_labeler import update_difficulty_label
@@ -120,7 +128,11 @@ class QueryRequest(BaseModel):
 async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executor, tags: dict | None = None):
     tags = tags or {}
     loop = asyncio.get_event_loop()
-    threshold = req.threshold if req.threshold is not None else load_user_threshold(api_key.user_id)
+    # A key can carry the routing policy and sensitivity it was issued with, so
+    # the same key behaves the same no matter which client calls it. An explicit
+    # request value always wins over the key's default.
+    support_mode = key_support_mode(api_key, req.support_mode)
+    threshold = req.threshold if req.threshold is not None else key_threshold(api_key, load_user_threshold(api_key.user_id))
     # Resolved once and carried through every response, so a caller always
     # knows how much of a budget is left, not just that it ran out.
     budget = budget_status(api_key)
@@ -165,7 +177,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         # a shared similarity cache cannot judge it safely. Opt back in with
         # bypass_cache=False plus allow_context_cache=True -- the lookup then
         # matches on the full transcript context rather than the newest message.
-        if req.bypass_cache:
+        if key_cache_bypassed(api_key, req.bypass_cache):
             return None
         if context and not req.allow_context_cache:
             return None
@@ -179,7 +191,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         return score_with_context(
             req.query,
             margin=threshold,
-            support_mode=req.support_mode,
+            support_mode=support_mode,
             context=context,
         )
 
@@ -195,17 +207,22 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     except HTTPException:
         raise
     except Exception as e:
-        if req.support_mode and req.support_mode != "generic":
-            log.error("support policy %s failed: %s", req.support_mode, e)
+        if support_mode and support_mode != "generic":
+            log.error("support policy %s failed: %s", support_mode, e)
             raise HTTPException(
                 status_code=503,
-                detail=f"support policy {req.support_mode!r} unavailable: {e}",
+                detail=f"support policy {support_mode!r} unavailable: {e}",
             )
         raise
     finally:
         observe_routing(time.perf_counter() - _routing_started)
     cached = _cache_result
     difficulty_score, tier, cheap_ceil, frontier_floor, resolved_mode = scored
+
+    # A cached answer stored before the key's ceiling changed must not leak a
+    # more expensive tier than the key is now allowed to use.
+    if cached is not None and not cached_tier_allowed(api_key, cached["tier"], resolved_mode):
+        cached = None
 
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
@@ -239,17 +256,25 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     over_budget = budget.capped
     if over_budget:
         routing_tier = "cheap"
+    # The key's ceiling is applied last, so it also overrides an explicit ask
+    # for a more expensive tier. That is the point of a governance control.
+    routing_tier, key_ceiling = clamp_tier_to_key(api_key, routing_tier, resolved_mode)
 
     # build route_reason
-    if req.override_tier:
-        route_reason = f"override: forced to {req.override_tier}"
-    elif over_budget:
+    if over_budget:
         label = SCOPE_LABELS.get(budget.scope, "Budget").lower()
         route_reason = (
             f"budget exceeded - {label} "
             f"(${budget.spent_usd:.2f} of ${budget.budget_usd:.2f}) "
             f"forced to cheap (score {difficulty_score:.2f})"
         )
+    elif key_ceiling:
+        route_reason = (
+            f"key max tier {key_ceiling} - score {difficulty_score:.2f} "
+            f"forced to {routing_tier}"
+        )
+    elif req.override_tier:
+        route_reason = f"override: forced to {req.override_tier}"
     elif resolved_mode != "generic":
         if routing_tier == "cheap":
             route_reason = f"support {resolved_mode}: score {difficulty_score:.2f} â‰¤ cheap ceiling {cheap_ceil:.2f}"
@@ -307,9 +332,8 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         "cheap_ceil": cheap_ceil,
         "frontier_floor": frontier_floor,
         "support_mode": resolved_mode,
-        "available_tiers": (
-            ["cheap", "frontier"] if resolved_mode == "2tier" else ["cheap", "mid", "frontier"]
-        ),
+        "available_tiers": available_tiers_for_key(api_key, resolved_mode),
+        "key_ceiling": key_ceiling,
         "messages": req.messages,
         "context": context,
         "route_reason": route_reason,
@@ -383,7 +407,8 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
         "latency_ms": result["latency_ms"] if "latency_ms" in result else latency_ms,
         "budget_capped": over_budget, "budget_scope": budget["scope"] if over_budget else None,
     })
-    loop.run_in_executor(executor, _cache_store, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"], api_key.id, pre.get("context"))
+    if not key_cache_bypassed(api_key):
+        loop.run_in_executor(executor, _cache_store, req.query, result["text"], result["tier"], result["model_id"], result["cost_usd"], result["input_tokens"], result["output_tokens"], api_key.id, pre.get("context"))
     if log_id is not None:
         loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), result["text"], result["tier"], result["model_id"])
         loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
@@ -430,7 +455,8 @@ async def explain_route(req: QueryRequest, api_key: ApiKey = Depends(require_api
     if is_prompt_injection(req.query):
         raise HTTPException(status_code=400, detail="Prompt injection detected")
 
-    threshold = req.threshold if req.threshold is not None else load_user_threshold(api_key.user_id)
+    support_mode = key_support_mode(api_key, req.support_mode)
+    threshold = req.threshold if req.threshold is not None else key_threshold(api_key, load_user_threshold(api_key.user_id))
     context = build_scoring_context(req.messages, req.query)
     loop = asyncio.get_event_loop()
 
@@ -438,17 +464,17 @@ async def explain_route(req: QueryRequest, api_key: ApiKey = Depends(require_api
         scored = await loop.run_in_executor(
             executor,
             lambda: score_with_context(
-                req.query, margin=threshold, support_mode=req.support_mode, context=context
+                req.query, margin=threshold, support_mode=support_mode, context=context
             ),
         )
     except HTTPException:
         raise
     except Exception as e:
-        if req.support_mode and req.support_mode != "generic":
-            log.error("support policy %s failed: %s", req.support_mode, e)
+        if support_mode and support_mode != "generic":
+            log.error("support policy %s failed: %s", support_mode, e)
             raise HTTPException(
                 status_code=503,
-                detail=f"support policy {req.support_mode!r} unavailable: {e}",
+                detail=f"support policy {support_mode!r} unavailable: {e}",
             )
         raise
 
@@ -460,14 +486,14 @@ async def explain_route(req: QueryRequest, api_key: ApiKey = Depends(require_api
             detail="override_tier 'mid' is not available under the 2tier support policy",
         )
 
-    available_tiers = (
-        ["cheap", "frontier"] if resolved_mode == "2tier" else ["cheap", "mid", "frontier"]
-    )
+    explained_tier = req.override_tier or tier
+    explained_tier, _ceiling = clamp_tier_to_key(api_key, explained_tier, resolved_mode)
+    available_tiers = available_tiers_for_key(api_key, resolved_mode)
     observe_explanation(resolved_mode)
     return build_explanation(
         query=req.query,
         score=difficulty_score,
-        tier=req.override_tier or tier,
+        tier=explained_tier,
         predicted_tier=tier,
         override=req.override_tier,
         cheap_ceil=cheap_ceil,
@@ -590,9 +616,10 @@ async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKe
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
             "budget_capped": over_budget, "budget_scope": budget["scope"] if over_budget else None,
         })
-        loop.run_in_executor(executor, _cache_store, req.query, full_response,
-            meta["tier"], meta["model_id"], meta["cost_usd"],
-            meta["input_tokens"], meta["output_tokens"], api_key.id, pre.get("context"))
+        if not key_cache_bypassed(api_key):
+            loop.run_in_executor(executor, _cache_store, req.query, full_response,
+                meta["tier"], meta["model_id"], meta["cost_usd"],
+                meta["input_tokens"], meta["output_tokens"], api_key.id, pre.get("context"))
         if log_id is not None:
             loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), full_response, meta["tier"], meta["model_id"])
             loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
