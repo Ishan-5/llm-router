@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-402%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-409%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -460,7 +460,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (339 tests) · node:test (63 CLI tests) · 402 total · GitHub Actions CI |
+| ✅ Testing | pytest (342 tests) · node:test (67 CLI tests) · 409 total · GitHub Actions CI |
 
 ---
 
@@ -744,9 +744,14 @@ answer, and the reason is visible in four places:
 - a `budget` block on `/route`, `/route/stream` meta and `/v1/chat/completions`,
   carrying `scope`, `state` (`ok` / `warning` / `exhausted` / `unlimited`),
   `budget_usd`, `spent_usd`, `remaining_usd` and `percent_used`.
+- `x-routewise-budget-*` headers on the OpenAI-compatible endpoint
+  (`state`, `scope`, `capped`, `remaining`) plus the same block in the final
+  stream chunk, for clients that log headers rather than bodies.
 - the `budget_capped` / `budget_scope` fields returned by `/logs`.
 - the dashboard: a banner on **Analytics**, a chip on each affected log row, and
   a spent-vs-budget bar on the **Teams** tab.
+- the CLI and SDK: `routewise analytics` prints the binding cap and downgrade
+  count, and `client.get_budget()` returns the same block programmatically.
 
 The warning state starts at **80%**, so there is time to raise the cap before
 quality drops. Keys inherit their team's name as the default `team_id` tag; an
