@@ -15,7 +15,8 @@ from router.support_policy import get_tier_with_mode
 from router.multiturn import build_scoring_context, score_with_context
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, ApiKey
-from router.auth import require_api_key, check_budget
+from router.auth import require_api_key
+from router.budgets import budget_status, team_for_key
 from router.tags import request_tags
 from router.config import MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii
@@ -166,7 +167,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         raise HTTPException(status_code=400, detail="messages must contain at least one user message")
 
     user_query = _extract_user_query(req.messages)
-    tags = request_tags(request)
+    _team = team_for_key(api_key)
+    tags = request_tags(request, default_team=_team.name if _team else None)
 
     # --- injection check ---
     if is_prompt_injection(user_query):
@@ -293,7 +295,8 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
     # --- resolve tier ---
     routing_tier = override_tier if override_tier else tier
-    over_budget = not check_budget(api_key)
+    budget = budget_status(api_key)
+    over_budget = budget.capped
     if over_budget:
         routing_tier = "cheap"
     if support_mode == "2tier" and routing_tier == "mid":
@@ -322,6 +325,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
             "cache_hit": False, "cache_similarity": None, "model_id": result["model_id"],
             "input_tokens": result["input_tokens"], "output_tokens": result["output_tokens"],
             "cost_usd": result["cost_usd"], "latency_ms": latency_ms,
+            "budget_capped": over_budget, "budget_scope": budget.scope if over_budget else None,
         })
         loop.run_in_executor(
 executor, _cache_store, user_query, result["text"], result["tier"],
@@ -402,6 +406,7 @@ executor, _cache_store, user_query, result["text"], result["tier"],
             "cache_similarity": None, "model_id": meta["model_id"],
             "input_tokens": meta["input_tokens"], "output_tokens": meta["output_tokens"],
             "cost_usd": meta["cost_usd"], "latency_ms": latency_ms,
+            "budget_capped": over_budget, "budget_scope": budget.scope if over_budget else None,
         })
         loop.run_in_executor(
 executor, _cache_store, user_query, full_response,
