@@ -43,6 +43,10 @@ class RequestLog(Base):
     id = Column(Integer, primary_key=True)
     api_key_id = Column(Integer, nullable=True, index=True)
     user_id = Column(String, nullable=True, index=True)
+    # Spend dimensions, supplied per request (X-RouteWise-Team / -Feature).
+    # NULL means untagged; those requests still aggregate, just in one bucket.
+    team_id = Column(String, nullable=True, index=True)
+    feature_tag = Column(String, nullable=True, index=True)
     query = Column(String)
     response = Column(Text, nullable=True)
     difficulty_score = Column(Float)
@@ -117,73 +121,64 @@ class ModelPricing(Base):
 
 try:
     Base.metadata.create_all(engine)
+    _schema_ready = True
 except Exception as e:
+    _schema_ready = False
     log.warning("DB init failed (will retry on first request): %s", e)
 
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN quality_score FLOAT"))
-        conn.commit()
-except Exception:
-    pass
+# Columns added after request_logs first shipped.
+#
+# create_all() only creates missing TABLES; it never adds a column to a table
+# that already exists, so a new field on the model above does nothing to a live
+# database until an ALTER runs. Each statement is idempotent by exception:
+# "duplicate column" means it is already there, which is the normal case after
+# the first boot. Runs on SQLite (dev/tests) and Postgres (production) alike.
+_LATE_COLUMNS = (
+    ("quality_score", "FLOAT"),
+    ("feedback", "VARCHAR"),
+    ("feedback_reason", "TEXT"),
+    ("quality_judged", "BOOLEAN DEFAULT FALSE"),
+    ("llm_difficulty_score", "FLOAT"),
+    ("llm_predicted_tier", "VARCHAR"),
+    ("label_judged", "BOOLEAN DEFAULT FALSE"),
+    ("tokens_saved_usd", "FLOAT"),
+    ("team_id", "VARCHAR"),
+    ("feature_tag", "VARCHAR"),
+)
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN feedback VARCHAR"))
-        conn.commit()
-except Exception:
-    pass
+_LATE_INDEXES = (
+    ("ix_request_logs_team_id", "team_id"),
+    ("ix_request_logs_feature_tag", "feature_tag"),
+)
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN feedback_reason TEXT"))
-        conn.commit()
-except Exception:
-    pass
 
-try:
+def _apply_late_schema():
+    """Add post-launch columns and indexes that create_all() cannot."""
     from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN quality_judged BOOLEAN DEFAULT FALSE"))
-        conn.commit()
-except Exception:
-    pass
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN llm_difficulty_score FLOAT"))
-        conn.commit()
-except Exception:
-    pass
+    for column, ddl in _LATE_COLUMNS:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE request_logs ADD COLUMN {column} {ddl}"))
+                conn.commit()
+        except Exception:
+            pass  # already present
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN llm_predicted_tier VARCHAR"))
-        conn.commit()
-except Exception:
-    pass
+    for index_name, column in _LATE_INDEXES:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(
+                    f"CREATE INDEX IF NOT EXISTS {index_name} ON request_logs ({column})"
+                ))
+                conn.commit()
+        except Exception:
+            pass
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN label_judged BOOLEAN DEFAULT FALSE"))
-        conn.commit()
-except Exception:
-    pass
 
-try:
-    from sqlalchemy import text
-    with engine.connect() as conn:
-        conn.execute(text("ALTER TABLE request_logs ADD COLUMN tokens_saved_usd FLOAT"))
-        conn.commit()
-except Exception:
-    pass
+# Skip a dozen doomed round-trips when the database was unreachable above.
+if _schema_ready:
+    _apply_late_schema()
 
 
 def log_request(data: dict):
