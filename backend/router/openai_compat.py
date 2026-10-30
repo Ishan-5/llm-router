@@ -352,7 +352,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     # cheap even when the caller asks for frontier.
     routing_tier, _key_ceiling = clamp_tier_to_key(api_key, routing_tier, support_mode)
 
-    user_config = get_active_config(api_key.user_id)
+    user_config = get_active_config(api_key.user_id, api_key.id)
 
     provider_messages = _build_messages_for_provider(req.messages)
 
@@ -404,7 +404,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
                 for item in stream_model_with_failover(
                     routing_tier,
                     user_query,
-                    user_config=get_active_config(api_key.user_id),
+                    user_config=get_active_config(api_key.user_id, api_key.id),
                     messages=provider_messages,
                     max_tokens=req.max_tokens,
                     temperature=req.temperature,

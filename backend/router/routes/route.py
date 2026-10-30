@@ -64,6 +64,41 @@ def _is_price(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0
 
 
+def _apply_byom_overrides(user_config: dict, byom_config: dict | None) -> dict:
+    """Apply a request's BYOM overrides on top of the key and account config.
+
+    Switching provider drops any credential already in the config: that secret
+    belongs to the previous provider. The caller can send a credential for the
+    new one in `user_api_keys`, which is applied after this.
+    """
+    for t, cfg in (byom_config or {}).items():
+        if t not in user_config or not isinstance(cfg, dict):
+            continue
+        new_provider = cfg.get("provider")
+        if new_provider and new_provider != user_config[t].get("provider"):
+            user_config[t]["api_key"] = ""
+        if new_provider:
+            user_config[t]["provider"] = new_provider
+        if cfg.get("model_id"):
+            user_config[t]["model_id"] = cfg["model_id"]
+        # Reprice against the effective model. The prices merged in by
+        # get_active_config belong to the tier default, so without this a
+        # BYOM override would be costed as the default model.
+        pin = cfg.get("price_per_m_input")
+        pout = cfg.get("price_per_m_output")
+        if _is_price(pin) and _is_price(pout):
+            user_config[t]["price_per_m_input"] = float(pin)
+            user_config[t]["price_per_m_output"] = float(pout)
+        else:
+            user_config[t]["price_per_m_input"], user_config[t]["price_per_m_output"] = resolve_tier_pricing(
+                user_config[t]["provider"],
+                user_config[t]["model_id"],
+                user_config[t]["price_per_m_input"],
+                user_config[t]["price_per_m_output"],
+            )
+    return user_config
+
+
 def load_user_threshold(user_id: str | None) -> float:
     if not user_id:
         return DEFAULT_THRESHOLD
@@ -292,33 +327,14 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
     else:
         route_reason = f"score {difficulty_score:.2f} between {cheap_ceil:.2f} and {frontier_floor:.2f} â†’ mid"
 
-    user_config = get_active_config(api_key.user_id)
+    user_config = get_active_config(api_key.user_id, api_key.id)
+    # Request BYOM wins over the key's saved models, then request credentials
+    # win over anything stored, so a caller can always bring their own key.
+    _apply_byom_overrides(user_config, req.byom_config)
     if req.user_api_keys:
         for t, key in req.user_api_keys.items():
             if t in user_config and key:
                 user_config[t]["api_key"] = key
-    if req.byom_config:
-        for t, cfg in req.byom_config.items():
-            if t in user_config and isinstance(cfg, dict):
-                if cfg.get("provider"):
-                    user_config[t]["provider"] = cfg["provider"]
-                if cfg.get("model_id"):
-                    user_config[t]["model_id"] = cfg["model_id"]
-                # Reprice against the effective model. The prices merged in by
-                # get_active_config belong to the tier default, so without this a
-                # BYOM override would be costed as the default model.
-                pin = cfg.get("price_per_m_input")
-                pout = cfg.get("price_per_m_output")
-                if _is_price(pin) and _is_price(pout):
-                    user_config[t]["price_per_m_input"] = float(pin)
-                    user_config[t]["price_per_m_output"] = float(pout)
-                else:
-                    user_config[t]["price_per_m_input"], user_config[t]["price_per_m_output"] = resolve_tier_pricing(
-                        user_config[t]["provider"],
-                        user_config[t]["model_id"],
-                        user_config[t]["price_per_m_input"],
-                        user_config[t]["price_per_m_output"],
-                    )
 
     observe_tier(routing_tier, resolved_mode)
     return {
@@ -501,7 +517,7 @@ async def explain_route(req: QueryRequest, api_key: ApiKey = Depends(require_api
         threshold=threshold,
         policy=resolved_mode,
         available_tiers=available_tiers,
-        user_config=get_active_config(api_key.user_id),
+        user_config=get_active_config(api_key.user_id, api_key.id),
         context=context,
     )
 
