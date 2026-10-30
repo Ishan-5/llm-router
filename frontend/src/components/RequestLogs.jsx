@@ -40,6 +40,11 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
         <span className={`font-mono px-1.5 py-0.5 rounded-md border shrink-0 ${tierClass}`}>
           {log.tier}
         </span>
+        {log.team_id && (
+          <span className="font-mono text-[10px] text-signal bg-signal/10 border border-signal/30 px-1.5 py-0.5 rounded-md shrink-0 hidden sm:inline">
+            {log.team_id}
+          </span>
+        )}
         <span className="text-primary truncate flex-1 font-mono">
           {log.query}
         </span>
@@ -80,6 +85,8 @@ function LogRow({ log, isExpanded, onToggle, apiKey }) {
               value={log.tokens_saved_usd != null ? `$${log.tokens_saved_usd.toFixed(4)}` : '—'}
             />
             <MetaCell label="Fallback" value={log.fallback_used ? 'Yes' : 'No'} />
+            <MetaCell label="Team" value={log.team_id ?? '-'} />
+            <MetaCell label="Feature" value={log.feature_tag ?? '-'} />
             <MetaCell label="Intended tier" value={log.intended_tier ?? '—'} />
           </div>
 

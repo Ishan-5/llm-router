@@ -64,7 +64,7 @@ export default function CostAnalytics({ apiKey }) {
   if (error) return <p className="font-mono text-xs text-danger">Failed to load analytics: {error}</p>
   if (!data) return <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-20 bg-line rounded-xl animate-pulse" />)}</div>
 
-  const { summary, tier_costs, model_costs, daily, latency_by_tier, top_expensive } = data
+  const { summary, tier_costs, model_costs, daily, latency_by_tier, top_expensive, teams = [], team_count = 0 } = data
 
   const tierPieData = Object.entries(tier_costs).map(([name, value]) => ({ name, value: Math.round(value * 10000) / 10000 }))
   const modelBarData = Object.entries(model_costs)
@@ -79,6 +79,60 @@ export default function CostAnalytics({ apiKey }) {
         <Stat label="Cache Hit Rate" value={`${summary.cache_hit_rate}%`} sub={`$${summary.cache_savings.toFixed(4)} saved`} />
         <Stat label="Fallback Rate" value={`${summary.fallback_rate}%`} />
       </div>
+
+      {teams.length > 0 && (
+        <Section title="Spend by Team">
+          <div className="bg-surface border border-line rounded-xl shadow-card overflow-x-auto">
+            <table className="w-full text-xs min-w-[560px]">
+              <thead>
+                <tr className="border-b border-line">
+                  <th className="text-left px-3 py-2 text-muted font-mono text-[10px] uppercase">Team</th>
+                  <th className="text-right px-3 py-2 text-muted font-mono text-[10px] uppercase">Requests</th>
+                  <th className="text-right px-3 py-2 text-muted font-mono text-[10px] uppercase">Spend</th>
+                  <th className="text-right px-3 py-2 text-muted font-mono text-[10px] uppercase">All-frontier</th>
+                  <th className="text-right px-3 py-2 text-muted font-mono text-[10px] uppercase">Saved</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teams.map((team) => (
+                  <tr key={team.team_id ?? '__untagged'} className="border-b border-line/50 hover:bg-panel transition-colors">
+                    <td className="px-3 py-2">
+                      <span className={`font-mono px-1.5 py-0.5 rounded border text-[10px] ${
+                        team.team_id
+                          ? 'text-signal bg-signal/10 border-signal/30'
+                          : 'text-muted bg-panel border-line'
+                      }`}>
+                        {team.team_id ?? 'untagged'}
+                      </span>
+                      {team.cache_hits > 0 && (
+                        <span className="ml-2 font-mono text-[10px] text-cool">{team.cache_hits} cached</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-primary font-mono text-right">{team.requests.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-primary font-mono text-right">${team.cost_usd.toFixed(4)}</td>
+                    <td className="px-3 py-2 text-muted font-mono text-right">${team.hypothetical_cost_usd.toFixed(4)}</td>
+                    <td className="px-3 py-2 text-right">
+                      <span className="font-mono text-cool">${team.saved_usd.toFixed(4)}</span>
+                      <span className="font-mono text-[10px] text-muted ml-1">{team.savings_pct}%</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {teams.every((team) => !team.team_id) ? (
+            <p className="font-mono text-[10px] text-muted px-1">
+              Every request so far is untagged. Send <span className="text-primary">X-RouteWise-Team: growth</span> on a request and it appears here as its own row.
+            </p>
+          ) : (
+            team_count > teams.length && (
+              <p className="font-mono text-[10px] text-muted px-1">
+                Showing the {teams.length} teams that spend most, of {team_count} total.
+              </p>
+            )
+          )}
+        </Section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {daily.length > 0 && (
@@ -176,6 +230,7 @@ export default function CostAnalytics({ apiKey }) {
                 <tr className="border-b border-line">
                   <th className="text-left px-3 py-2 text-muted font-mono text-[10px] uppercase">Query</th>
                   <th className="text-left px-3 py-2 text-muted font-mono text-[10px] uppercase">Tier</th>
+                  <th className="text-left px-3 py-2 text-muted font-mono text-[10px] uppercase">Team</th>
                   <th className="text-left px-3 py-2 text-muted font-mono text-[10px] uppercase">Model</th>
                   <th className="text-right px-3 py-2 text-muted font-mono text-[10px] uppercase">Tokens</th>
                   <th className="text-right px-3 py-2 text-muted font-mono text-[10px] uppercase">Cost</th>
@@ -192,6 +247,7 @@ export default function CostAnalytics({ apiKey }) {
                         : 'text-danger bg-danger/10 border-danger/30'
                       }`}>{r.tier}</span>
                     </td>
+                    <td className="px-3 py-2 font-mono text-[10px] text-muted">{r.team_id ?? '-'}</td>
                     <td className="px-3 py-2 text-muted font-mono">{r.model?.split('/').pop()}</td>
                     <td className="px-3 py-2 text-primary font-mono text-right">{r.tokens?.toLocaleString()}</td>
                     <td className="px-3 py-2 text-primary font-mono text-right">${r.cost?.toFixed(4)}</td>
