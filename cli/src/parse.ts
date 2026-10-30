@@ -18,6 +18,8 @@ const VALUE_FLAGS = new Set([
   "temperature",
   "timeout",
   "key",
+  "team",
+  "feature",
 ]);
 
 export function normalizeFlagName(name: string): string {

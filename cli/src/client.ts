@@ -69,6 +69,8 @@ export interface AskOptions {
   timeoutMs?: number;
   model?: ModelName;
   supportMode?: SupportMode;
+  team?: string;
+  feature?: string;
 }
 
 export interface ChatOptions {
@@ -77,6 +79,8 @@ export interface ChatOptions {
   maxTokens?: number;
   temperature?: number;
   stream?: boolean;
+  team?: string;
+  feature?: string;
 }
 
 export interface RouteWiseClientOptions {
@@ -84,6 +88,8 @@ export interface RouteWiseClientOptions {
   baseUrl?: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  team?: string | null;
+  feature?: string | null;
 }
 
 type SseEntry = { kind: "json"; value: JsonRecord } | { kind: "done" } | null;
@@ -168,19 +174,33 @@ export class RouteWiseClient {
   readonly apiKey: string | null;
   readonly baseUrl: string;
   readonly timeoutMs: number;
+  readonly team: string | null;
+  readonly feature: string | null;
   private readonly _fetch: typeof fetch;
 
   constructor(options: RouteWiseClientOptions = {}) {
     this.apiKey = options.apiKey && options.apiKey.trim() ? options.apiKey.trim() : null;
     this.baseUrl = (options.baseUrl ?? "").trim().replace(/\/+$/, "");
     this.timeoutMs = options.timeoutMs ?? 120_000;
+    this.team = options.team && options.team.trim() ? options.team.trim() : null;
+    this.feature = options.feature && options.feature.trim() ? options.feature.trim() : null;
     this._fetch = options.fetchImpl ?? (globalThis.fetch ?? fetchBinding());
   }
 
-  private headers(): Record<string, string> {
+  private headers(tags?: { team?: string; feature?: string }): Record<string, string> {
     const h: Record<string, string> = { "Content-Type": "application/json" };
     if (this.apiKey) {
       h["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+    // Spend tags travel as headers so the JSON body stays exactly what the
+    // endpoint expects. A per-call tag wins over the client-level default.
+    const team = tags?.team ?? this.team;
+    const feature = tags?.feature ?? this.feature;
+    if (team) {
+      h["X-RouteWise-Team"] = team;
+    }
+    if (feature) {
+      h["X-RouteWise-Feature"] = feature;
     }
     return h;
   }
@@ -203,13 +223,14 @@ export class RouteWiseClient {
     body?: JsonRecord,
     params?: Record<string, string | number | undefined>,
     timeoutMs?: number,
+    tags?: { team?: string; feature?: string },
   ): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs ?? this.timeoutMs);
     try {
       const res = await this._fetch(this.buildUrl(path, params), {
         method,
-        headers: this.headers(),
+        headers: this.headers(tags),
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -278,7 +299,7 @@ export class RouteWiseClient {
 
   async ask(options: AskOptions): Promise<JsonRecord> {
     const body = this.routeBody(options);
-    const res = await this.request("POST", "/route", body, undefined, options.timeoutMs);
+    const res = await this.request("POST", "/route", body, undefined, options.timeoutMs, options);
     return (await res.json()) as JsonRecord;
   }
 
@@ -286,7 +307,7 @@ export class RouteWiseClient {
     options: AskOptions,
   ): AsyncGenerator<string | JsonRecord, void, unknown> {
     const body = this.routeBody(options);
-    const res = await this.request("POST", "/route/stream", body, undefined, options.timeoutMs ?? 300_000);
+    const res = await this.request("POST", "/route/stream", body, undefined, options.timeoutMs ?? 300_000, options);
     let meta: JsonRecord | null = null;
     for await (const event of readJsonSse(res)) {
       const type = event["type"];
@@ -314,7 +335,7 @@ export class RouteWiseClient {
     if (options.temperature !== undefined) {
       body["temperature"] = options.temperature;
     }
-    const res = await this.request("POST", "/v1/chat/completions", body);
+    const res = await this.request("POST", "/v1/chat/completions", body, undefined, undefined, options);
     return (await res.json()) as JsonRecord;
   }
 
@@ -330,7 +351,7 @@ export class RouteWiseClient {
     if (options.temperature !== undefined) {
       body["temperature"] = options.temperature;
     }
-    const res = await this.request("POST", "/v1/chat/completions", body, undefined, 300_000);
+    const res = await this.request("POST", "/v1/chat/completions", body, undefined, 300_000, options);
     for await (const event of readJsonSse(res)) {
       yield event;
     }
