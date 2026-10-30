@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
-import { fetchLogs, fetchLogDetail, fetchAnalytics } from '../api'
+import { fetchLogs, fetchLogDetail, fetchAnalytics, fetchTeams } from '../api'
 import RequestLogs from './RequestLogs'
 import CostAnalytics from './CostAnalytics'
 import ApiPlayground from './ApiPlayground'
+import TeamsTab from './TeamsTab'
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession()
@@ -19,6 +20,71 @@ const ALERT_TYPES = [
   { value: 'error_rate', label: 'Error Rate', unit: '%', placeholder: '5', hint: 'Alert when error rate exceeds this % in the last hour' },
   { value: 'latency', label: 'Avg Latency', unit: 'ms', placeholder: '3000', hint: 'Alert when average latency exceeds this in the last hour' },
 ]
+
+// A key's cap state, in the same three colours the rest of the dashboard uses.
+const BUDGET_CHIP = {
+  ok: 'text-cool bg-cool/10 border-cool/30',
+  warning: 'text-signal bg-signal/10 border-signal/30',
+  exhausted: 'text-danger bg-danger/10 border-danger/30',
+}
+
+function describeBudget(budget) {
+  if (!budget || budget.state === 'unlimited') return null
+  if (budget.state === 'exhausted') {
+    return { text: 'budget exhausted · routing cheap', cls: BUDGET_CHIP.exhausted }
+  }
+  if (budget.state === 'warning') {
+    return { text: `${budget.percent_used}% of budget used`, cls: BUDGET_CHIP.warning }
+  }
+  return { text: `${budget.percent_used}% of budget used`, cls: BUDGET_CHIP.ok }
+}
+
+function BudgetControl({ label, suffix, value, editing, draft, saving, onStart, onChange, onSave, onCancel }) {
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          autoFocus
+          value={draft}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onSave()
+            if (e.key === 'Escape') onCancel()
+          }}
+          placeholder="blank = no limit"
+          className="w-36 bg-surface border border-line rounded px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+        />
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="font-mono text-[10px] px-2 py-1 rounded border border-signal/50 text-signal hover:bg-signal/10 transition disabled:opacity-50"
+        >
+          {saving ? 'saving…' : 'save'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="font-mono text-[10px] px-2 py-1 rounded border border-line text-muted hover:text-primary transition"
+        >
+          cancel
+        </button>
+      </div>
+    )
+  }
+  return (
+    <button
+      onClick={onStart}
+      title={`Set a ${label} spend cap for this key`}
+      className="font-mono text-[10px] text-muted hover:text-signal transition text-left"
+    >
+      {value == null
+        ? `${label} budget: none — set one`
+        : `${label} budget: $${value.toFixed(2)}${suffix} — edit`}
+    </button>
+  )
+}
 
 function AlertsTab() {
   const [alerts, setAlerts] = useState([])
@@ -173,12 +239,15 @@ function AlertsTab() {
 
 export default function DashboardPage() {
   const [keys, setKeys] = useState([])
+  const [teams, setTeams] = useState([])
   const [keyName, setKeyName] = useState('')
   const [newKey, setNewKey] = useState(null)
   const [loadingKeys, setLoadingKeys] = useState(true)
   const [creating, setCreating] = useState(false)
   const [revoking, setRevoking] = useState(null)
 const [keyBudget, setKeyBudget] = useState('')
+const [keyMonthlyBudget, setKeyMonthlyBudget] = useState('')
+const [keyTeamId, setKeyTeamId] = useState('')
 const [editingBudget, setEditingBudget] = useState(null)
 const [budgetDraft, setBudgetDraft] = useState('')
 const [savingBudget, setSavingBudget] = useState(false)
@@ -187,13 +256,21 @@ const [savingBudget, setSavingBudget] = useState(false)
   const [activeTab, setActiveTab] = useState('keys')
   const [selectedKeyId, setSelectedKeyId] = useState(null)
 
-  useEffect(() => { loadKeys() }, [])
+  useEffect(() => { loadKeys(); loadTeams() }, [])
 
   useEffect(() => {
     if (keys.length > 0 && !selectedKeyId) {
       setSelectedKeyId(keys[0].id)
     }
   }, [keys])
+
+  async function loadTeams() {
+    try {
+      setTeams(await fetchTeams())
+    } catch {
+      // A missing session just means no teams to show; keys still load.
+    }
+  }
 
   async function loadKeys() {
     setLoadingKeys(true)
@@ -211,17 +288,19 @@ const [savingBudget, setSavingBudget] = useState(false)
     setNewKey(null)
     const headers = await authHeaders()
     // Blank means unlimited; anything typed must be a real non-negative number.
-    const trimmed = keyBudget.trim()
     const body = { name: keyName.trim() }
-    if (trimmed !== '') {
+    for (const [field, raw] of [['daily_budget_usd', keyBudget], ['monthly_budget_usd', keyMonthlyBudget]]) {
+      const trimmed = raw.trim()
+      if (trimmed === '') continue
       const parsed = Number(trimmed)
       if (!Number.isFinite(parsed) || parsed < 0) {
-        setError('Daily budget must be zero or greater')
+        setError('Budgets must be zero or greater')
         setCreating(false)
         return
       }
-      body.daily_budget_usd = parsed
+      body[field] = parsed
     }
+    if (keyTeamId !== '') body.team_id = Number(keyTeamId)
     const res = await fetch(`${API_BASE}/keys`, {
       method: 'POST',
       headers,
@@ -232,7 +311,10 @@ const [savingBudget, setSavingBudget] = useState(false)
       setNewKey(data.key)
       setKeyName('')
       setKeyBudget('')
+      setKeyMonthlyBudget('')
+      setKeyTeamId('')
       loadKeys()
+      loadTeams()
     } else {
       const err = await res.json().catch(() => ({}))
       setError(err.detail || 'Failed to create key')
@@ -240,18 +322,18 @@ const [savingBudget, setSavingBudget] = useState(false)
     setCreating(false)
   }
 
-  function startEditBudget(k) {
-    setEditingBudget(k.id)
-    setBudgetDraft(k.daily_budget_usd == null ? '' : String(k.daily_budget_usd))
+  function startEditBudget(k, field) {
+    setEditingBudget(`${k.id}:${field}`)
+    setBudgetDraft(k[field] == null ? '' : String(k[field]))
   }
 
-  async function saveBudget(id) {
+  async function saveBudget(id, field) {
     const trimmed = budgetDraft.trim()
     let value = null
     if (trimmed !== '') {
       const parsed = Number(trimmed)
       if (!Number.isFinite(parsed) || parsed < 0) {
-        setError('Daily budget must be zero or greater')
+        setError('Budget must be zero or greater')
         return
       }
       value = parsed
@@ -262,10 +344,11 @@ const [savingBudget, setSavingBudget] = useState(false)
     const res = await fetch(`${API_BASE}/keys/${id}`, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({ daily_budget_usd: value }),
+      body: JSON.stringify({ [field]: value }),
     })
     if (res.ok) {
-      setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, daily_budget_usd: value } : k)))
+      const updated = await res.json()
+      setKeys((prev) => prev.map((k) => (k.id === id ? updated : k)))
       setEditingBudget(null)
       setBudgetDraft('')
     } else {
@@ -273,6 +356,24 @@ const [savingBudget, setSavingBudget] = useState(false)
       setError(err.detail || 'Failed to update budget')
     }
     setSavingBudget(false)
+  }
+
+  async function assignTeam(id, teamId) {
+    setError(null)
+    const headers = await authHeaders()
+    const res = await fetch(`${API_BASE}/keys/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ team_id: teamId === '' ? null : Number(teamId) }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setKeys((prev) => prev.map((k) => (k.id === id ? updated : k)))
+      loadTeams()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setError(err.detail || 'Failed to move key')
+    }
   }
 
   async function handleRevoke(id) {
@@ -310,6 +411,7 @@ const [savingBudget, setSavingBudget] = useState(false)
       <div className="flex gap-1 p-1 bg-panel border border-line rounded-xl mb-8 overflow-x-auto max-w-full">
         {[
           { id: 'keys', label: 'API Keys' },
+          { id: 'teams', label: 'Teams' },
           ...(hasKeys ? [
             { id: 'playground', label: 'Playground' },
             { id: 'analytics', label: 'Analytics' },
@@ -335,6 +437,8 @@ const [savingBudget, setSavingBudget] = useState(false)
         <>
           <p className="text-muted text-sm mb-8">
             Use these keys in the <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code> header when calling <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">/route</code>.
+            A key can belong to a team and carries optional daily and monthly caps.
+            When a cap is exhausted the key keeps working on the cheap tier.
           </p>
 
           {/* Create key */}
@@ -356,6 +460,27 @@ const [savingBudget, setSavingBudget] = useState(false)
               title="Once this key's spend today passes the cap, the router forces it to the cheap tier. Leave blank for no cap."
               className="w-full sm:w-48 bg-surface border border-line rounded-lg px-4 py-3 font-mono text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
             />
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={keyMonthlyBudget}
+              onChange={(e) => setKeyMonthlyBudget(e.target.value)}
+              placeholder="Monthly budget $ (optional)"
+              title="A cap just for this key, inside its team budget. Leave blank to inherit only the team's cap."
+              className="w-full sm:w-48 bg-surface border border-line rounded-lg px-4 py-3 font-mono text-sm placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
+            />
+            <select
+              value={keyTeamId}
+              onChange={(e) => setKeyTeamId(e.target.value)}
+              title="Keys inherit the team's monthly budget and use its name as the default spend tag."
+              className="w-full sm:w-48 bg-surface border border-line rounded-lg px-3 py-3 font-mono text-sm text-primary focus:outline-none focus:ring-2 focus:ring-signal/50 focus:border-signal shadow-card"
+            >
+              <option value="">No team</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>{team.name}</option>
+              ))}
+            </select>
             <button
               type="submit"
               disabled={creating}
@@ -394,52 +519,75 @@ const [savingBudget, setSavingBudget] = useState(false)
             ) : keys.length === 0 ? (
               <p className="font-mono text-xs text-muted py-8">No keys yet — generate one above.</p>
             ) : (
-              keys.map((k) => (
-                <div key={k.id} className="group flex items-center justify-between gap-4 bg-surface border border-line rounded-xl shadow-card px-4 py-4 hover:border-signal/30 hover:shadow-card-hover transition-all">
+              keys.map((k) => {
+                const chip = describeBudget(k.budget)
+                return (
+                <div key={k.id} className="group flex items-start justify-between gap-4 bg-surface border border-line rounded-xl shadow-card px-4 py-4 hover:border-signal/30 hover:shadow-card-hover transition-all">
                   <div className="flex-1 min-w-0">
-                    <p className="font-body text-sm font-medium group-hover:text-signal transition-colors">{k.name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-body text-sm font-medium group-hover:text-signal transition-colors">{k.name}</p>
+                      {chip && (
+                        <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded border ${chip.cls}`}>
+                          {chip.text}
+                        </span>
+                      )}
+                    </div>
                     <p className="font-mono text-[10px] text-muted">{maskKey(k.key)}</p>
-                    <p className="font-mono text-[10px] text-muted">created {new Date(k.created_at).toLocaleDateString()}</p>
-                    {editingBudget === k.id ? (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          autoFocus
-                          value={budgetDraft}
-                          onChange={(e) => setBudgetDraft(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveBudget(k.id)
-                            if (e.key === 'Escape') setEditingBudget(null)
-                          }}
-                          placeholder="blank = no limit"
-                          className="w-36 bg-surface border border-line rounded px-2 py-1 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
-                        />
-                        <button
-                          onClick={() => saveBudget(k.id)}
-                          disabled={savingBudget}
-                          className="font-mono text-[10px] px-2 py-1 rounded border border-signal/50 text-signal hover:bg-signal/10 transition disabled:opacity-50"
+                    <p className="font-mono text-[10px] text-muted">
+                      created {new Date(k.created_at).toLocaleDateString()}
+                      <span className="mx-1.5">·</span>
+                      {k.team_name ? (
+                        <span className="text-signal">{k.team_name}</span>
+                      ) : (
+                        <span>no team</span>
+                      )}
+                      {k.spent_this_month > 0 && (
+                        <>
+                          <span className="mx-1.5">·</span>
+                          <span>${k.spent_this_month.toFixed(2)} spent this month</span>
+                        </>
+                      )}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                      <BudgetControl
+                        label="daily"
+                        suffix="/day"
+                        value={k.daily_budget_usd}
+                        editing={editingBudget === `${k.id}:daily_budget_usd`}
+                        draft={budgetDraft}
+                        saving={savingBudget}
+                        onStart={() => startEditBudget(k, 'daily_budget_usd')}
+                        onChange={setBudgetDraft}
+                        onSave={() => saveBudget(k.id, 'daily_budget_usd')}
+                        onCancel={() => setEditingBudget(null)}
+                      />
+                      <BudgetControl
+                        label="monthly"
+                        suffix="/mo"
+                        value={k.monthly_budget_usd}
+                        editing={editingBudget === `${k.id}:monthly_budget_usd`}
+                        draft={budgetDraft}
+                        saving={savingBudget}
+                        onStart={() => startEditBudget(k, 'monthly_budget_usd')}
+                        onChange={setBudgetDraft}
+                        onSave={() => saveBudget(k.id, 'monthly_budget_usd')}
+                        onCancel={() => setEditingBudget(null)}
+                      />
+                    </div>
+                    {teams.length > 0 && (
+                      <label className="flex items-center gap-1.5 mt-1.5 font-mono text-[10px] text-muted">
+                        team:
+                        <select
+                          value={k.team_id ?? ''}
+                          onChange={(e) => assignTeam(k.id, e.target.value)}
+                          className="bg-surface border border-line rounded px-1.5 py-0.5 font-mono text-[10px] text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
                         >
-                          {savingBudget ? 'saving…' : 'save'}
-                        </button>
-                        <button
-                          onClick={() => setEditingBudget(null)}
-                          className="font-mono text-[10px] px-2 py-1 rounded border border-line text-muted hover:text-primary transition"
-                        >
-                          cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => startEditBudget(k)}
-                        title="Set a daily spend cap for this key"
-                        className="font-mono text-[10px] text-muted hover:text-signal transition mt-0.5 text-left"
-                      >
-                        {k.daily_budget_usd == null
-                          ? 'daily budget: none — set one'
-                          : `daily budget: $${k.daily_budget_usd.toFixed(2)}/day — edit`}
-                      </button>
+                          <option value="">no team (no shared cap)</option>
+                          {teams.map((team) => (
+                            <option key={team.id} value={team.id}>{team.name}</option>
+                          ))}
+                        </select>
+                      </label>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -458,10 +606,18 @@ const [savingBudget, setSavingBudget] = useState(false)
                     </button>
                   </div>
                 </div>
-              ))
+                )
+              })
             )}
           </div>
         </>
+      )}
+
+      {activeTab === 'teams' && (
+        <TeamsTab
+          teams={teams}
+          onChanged={() => { loadTeams(); loadKeys() }}
+        />
       )}
 
       {activeTab === 'playground' && hasKeys && <ApiPlayground />}

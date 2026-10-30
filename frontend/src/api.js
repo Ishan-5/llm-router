@@ -300,6 +300,62 @@ export async function fetchAnalytics(key) {
   return res.json()
 }
 
+// ------------------------------------------------------------------
+// Teams: the budget bucket keys belong to
+//
+// These endpoints are owner-only, so they need the Supabase session rather
+// than the shared demo key. Every mutation invalidates the backend's team
+// cache on the server side; the dashboard just reloads the list.
+// ------------------------------------------------------------------
+
+async function _userHeaders() {
+  try {
+    const { supabase } = await import('./supabase')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) return { 'Authorization': `Bearer ${session.access_token}` }
+  } catch {}
+  return {}
+}
+
+async function _userFetch(url, opts = {}) {
+  const headers = await _userHeaders()
+  const res = await fetch(url, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', ...headers, ...(opts.headers || {}) },
+  })
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = body.detail
+    } catch {}
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail))
+  }
+  return res.json()
+}
+
+export function fetchTeams() {
+  return _userFetch(`${API_BASE}/teams`)
+}
+
+export function createTeam(name, monthlyBudgetUsd = null) {
+  return _userFetch(`${API_BASE}/teams`, {
+    method: 'POST',
+    body: JSON.stringify({ name, monthly_budget_usd: monthlyBudgetUsd }),
+  })
+}
+
+export function updateTeam(id, patch) {
+  return _userFetch(`${API_BASE}/teams/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+}
+
+export function deleteTeam(id) {
+  return _userFetch(`${API_BASE}/teams/${id}`, { method: 'DELETE' })
+}
+
 export async function fetchSettings() {
   let token = null
   try {
