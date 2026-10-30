@@ -24,13 +24,34 @@ engine = create_engine(_db_url, connect_args=_connect_args, **_pool_kwargs)
 SessionLocal = sessionmaker(bind=engine)
 
 
+class Team(Base):
+    """A budget bucket a customer can put keys under.
+
+    The owner ("CFO") sets one monthly cap here instead of a separate cap on
+    every key. Requests made with any key in the team spend from that cap, so a
+    team can share one key or give each member their own without changing how
+    the budget is enforced.
+    """
+    __tablename__ = "teams"
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=True, index=True)
+    name = Column(String, nullable=False)
+    monthly_budget_usd = Column(Float, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class ApiKey(Base):
     __tablename__ = "api_keys"
     id = Column(Integer, primary_key=True)
     key = Column(String, unique=True, index=True)
     name = Column(String)
     user_id = Column(String, nullable=True, index=True)
+    team_id = Column(Integer, nullable=True, index=True)
     daily_budget_usd = Column(Float, nullable=True)
+    # Optional per-key cap inside the team budget: enough for a contractor or a
+    # CI job without giving it a whole team's worth of headroom.
+    monthly_budget_usd = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -61,6 +82,10 @@ class RequestLog(Base):
     cost_usd = Column(Float)
     latency_ms = Column(Float)
     tokens_saved_usd = Column(Float, nullable=True)
+    # Why a request was served by a cheaper tier than its score asked for.
+    # budget_scope is one of key_daily, key_monthly, team_monthly, or NULL.
+    budget_capped = Column(Boolean, nullable=True, default=False)
+    budget_scope = Column(String, nullable=True)
     # quality_score is written only by the LLM judge (router/quality_judge.py).
     # quality_judged distinguishes a real judge score from "not scored yet".
     # Nothing else writes this column, so there is exactly one source of truth.
@@ -127,29 +152,37 @@ except Exception as e:
     log.warning("DB init failed (will retry on first request): %s", e)
 
 
-# Columns added after request_logs first shipped.
+# Columns added after a table first shipped.
 #
 # create_all() only creates missing TABLES; it never adds a column to a table
 # that already exists, so a new field on the model above does nothing to a live
 # database until an ALTER runs. Each statement is idempotent by exception:
 # "duplicate column" means it is already there, which is the normal case after
 # the first boot. Runs on SQLite (dev/tests) and Postgres (production) alike.
+#
+# Entries are (table, column, type). Keep this list append-only: a deploy only
+# ever adds columns here, never rewrites an existing one.
 _LATE_COLUMNS = (
-    ("quality_score", "FLOAT"),
-    ("feedback", "VARCHAR"),
-    ("feedback_reason", "TEXT"),
-    ("quality_judged", "BOOLEAN DEFAULT FALSE"),
-    ("llm_difficulty_score", "FLOAT"),
-    ("llm_predicted_tier", "VARCHAR"),
-    ("label_judged", "BOOLEAN DEFAULT FALSE"),
-    ("tokens_saved_usd", "FLOAT"),
-    ("team_id", "VARCHAR"),
-    ("feature_tag", "VARCHAR"),
+    ("request_logs", "quality_score", "FLOAT"),
+    ("request_logs", "feedback", "VARCHAR"),
+    ("request_logs", "feedback_reason", "TEXT"),
+    ("request_logs", "quality_judged", "BOOLEAN DEFAULT FALSE"),
+    ("request_logs", "llm_difficulty_score", "FLOAT"),
+    ("request_logs", "llm_predicted_tier", "VARCHAR"),
+    ("request_logs", "label_judged", "BOOLEAN DEFAULT FALSE"),
+    ("request_logs", "tokens_saved_usd", "FLOAT"),
+    ("request_logs", "team_id", "VARCHAR"),
+    ("request_logs", "feature_tag", "VARCHAR"),
+    ("request_logs", "budget_capped", "BOOLEAN DEFAULT FALSE"),
+    ("request_logs", "budget_scope", "VARCHAR"),
+    ("api_keys", "team_id", "INTEGER"),
+    ("api_keys", "monthly_budget_usd", "FLOAT"),
 )
 
 _LATE_INDEXES = (
-    ("ix_request_logs_team_id", "team_id"),
-    ("ix_request_logs_feature_tag", "feature_tag"),
+    ("ix_request_logs_team_id", "request_logs", "team_id"),
+    ("ix_request_logs_feature_tag", "request_logs", "feature_tag"),
+    ("ix_api_keys_team_id", "api_keys", "team_id"),
 )
 
 
@@ -157,19 +190,19 @@ def _apply_late_schema():
     """Add post-launch columns and indexes that create_all() cannot."""
     from sqlalchemy import text
 
-    for column, ddl in _LATE_COLUMNS:
+    for table, column, ddl in _LATE_COLUMNS:
         try:
             with engine.connect() as conn:
-                conn.execute(text(f"ALTER TABLE request_logs ADD COLUMN {column} {ddl}"))
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
                 conn.commit()
         except Exception:
             pass  # already present
 
-    for index_name, column in _LATE_INDEXES:
+    for index_name, table, column in _LATE_INDEXES:
         try:
             with engine.connect() as conn:
                 conn.execute(text(
-                    f"CREATE INDEX IF NOT EXISTS {index_name} ON request_logs ({column})"
+                    f"CREATE INDEX IF NOT EXISTS {index_name} ON {table} ({column})"
                 ))
                 conn.commit()
         except Exception:
