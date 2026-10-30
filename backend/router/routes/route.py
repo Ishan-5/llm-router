@@ -3,7 +3,7 @@ import time
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from router.support_policy import available_support_modes, SUPPORT_MODES
@@ -17,6 +17,7 @@ from router.db import log_request, SessionLocal, ApiKey, RequestLog, UserSetting
 from router.auth import require_api_key, check_budget
 from router.config import TAVILY_API_KEY, MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii, needs_web_search
+from router.tags import request_tags
 from router.model_config_loader import get_active_config, get_pricing_for_model, resolve_tier_pricing
 from router.quality_judge import update_quality_score
 from router.difficulty_labeler import update_difficulty_label
@@ -109,7 +110,8 @@ class QueryRequest(BaseModel):
         return v
 
 
-async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executor):
+async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executor, tags: dict | None = None):
+    tags = tags or {}
     loop = asyncio.get_event_loop()
     threshold = req.threshold if req.threshold is not None else load_user_threshold(api_key.user_id)
 
@@ -134,7 +136,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
             log_id = log_request({
-                "api_key_id": api_key.id, "user_id": api_key.user_id,
+                "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
                 "query": sanitize_pii(req.query), "response": answer,
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
                 "fallback_used": False, "cache_hit": False, "cache_similarity": None,
@@ -202,7 +204,7 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
             (cached["input_tokens"] / 1_000_000 * price_in)
             + (cached["output_tokens"] / 1_000_000 * price_out), 6)
         log_id = log_request({
-            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
             "query": sanitize_pii(req.query), "response": cached["response"],
             "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
             "fallback_used": False, "cache_hit": True, "cache_similarity": cached["similarity"],
@@ -300,12 +302,13 @@ async def _preprocess(req: QueryRequest, api_key: ApiKey, start: float, _executo
 
 
 @router.post("/route")
-async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Depends(require_api_key)):
     if is_prompt_injection(req.query):
         raise HTTPException(status_code=400, detail="Prompt injection detected")
 
     start = time.time()
-    pre = await _preprocess(req, api_key, start, executor)
+    tags = request_tags(request)
+    pre = await _preprocess(req, api_key, start, executor, tags)
 
     if pre["type"] == "web":
         return {
@@ -338,7 +341,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
         observe_tier("failed", pre.get("support_mode") or "generic")
         log.error("AllTiersFailedError: %s", e)
         log_request({
-            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
             "query": sanitize_pii(req.query), "response": None,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
             "tier": "failed", "fallback_used": False,
@@ -350,7 +353,7 @@ async def route_query(req: QueryRequest, api_key: ApiKey = Depends(require_api_k
 
     latency_ms = round((time.time() - start) * 1000, 2)
     log_id = log_request({
-        "api_key_id": api_key.id, "user_id": api_key.user_id,
+        "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
         "query": sanitize_pii(req.query), "response": result["text"],
         "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
         "tier": result["tier"], "fallback_used": result["fallback_used"],
@@ -456,12 +459,13 @@ async def explain_route(req: QueryRequest, api_key: ApiKey = Depends(require_api
 
 
 @router.post("/route/stream")
-async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(require_api_key)):
+async def route_query_stream(req: QueryRequest, request: Request, api_key: ApiKey = Depends(require_api_key)):
     if is_prompt_injection(req.query):
         raise HTTPException(status_code=400, detail="Prompt injection detected")
 
     start = time.time()
-    pre = await _preprocess(req, api_key, start, executor)
+    tags = request_tags(request)
+    pre = await _preprocess(req, api_key, start, executor, tags)
 
     if pre["type"] == "web":
         answer = pre["answer"]
@@ -553,7 +557,7 @@ async def route_query_stream(req: QueryRequest, api_key: ApiKey = Depends(requir
         cross_provider_fallback = meta["tier"] == "gemini"
 
         log_id = log_request({
-            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
             "query": sanitize_pii(req.query), "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
             "tier": meta["tier"], "fallback_used": fallback_used, "cache_hit": False,

@@ -16,6 +16,7 @@ from router.multiturn import build_scoring_context, score_with_context
 from router.cache import check_cache, add_to_cache
 from router.db import log_request, ApiKey
 from router.auth import require_api_key, check_budget
+from router.tags import request_tags
 from router.config import MODEL_CONFIG
 from router.guardrails import is_prompt_injection, sanitize_pii
 from router.rate_limiter import call_with_failover, AllTiersFailedError, stream_model_with_failover
@@ -165,6 +166,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         raise HTTPException(status_code=400, detail="messages must contain at least one user message")
 
     user_query = _extract_user_query(req.messages)
+    tags = request_tags(request)
 
     # --- injection check ---
     if is_prompt_injection(user_query):
@@ -201,7 +203,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
         else:
             latency_ms = round((time.time() - start) * 1000, 2)
             log_request({
-                "api_key_id": api_key.id, "user_id": api_key.user_id,
+                "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
                 "query": sanitize_pii(user_query),
                 "response": answer,
                 "difficulty_score": None, "intended_tier": "web", "tier": "web",
@@ -264,7 +266,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
     if cached is not None:
         latency_ms = round((time.time() - start) * 1000, 2)
         log_request({
-            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
             "query": sanitize_pii(user_query),
             "response": cached["response"],
             "difficulty_score": None, "intended_tier": cached["tier"], "tier": cached["tier"],
@@ -312,7 +314,7 @@ async def chat_completions(req: ChatCompletionRequest, request: Request, respons
 
         latency_ms = round((time.time() - start) * 1000, 2)
         log_request({
-            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
             "query": sanitize_pii(user_query),
             "response": result["text"],
             "difficulty_score": difficulty_score, "intended_tier": result["intended_tier"],
@@ -392,7 +394,7 @@ executor, _cache_store, user_query, result["text"], result["tier"],
         fallback_used = served_tier != routing_tier
 
         log_request({
-            "api_key_id": api_key.id, "user_id": api_key.user_id,
+            "api_key_id": api_key.id, "user_id": api_key.user_id, **tags,
             "query": sanitize_pii(user_query),
             "response": full_response,
             "difficulty_score": difficulty_score, "intended_tier": routing_tier,
