@@ -35,8 +35,12 @@ export function metaTags(res: JsonRecord): string[] {
   if (res["cross_provider_fallback"]) {
     tags.push("cross-provider");
   }
+  const budget = res["budget"] as JsonRecord | undefined;
+  const budgetScope = str(budget?.["scope"]);
   if (res["budget_capped"]) {
-    tags.push("budget-capped");
+    tags.push(budgetScope ? `budget-capped:${budgetScope}` : "budget-capped");
+  } else if (str(budget?.["state"]) === "warning") {
+    tags.push(budgetScope ? `budget-warning:${budgetScope}` : "budget-warning");
   }
   if (res["override_used"]) {
     tags.push("override");
@@ -108,6 +112,23 @@ export function printAnalytics(res: JsonRecord): string[] {
   lines.push(`Cache hit rate      ${num(summary["cache_hit_rate"]) !== null ? `${num(summary["cache_hit_rate"])?.toFixed(1)}%` : "-"}`);
   lines.push(`Cache savings       ${money(summary["cache_savings"])}`);
   lines.push(`Fallback rate       ${num(summary["fallback_rate"]) !== null ? `${num(summary["fallback_rate"])?.toFixed(1)}%` : "-"}`);
+  const budget = (res["budget"] as JsonRecord | undefined) ?? {};
+  const budgetState = str(budget["state"]);
+  if (budgetState) {
+    if (budgetState === "unlimited") {
+      lines.push("Budget              unlimited");
+    } else {
+      const scope = str(budget["scope"]);
+      const percent = num(budget["percent_used"]);
+      lines.push(
+        `Budget              ${budgetState}${scope ? ` · ${scope}` : ""} · ${money(budget["spent_usd"])} of ${money(budget["budget_usd"])}${percent !== null ? ` (${percent.toFixed(1)}%)` : ""}`,
+      );
+    }
+    const downgrades = num(res["budget_downgrades_this_month"]);
+    if (downgrades !== null) {
+      lines.push(`Budget downgrades   ${downgrades} this month`);
+    }
+  }
   const teams = res["teams"];
   if (Array.isArray(teams) && teams.length > 0) {
     lines.push("");

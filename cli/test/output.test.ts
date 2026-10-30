@@ -99,3 +99,45 @@ test("printStats renders summary fields", () => {
   assert.ok(lines.some((l) => l.includes("Cache hit rate") && l.includes("34.0%")));
   assert.ok(lines.some((l) => l.includes("cheap 6") && l.includes("mid 3")));
 });
+
+test("metaLine names the budget scope that capped the request", () => {
+  const line = metaLine({
+    routed_to: "cheap",
+    cost_usd: 0.00009,
+    latency_ms: 940,
+    budget_capped: true,
+    budget: { state: "exhausted", scope: "team_monthly" },
+  });
+  assert.match(line, /budget-capped:team_monthly/);
+});
+
+test("metaLine flags a budget nearing its cap", () => {
+  const line = metaLine({
+    routed_to: "mid",
+    cost_usd: 0.001,
+    budget_capped: false,
+    budget: { state: "warning", scope: "key_monthly" },
+  });
+  assert.match(line, /budget-warning:key_monthly/);
+});
+
+test("printAnalytics prints budget posture and downgrade count", () => {
+  const text = printAnalytics({
+    summary: { total_requests: 10, total_cost: 12.4 },
+    budget: {
+      state: "exhausted", scope: "team_monthly",
+      spent_usd: 12.4, budget_usd: 10, percent_used: 124,
+    },
+    budget_downgrades_this_month: 2,
+  }).join("\n");
+  assert.match(text, /Budget\s+exhausted · team_monthly · \$12\.40000 of \$10\.00000 \(124\.0%\)/);
+  assert.match(text, /Budget downgrades\s+2 this month/);
+});
+
+test("printAnalytics reports an unlimited budget", () => {
+  const text = printAnalytics({
+    summary: { total_requests: 0 },
+    budget: { state: "unlimited" },
+  }).join("\n");
+  assert.match(text, /Budget\s+unlimited/);
+});
