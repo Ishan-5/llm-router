@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
 import { fetchLogs, fetchLogDetail, fetchAnalytics, fetchTeams } from '../api'
@@ -37,6 +38,47 @@ function describeBudget(budget) {
     return { text: `${budget.percent_used}% of budget used`, cls: BUDGET_CHIP.warning }
   }
   return { text: `${budget.percent_used}% of budget used`, cls: BUDGET_CHIP.ok }
+}
+
+function StatTile({ label, value, hint, accent = 'text-muted' }) {
+  return (
+    <div className="rounded-xl border border-line bg-base/60 px-4 py-3.5">
+      <div className="flex items-center gap-1.5">
+        <span className={`h-1.5 w-1.5 rounded-full bg-current ${accent}`} aria-hidden />
+        <p className="font-mono text-[10px] uppercase tracking-wide text-muted">{label}</p>
+      </div>
+      <p className="font-display text-2xl font-semibold mt-1.5 text-primary">{value}</p>
+      <p className="font-mono text-[10px] text-muted mt-0.5 truncate">{hint}</p>
+    </div>
+  )
+}
+
+function summarizeBudget(keys) {
+  const states = keys.map((k) => k.budget?.state).filter((s) => s && s !== 'unlimited')
+  const exhausted = states.filter((s) => s === 'exhausted').length
+  const warning = states.filter((s) => s === 'warning').length
+  if (exhausted > 0) {
+    return {
+      label: 'Exhausted',
+      hint: `${exhausted} ${exhausted === 1 ? 'key is' : 'keys are'} routing cheap`,
+      accent: 'text-danger',
+    }
+  }
+  if (warning > 0) {
+    return {
+      label: 'Warning',
+      hint: `${warning} ${warning === 1 ? 'key is' : 'keys are'} past 80%`,
+      accent: 'text-signal',
+    }
+  }
+  if (states.length === 0) {
+    return { label: 'Unlimited', hint: 'no caps set yet', accent: 'text-muted' }
+  }
+  return {
+    label: 'On track',
+    hint: `${states.length} ${states.length === 1 ? 'key' : 'keys'} under cap`,
+    accent: 'text-cool',
+  }
 }
 
 function BudgetControl({ label, suffix, value, editing, draft, saving, onStart, onChange, onSave, onCancel }) {
@@ -401,34 +443,109 @@ const [savingBudget, setSavingBudget] = useState(false)
 
   const selectedKey = keys.find((k) => k.id === selectedKeyId)
   const hasKeys = keys.length > 0
+  const monthSpend = keys.reduce((sum, k) => sum + (Number(k.spent_this_month) || 0), 0)
+  const budgetSummary = summarizeBudget(keys)
+  const budgetedTeams = teams.filter((t) => t.monthly_budget_usd != null).length
+  const cappedTeams = teams.filter((t) => t.state === 'exhausted').length
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-20">
-      <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">Dashboard</p>
-      <h1 className="font-display text-3xl font-semibold mb-6">Dashboard</h1>
+    <div className="max-w-6xl mx-auto px-5 sm:px-6 py-12 sm:py-16">
+      {/* Hero: the state of the workspace at a glance */}
+      <section className="relative overflow-hidden rounded-2xl border border-line bg-panel shadow-card mb-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 60% 90% at 90% 0%, color-mix(in srgb, var(--color-signal) 16%, transparent), transparent 70%)',
+          }}
+        />
+        <div className="relative px-5 py-6 sm:px-8 sm:py-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-xl">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal mb-2.5">FinOps console</p>
+              <h1 className="font-display text-3xl sm:text-4xl font-semibold text-primary">Workspace overview</h1>
+              <p className="text-muted text-sm mt-2">
+                Keys, team budgets and the reason a request was downgraded — one screen.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/playground"
+                className="inline-flex items-center gap-2 bg-signal text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:brightness-110 shadow-card transition"
+              >
+                Open playground
+              </Link>
+              <Link
+                to="/guide"
+                className="inline-flex items-center gap-2 font-mono text-xs text-primary bg-base border border-line px-4 py-2.5 rounded-lg hover:border-signal/50 hover:shadow-card transition"
+              >
+                Read the guide
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+            <StatTile
+              label="API keys"
+              value={keys.length}
+              hint={hasKeys ? `${keys.filter((k) => k.team_id).length} attached to a team` : 'create one to start'}
+              accent={hasKeys ? 'text-cool' : 'text-muted'}
+            />
+            <StatTile
+              label="Teams"
+              value={teams.length}
+              hint={
+                cappedTeams > 0
+                  ? `${cappedTeams} ${cappedTeams === 1 ? 'budget is' : 'budgets are'} exhausted`
+                  : teams.length > 0
+                    ? `${budgetedTeams} with monthly caps`
+                    : 'no shared budgets yet'
+              }
+              accent={cappedTeams > 0 ? 'text-danger' : teams.length > 0 ? 'text-cool' : 'text-muted'}
+            />
+            <StatTile
+              label="Spend this month"
+              value={`$${monthSpend.toFixed(2)}`}
+              hint="sum of key spend, UTC month"
+              accent={monthSpend > 0 ? 'text-signal' : 'text-muted'}
+            />
+            <StatTile
+              label="Budget health"
+              value={budgetSummary.label}
+              hint={budgetSummary.hint}
+              accent={budgetSummary.accent}
+            />
+          </div>
+        </div>
+      </section>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-panel border border-line rounded-xl mb-8 overflow-x-auto max-w-full">
+      <div role="group" aria-label="Dashboard sections" className="flex gap-1 p-1 bg-panel border border-line rounded-xl mb-8 overflow-x-auto max-w-full">
         {[
-          { id: 'keys', label: 'API Keys' },
-          { id: 'teams', label: 'Teams' },
+          { id: 'keys', label: 'API keys', count: keys.length },
+          { id: 'teams', label: 'Teams', count: teams.length },
           ...(hasKeys ? [
             { id: 'playground', label: 'Playground' },
             { id: 'analytics', label: 'Analytics' },
-            { id: 'logs', label: 'Request Logs' },
+            { id: 'logs', label: 'Request logs' },
             { id: 'alerts', label: 'Alerts' },
           ] : []),
         ].map((tab) => (
           <button
             key={tab.id}
+            aria-pressed={activeTab === tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 font-mono text-xs rounded-lg transition-colors whitespace-nowrap shrink-0 ${
+            className={`flex items-center gap-1.5 px-4 py-2 font-mono text-xs rounded-lg transition-colors whitespace-nowrap shrink-0 ${
               activeTab === tab.id
                 ? 'bg-surface text-primary shadow-card'
                 : 'text-muted hover:text-primary'
             }`}
           >
             {tab.label}
+            {tab.count != null && (
+              <span className={`text-[10px] ${activeTab === tab.id ? 'text-signal' : 'text-muted'}`}>{tab.count}</span>
+            )}
           </button>
         ))}
       </div>
@@ -442,7 +559,12 @@ const [savingBudget, setSavingBudget] = useState(false)
           </p>
 
           {/* Create key */}
-          <form onSubmit={handleCreate} className="flex flex-wrap gap-3 mb-8">
+          <div className="rounded-xl border border-line bg-panel/40 p-4 sm:p-5 mb-8">
+            <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+              <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Create a key</p>
+              <p className="font-mono text-[10px] text-muted">caps optional · exhausted keys keep working</p>
+            </div>
+            <form onSubmit={handleCreate} className="flex flex-wrap gap-3">
             <input
               type="text"
               value={keyName}
@@ -488,7 +610,8 @@ const [savingBudget, setSavingBudget] = useState(false)
             >
               {creating ? 'Creating…' : 'Generate key'}
             </button>
-          </form>
+            </form>
+          </div>
 
           {error && <p className="font-mono text-xs text-danger mb-4">{error}</p>}
 
@@ -517,7 +640,28 @@ const [savingBudget, setSavingBudget] = useState(false)
                 ))}
               </div>
             ) : keys.length === 0 ? (
-              <p className="font-mono text-xs text-muted py-8">No keys yet — generate one above.</p>
+              <div className="rounded-xl border border-dashed border-line bg-panel/50 px-6 py-10 text-center">
+                <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-signal mb-2">No keys yet</p>
+                <p className="font-display text-lg font-semibold text-primary">Create your first key above</p>
+                <p className="text-muted text-sm mt-2 max-w-md mx-auto">
+                  Point any OpenAI client at this workspace, or call <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">/route</code> directly.
+                  Spend and budget state fill in as soon as traffic starts.
+                </p>
+                <div className="mt-5 flex flex-wrap justify-center gap-2">
+                  <Link
+                    to="/playground"
+                    className="inline-flex items-center bg-signal text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:brightness-110 shadow-card transition"
+                  >
+                    Try the playground
+                  </Link>
+                  <Link
+                    to="/guide"
+                    className="inline-flex items-center font-mono text-xs text-muted border border-line px-4 py-2.5 rounded-lg hover:text-primary hover:border-signal/50 transition"
+                  >
+                    Read the guide
+                  </Link>
+                </div>
+              </div>
             ) : (
               keys.map((k) => {
                 const chip = describeBudget(k.budget)
