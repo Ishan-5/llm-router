@@ -108,6 +108,19 @@ export function printAnalytics(res: JsonRecord): string[] {
   lines.push(`Cache hit rate      ${num(summary["cache_hit_rate"]) !== null ? `${num(summary["cache_hit_rate"])?.toFixed(1)}%` : "-"}`);
   lines.push(`Cache savings       ${money(summary["cache_savings"])}`);
   lines.push(`Fallback rate       ${num(summary["fallback_rate"]) !== null ? `${num(summary["fallback_rate"])?.toFixed(1)}%` : "-"}`);
+  const teams = res["teams"];
+  if (Array.isArray(teams) && teams.length > 0) {
+    lines.push("");
+    lines.push("By team:");
+    for (const t of teams as Array<JsonRecord>) {
+      const label = (str(t["team_id"]) || "untagged").padEnd(16).slice(0, 16);
+      const requests = num(t["requests"]) ?? 0;
+      const pct = num(t["savings_pct"]);
+      lines.push(
+        `  ${label} ${String(requests).padStart(7)} req  ${money(t["cost_usd"])}  saved ${money(t["saved_usd"])}${pct !== null ? ` (${pct.toFixed(1)}%)` : ""}`,
+      );
+    }
+  }
   const daily = res["daily"];
   if (Array.isArray(daily) && daily.length > 0) {
     lines.push("");
