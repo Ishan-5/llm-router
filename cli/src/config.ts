@@ -15,6 +15,8 @@ export interface ByomTierConfig {
 export interface RouteWiseConfig {
   api_key?: string;
   base_url?: string;
+  team?: string;
+  feature?: string;
   byom?: Partial<Record<TierName, ByomTierConfig>>;
 }
 
@@ -71,6 +73,22 @@ export function resolveBaseUrl(file: RouteWiseConfig): string {
     return file.base_url.trim();
   }
   return DEFAULT_BASE_URL;
+}
+
+export function resolveTeam(file: RouteWiseConfig): string | null {
+  const env = process.env.ROUTEWISE_TEAM?.trim();
+  if (env) {
+    return env;
+  }
+  return file.team && file.team.trim() ? file.team.trim() : null;
+}
+
+export function resolveFeature(file: RouteWiseConfig): string | null {
+  const env = process.env.ROUTEWISE_FEATURE?.trim();
+  if (env) {
+    return env;
+  }
+  return file.feature && file.feature.trim() ? file.feature.trim() : null;
 }
 
 export function maskKey(key: string): string {

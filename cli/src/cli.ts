@@ -10,6 +10,8 @@ import {
   maskKey,
   resolveApiKey,
   resolveBaseUrl,
+  resolveFeature,
+  resolveTeam,
   saveConfig,
   byomOverrides,
   setByom,
@@ -70,7 +72,9 @@ Usage:
   routewise config                   show current config
   routewise config set <key>         save an API key
   routewise config set-base <url>    save a base URL
-  routewise config unset [key|base]  clear saved config
+  routewise config set-team <name>   tag every request with a team
+  routewise config set-feature <name>  tag every request with a feature
+  routewise config unset [key|base|team|feature]  clear saved config
   routewise config path              print the config file path
   routewise login                    open the dashboard, save your API key (paste is hidden)
   routewise whoami                   show your identity + account usage snapshot
@@ -92,6 +96,8 @@ Flags (on ask/stream/chat):
   --quiet                     suppress the metadata line on stderr
   --base-url <url>            override the API base URL for this call
   --key <key>                 use an API key for this call only
+  --team <name>               spend tag: who is paying (saved via config set-team)
+  --feature <name>            spend tag: which feature (saved via config set-feature)
 
 Bring your own model (saved once locally, auto-applied to every ask/stream).
 Add one, two, or all three tiers — tiers you don't configure use the defaults:
@@ -397,15 +403,38 @@ function cmdConfig(
     return;
   }
 
+  if (sub === "set-team") {
+    const team = positionals[1];
+    if (!team) {
+      throw new Error("Usage: routewise config set-team <name>");
+    }
+    saveConfig({ team: team.trim() });
+    console.log(`Saved team tag "${team.trim()}" to ${configFilePath()}`);
+    return;
+  }
+
+  if (sub === "set-feature") {
+    const feature = positionals[1];
+    if (!feature) {
+      throw new Error("Usage: routewise config set-feature <name>");
+    }
+    saveConfig({ feature: feature.trim() });
+    console.log(`Saved feature tag "${feature.trim()}" to ${configFilePath()}`);
+    return;
+  }
+
   if (sub === "unset") {
     const target = positionals[1] ?? "all";
     if (target === "base" || target === "base-url") {
       saveConfig({ base_url: "" });
     } else if (target === "key" || target === "api") {
       saveConfig({ api_key: "" });
+    } else if (target === "team") {
+      saveConfig({ team: "" });
+    } else if (target === "feature") {
+      saveConfig({ feature: "" });
     } else {
-      saveConfig({ api_key: "" });
-      saveConfig({ base_url: "" });
+      saveConfig({ api_key: "", base_url: "", team: "", feature: "" });
     }
     console.log("Config updated.");
     return;
@@ -441,6 +470,8 @@ function cmdConfig(
     base_url: base,
     api_key: key ? maskKey(key) : "(unset)",
     api_key_source: envKey ? "environment" : savedKey ? "config file" : "not set",
+    team: resolveTeam(file) ?? "(unset)",
+    feature: resolveFeature(file) ?? "(unset)",
     config_file: configFilePath(),
   };
   if (json) {
@@ -450,6 +481,8 @@ function cmdConfig(
   console.log(`Base URL:    ${base}`);
   console.log(`API key:     ${key ? maskKey(key) : "(unset)"}`);
   console.log(`Key source:  ${envKey ? "environment" : savedKey ? "config file" : "not set"}`);
+  console.log(`Team tag:    ${resolveTeam(file) ?? "(unset)"}`);
+  console.log(`Feature tag: ${resolveFeature(file) ?? "(unset)"}`);
   console.log(`BYOM:        ${byomSummary}`);
   console.log(`Config file: ${configFilePath()}`);
   if (!key) {
@@ -856,8 +889,10 @@ export async function run(argv: string[]): Promise<number> {
   const file = loadConfig();
   const apiKey = flagValue(flags, "key") ?? resolveApiKey(file);
   const baseUrl = flagValue(flags, "base-url") ?? resolveBaseUrl(file);
+  const team = flagValue(flags, "team") ?? resolveTeam(file);
+  const feature = flagValue(flags, "feature") ?? resolveFeature(file);
   const byom = byomOverrides(file);
-  const client = new RouteWiseClient({ apiKey, baseUrl });
+  const client = new RouteWiseClient({ apiKey, baseUrl, team, feature });
 
   try {
     switch (command) {
