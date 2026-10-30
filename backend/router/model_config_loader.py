@@ -1,6 +1,10 @@
-from router.db import SessionLocal, UserConfig, ModelPricing
+import logging
+
+from router.db import SessionLocal, UserConfig, ModelPricing, KeyProviderConfig
 from router.config import MODEL_CONFIG, OLLAMA_FALLBACK_CONFIG
 from router.providers_registry import PROVIDERS_REGISTRY
+
+log = logging.getLogger("routewise")
 
 assert "ollama" in PROVIDERS_REGISTRY
 assert "groq" in PROVIDERS_REGISTRY
@@ -84,12 +88,16 @@ def get_pricing_for_model(model_id: str) -> tuple[float, float]:
     return MODEL_CONFIG["cheap"]["price_per_m_input"], MODEL_CONFIG["cheap"]["price_per_m_output"]
 
 
-def get_active_config(user_id: str | None = None) -> dict:
+def get_active_config(user_id: str | None = None, key_id: int | None = None) -> dict:
     """
     Returns the merged config for all 3 tiers.
-    If user_id is provided, user config rows for that user override defaults.
-    Falls back to PROVIDER_DEFAULTS for any tier not configured.
+
+    Precedence per tier: a BYOM row on the calling key, then the user's saved
+    account config, then the server defaults. Request-level overrides are
+    applied by the route handlers on top of this, so a request still wins.
     """
+    from router.secret_store import decrypt
+
     session = SessionLocal()
     try:
         query = session.query(UserConfig).order_by(UserConfig.created_at.desc())
@@ -108,17 +116,51 @@ def get_active_config(user_id: str | None = None) -> dict:
                     "model_id": row.model_id,
                 }
 
+        key_rows = {}
+        if key_id is not None:
+            key_rows = {
+                row.tier: row
+                for row in session.query(KeyProviderConfig).filter(
+                    KeyProviderConfig.api_key_id == key_id
+                ).all()
+            }
+
         merged = {}
         for tier, defaults in PROVIDER_DEFAULTS.items():
+            cfg = defaults.copy()
             if tier in user_overrides:
-                cfg = {**defaults, **user_overrides[tier]}
-            else:
-                cfg = defaults.copy()
+                cfg = {**cfg, **user_overrides[tier]}
+
+            stored_prices = False
+            store = key_rows.get(tier)
+            if store is not None:
+                secret = decrypt(store.api_key_encrypted) if store.api_key_encrypted else None
+                # Never silently send one provider's credential to another, and
+                # never call a provider that needs a key without one: fall back
+                # to the account default for this tier instead.
+                if store.api_key_encrypted and secret is None:
+                    log.warning(
+                        "ignoring BYOM for key %s tier %s: credential unreadable", key_id, tier
+                    )
+                elif store.provider != "ollama" and secret is None:
+                    log.warning(
+                        "ignoring BYOM for key %s tier %s: no credential stored", key_id, tier
+                    )
+                else:
+                    cfg["provider"] = store.provider
+                    cfg["model_id"] = store.model_id
+                    if secret:
+                        cfg["api_key"] = secret
+                    if store.price_per_m_input is not None and store.price_per_m_output is not None:
+                        cfg["price_per_m_input"] = store.price_per_m_input
+                        cfg["price_per_m_output"] = store.price_per_m_output
+                        stored_prices = True
 
             # look up real pricing from DB, fall back to defaults if not found
-            pricing = _get_pricing(session, cfg["provider"], cfg["model_id"])
-            if pricing:
-                cfg["price_per_m_input"], cfg["price_per_m_output"] = pricing
+            if not stored_prices:
+                pricing = _get_pricing(session, cfg["provider"], cfg["model_id"])
+                if pricing:
+                    cfg["price_per_m_input"], cfg["price_per_m_output"] = pricing
 
             merged[tier] = cfg
     finally:

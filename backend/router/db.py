@@ -1,7 +1,7 @@
 import os
 import logging
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean, Text, UniqueConstraint
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -61,6 +61,31 @@ class ApiKey(Base):
     cache_enabled = Column(Boolean, nullable=True, default=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class KeyProviderConfig(Base):
+    """Per-key BYOM: which provider and model a tier should call, plus its key.
+
+    The credential is Fernet-encrypted by router.secret_store before it is
+    written and is never serialised. A missing row means "use the account
+    default for this tier"; a row without a credential is only valid for
+    providers that need none (ollama).
+    """
+    __tablename__ = "key_provider_configs"
+    __table_args__ = (UniqueConstraint("api_key_id", "tier", name="uq_key_provider_tier"),)
+    id = Column(Integer, primary_key=True)
+    api_key_id = Column(Integer, nullable=False, index=True)
+    tier = Column(String, nullable=False)
+    provider = Column(String, nullable=False)
+    model_id = Column(String, nullable=False)
+    api_key_encrypted = Column(Text, nullable=True)
+    # First/last characters in clear so the dashboard can show a hint without
+    # decrypting on every list call. Never enough to reconstruct the secret.
+    api_key_hint = Column(String, nullable=True)
+    price_per_m_input = Column(Float, nullable=True)
+    price_per_m_output = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class RequestLog(Base):
