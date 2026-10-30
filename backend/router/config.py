@@ -8,6 +8,10 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+# Encrypts customer provider keys stored for BYOM on a RouteWise key (see
+# router/secret_store.py). Optional: when unset, one is derived from the
+# Supabase service key so existing deployments need no new secret.
+BYOM_ENCRYPTION_KEY = os.getenv("BYOM_ENCRYPTION_KEY", "").strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_JUDGE_API_KEY = os.getenv("GROQ_JUDGE_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
