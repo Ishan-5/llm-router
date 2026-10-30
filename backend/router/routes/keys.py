@@ -2,8 +2,15 @@ import secrets
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, field_validator
-from router.db import SessionLocal, ApiKey
+from router.db import SessionLocal, ApiKey, Team
 from router.auth import require_user, invalidate_key_cache
+from router.budgets import (
+    budget_status,
+    get_team,
+    invalidate_team_cache,
+    key_spend,
+    month_start,
+)
 
 router = APIRouter()
 log = logging.getLogger("routewise")
@@ -14,37 +21,62 @@ def _validate_budget(v):
     if v is None:
         return None
     if v < 0:
-        raise ValueError("daily_budget_usd must be zero or greater")
+        raise ValueError("budget must be zero or greater")
     if v != v or v in (float("inf"), float("-inf")):
-        raise ValueError("daily_budget_usd must be a finite number")
+        raise ValueError("budget must be a finite number")
     return v
 
 
 class KeyCreateRequest(BaseModel):
     name: str
     daily_budget_usd: float | None = None
+    monthly_budget_usd: float | None = None
+    team_id: int | None = None
 
-    @field_validator("daily_budget_usd")
+    @field_validator("daily_budget_usd", "monthly_budget_usd")
     @classmethod
     def check_budget(cls, v):
         return _validate_budget(v)
 
 
-class KeyBudgetRequest(BaseModel):
-    daily_budget_usd: float | None
+class KeyUpdateRequest(BaseModel):
+    """Any subset of fields. Unset fields are left alone, explicit null clears."""
+    name: str | None = None
+    daily_budget_usd: float | None = None
+    monthly_budget_usd: float | None = None
+    team_id: int | None = None
 
-    @field_validator("daily_budget_usd")
+    @field_validator("daily_budget_usd", "monthly_budget_usd")
     @classmethod
     def check_budget(cls, v):
         return _validate_budget(v)
 
 
-def _serialize(record: ApiKey) -> dict:
+def _own_team(session, team_id, user_id) -> Team | None:
+    if team_id is None:
+        return None
+    team = session.query(Team).filter(
+        Team.id == team_id, Team.user_id == user_id, Team.is_active == True
+    ).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    return team
+
+
+def _serialize(record: ApiKey, session) -> dict:
+    team = get_team(session, record.team_id)
+    status = budget_status(record, session)
+    spent_month = key_spend(session, record.id, month_start())
     return {
         "id": record.id,
         "key": record.key,
         "name": record.name,
+        "team_id": record.team_id,
+        "team_name": team.name if team else None,
         "daily_budget_usd": record.daily_budget_usd,
+        "monthly_budget_usd": record.monthly_budget_usd,
+        "spent_this_month": round(spent_month, 6),
+        "budget": status.as_dict(),
         "created_at": record.created_at.isoformat(),
     }
 
@@ -54,7 +86,7 @@ def get_keys(user_id: str = Depends(require_user)):
     session = SessionLocal()
     try:
         rows = session.query(ApiKey).filter(ApiKey.user_id == user_id, ApiKey.is_active == True).all()
-        return [_serialize(r) for r in rows]
+        return [_serialize(r, session) for r in rows]
     finally:
         session.close()
 
@@ -64,22 +96,26 @@ def create_key(req: KeyCreateRequest, user_id: str = Depends(require_user)):
     key = "rw_" + secrets.token_urlsafe(32)
     session = SessionLocal()
     try:
+        team = _own_team(session, req.team_id, user_id)
         record = ApiKey(
             key=key,
             name=req.name.strip(),
             user_id=user_id,
+            team_id=team.id if team else None,
             daily_budget_usd=req.daily_budget_usd,
+            monthly_budget_usd=req.monthly_budget_usd,
         )
         session.add(record)
         session.commit()
-        return {"key": key, "name": record.name, "daily_budget_usd": record.daily_budget_usd, "created_at": record.created_at.isoformat()}
+        session.refresh(record)
+        return _serialize(record, session)
     finally:
         session.close()
 
 
 @router.patch("/keys/{key_id}")
-def update_key_budget(key_id: int, req: KeyBudgetRequest, user_id: str = Depends(require_user)):
-    """Set or clear a key's daily spend cap.
+def update_key(key_id: int, req: KeyUpdateRequest, user_id: str = Depends(require_user)):
+    """Edit a key's caps, team or name.
 
     The auth layer caches each key record for 30 seconds, so a budget change must
     invalidate that entry or the old cap keeps being enforced until the TTL lapses.
@@ -89,13 +125,30 @@ def update_key_budget(key_id: int, req: KeyBudgetRequest, user_id: str = Depends
         record = session.query(ApiKey).filter(ApiKey.id == key_id, ApiKey.user_id == user_id).first()
         if not record:
             raise HTTPException(status_code=404, detail="Key not found")
-        record.daily_budget_usd = req.daily_budget_usd
+
+        fields = req.model_dump(exclude_unset=True)
+        if "team_id" in fields:
+            team = _own_team(session, fields["team_id"], user_id)
+            record.team_id = team.id if team else None
+        if "name" in fields:
+            name = (fields["name"] or "").strip()
+            if not name:
+                raise HTTPException(status_code=400, detail="name cannot be empty")
+            record.name = name
+        if "daily_budget_usd" in fields:
+            record.daily_budget_usd = fields["daily_budget_usd"]
+        if "monthly_budget_usd" in fields:
+            record.monthly_budget_usd = fields["monthly_budget_usd"]
+
         session.commit()
+        session.refresh(record)
         key_string = record.key
+        payload = _serialize(record, session)
     finally:
         session.close()
     invalidate_key_cache(key_string)
-    return {"id": key_id, "daily_budget_usd": req.daily_budget_usd}
+    invalidate_team_cache()
+    return payload
 
 
 @router.delete("/keys/{key_id}")
