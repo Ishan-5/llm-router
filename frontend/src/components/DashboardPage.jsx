@@ -29,6 +29,12 @@ const BUDGET_CHIP = {
   exhausted: 'text-danger bg-danger/10 border-danger/30',
 }
 
+const POLICY_SHORT = {
+  generic: 'general',
+  '3tier': 'support 3-tier',
+  '2tier': 'support 2-tier',
+}
+
 function describeBudget(budget) {
   if (!budget || budget.state === 'unlimited') return null
   if (budget.state === 'exhausted') {
@@ -419,12 +425,16 @@ export default function DashboardPage() {
   const [loadingKeys, setLoadingKeys] = useState(true)
   const [creating, setCreating] = useState(false)
   const [revoking, setRevoking] = useState(null)
-const [keyBudget, setKeyBudget] = useState('')
-const [keyMonthlyBudget, setKeyMonthlyBudget] = useState('')
-const [keyTeamId, setKeyTeamId] = useState('')
-const [editingBudget, setEditingBudget] = useState(null)
-const [budgetDraft, setBudgetDraft] = useState('')
-const [savingBudget, setSavingBudget] = useState(false)
+  const [keyBudget, setKeyBudget] = useState('')
+  const [keyMonthlyBudget, setKeyMonthlyBudget] = useState('')
+  const [keyTeamId, setKeyTeamId] = useState('')
+  const [keyPolicy, setKeyPolicy] = useState('')
+  const [keyMaxTier, setKeyMaxTier] = useState('')
+  const [keyThreshold, setKeyThreshold] = useState('')
+  const [keyCache, setKeyCache] = useState(true)
+  const [editingBudget, setEditingBudget] = useState(null)
+  const [budgetDraft, setBudgetDraft] = useState('')
+  const [savingBudget, setSavingBudget] = useState(false)
   const [error, setError] = useState(null)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
@@ -475,6 +485,18 @@ const [savingBudget, setSavingBudget] = useState(false)
       body[field] = parsed
     }
     if (keyTeamId !== '') body.team_id = Number(keyTeamId)
+    if (keyPolicy) body.default_policy = keyPolicy
+    if (keyMaxTier) body.max_tier = keyMaxTier
+    if (keyThreshold.trim() !== '') {
+      const parsed = Number(keyThreshold)
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 2) {
+        setError('Routing sensitivity must be between 0 and 2')
+        setCreating(false)
+        return
+      }
+      body.default_threshold = parsed
+    }
+    body.cache_enabled = keyCache
     const res = await fetch(`${API_BASE}/keys`, {
       method: 'POST',
       headers,
@@ -487,6 +509,10 @@ const [savingBudget, setSavingBudget] = useState(false)
       setKeyBudget('')
       setKeyMonthlyBudget('')
       setKeyTeamId('')
+      setKeyPolicy('')
+      setKeyMaxTier('')
+      setKeyThreshold('')
+      setKeyCache(true)
       loadKeys()
       loadTeams()
     } else {
@@ -831,8 +857,8 @@ const [savingBudget, setSavingBudget] = useState(false)
         <>
           <p className="text-muted text-sm mb-8">
             Use these keys in the <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">Authorization: Bearer &lt;key&gt;</code> header when calling <code className="font-mono text-xs bg-line px-1.5 py-0.5 rounded">/route</code>.
-            A key can belong to a team and carries optional daily and monthly caps.
-            When a cap is exhausted the key keeps working on the cheap tier.
+            A key can belong to a team, carry optional daily and monthly caps, and hold its own routing policy,
+            tier ceiling, sensitivity and cache switch. When a cap is exhausted the key keeps working on the cheap tier.
           </p>
 
           {/* Create key */}
@@ -880,6 +906,72 @@ const [savingBudget, setSavingBudget] = useState(false)
                 <option key={team.id} value={team.id}>{team.name}</option>
               ))}
             </select>
+
+            {/* Routing defaults make the key a profile, not just a spend cap. */}
+            <div className="w-full rounded-lg border border-line bg-surface/70 p-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2.5">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Routing defaults</p>
+                <p className="font-mono text-[10px] text-muted">optional · a request can override them</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+                <label className="flex flex-col gap-1">
+                  <span className="font-mono text-[10px] text-muted">Policy</span>
+                  <select
+                    value={keyPolicy}
+                    onChange={(e) => setKeyPolicy(e.target.value)}
+                    title="Which difficulty policy this key scores with. Requests can still name lisa or kate directly."
+                    className="bg-base border border-line rounded-lg px-2.5 py-2 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+                  >
+                    <option value="">Auto (generic)</option>
+                    <option value="generic">General — emma</option>
+                    <option value="3tier">Support 3-tier — lisa</option>
+                    <option value="2tier">Support 2-tier — kate</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="font-mono text-[10px] text-muted">Max tier</span>
+                  <select
+                    value={keyMaxTier}
+                    onChange={(e) => setKeyMaxTier(e.target.value)}
+                    title="A ceiling this key can never route above, even if a request asks for a bigger model."
+                    className="bg-base border border-line rounded-lg px-2.5 py-2 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+                  >
+                    <option value="">No ceiling</option>
+                    <option value="cheap">Cheap only</option>
+                    <option value="mid">Up to mid</option>
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1">
+                  <span className="font-mono text-[10px] text-muted">Sensitivity</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    value={keyThreshold}
+                    onChange={(e) => setKeyThreshold(e.target.value)}
+                    placeholder="1.0 default"
+                    title="0.0 sends more traffic to cheap, 2.0 sends more to frontier. Range 0-2."
+                    className="bg-base border border-line rounded-lg px-2.5 py-2 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
+                  />
+                </label>
+                <label className="flex items-start gap-2 rounded-lg border border-line bg-base px-2.5 py-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={keyCache}
+                    onChange={(e) => setKeyCache(e.target.checked)}
+                    className="mt-0.5 accent-[var(--color-signal)]"
+                  />
+                  <span className="min-w-0">
+                    <span className="block font-mono text-[10px] text-primary">Response cache</span>
+                    <span className="block font-mono text-[9px] text-muted leading-tight mt-0.5">
+                      off = every call hits a model
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={creating}
@@ -1010,6 +1102,15 @@ const [savingBudget, setSavingBudget] = useState(false)
                         </select>
                       </label>
                     )}
+                    <p className="font-mono text-[10px] text-muted mt-1.5">
+                      routing: {POLICY_SHORT[k.default_policy] || 'general'}
+                      <span className="mx-1.5">·</span>
+                      ceiling {k.max_tier || 'none'}
+                      <span className="mx-1.5">·</span>
+                      sensitivity {k.default_threshold ?? 1.0}
+                      <span className="mx-1.5">·</span>
+                      cache {k.cache_enabled ? 'on' : 'off'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button

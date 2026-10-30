@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-409%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-418%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -460,7 +460,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (342 tests) · node:test (67 CLI tests) · 409 total · GitHub Actions CI |
+| ✅ Testing | pytest (351 tests) · node:test (67 CLI tests) · 418 total · GitHub Actions CI |
 
 ---
 
@@ -770,6 +770,35 @@ curl -X POST https://your-backend/keys \
   -H "Authorization: Bearer <supabase-session>" \
   -H "Content-Type: application/json" \
   -d '{"name": "alice", "team_id": 3, "monthly_budget_usd": 10}'
+```
+
+### Key routing defaults
+
+A key is also a routing profile, not just a spend cap. The same fields work on
+`POST /keys` and `PATCH /keys`, and the dashboard shows them under
+**API keys → Create a key → Routing defaults**:
+
+| Field | Values | What it does |
+| --- | --- | --- |
+| `default_policy` | `generic`, `2tier`, `3tier` | Default difficulty policy. A request naming `emma` / `lisa` / `kate` still wins. |
+| `max_tier` | `cheap`, `mid`, `frontier` | Hard ceiling, applied after budgets and after an explicit tier request. |
+| `default_threshold` | `0.0`–`2.0` | Sensitivity: lower sends more traffic to cheap. |
+| `cache_enabled` | `true` / `false` | `false` skips both cache reads and writes for this key. |
+
+Resolution order is **request value → key default → account setting**. `max_tier`
+is the exception: it always wins, because it is a governance control rather than
+a preference. A `mid` ceiling under the 2-tier policy means "never frontier", so
+it collapses to `cheap` (there is no mid band). Cached answers stored above the
+current ceiling are ignored, so lowering a ceiling takes effect on the next call
+instead of waiting for the cache to expire.
+
+```bash
+curl -X POST https://your-backend/keys \
+  -H "Authorization: Bearer <supabase-session>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "support-bot", "team_id": 3,
+       "default_policy": "3tier", "max_tier": "mid",
+       "default_threshold": 0.8, "cache_enabled": false}'
 ```
 
 ---
