@@ -30,10 +30,39 @@ const BUDGET_CHIP = {
 }
 
 const POLICY_SHORT = {
-  generic: 'general',
-  '3tier': 'support 3-tier',
-  '2tier': 'support 2-tier',
+  generic: 'emma (general)',
+  '3tier': 'lisa (support 3-tier)',
+  '2tier': 'kate (support 2-tier)',
 }
+
+// The policies are named after their models, so every place the user picks one
+// shows the name plus one line saying what it is for.
+const POLICY_CHOICES = [
+  {
+    value: '',
+    name: 'auto',
+    desc: 'account default',
+    title: 'Use whatever the account setting and the request say.',
+  },
+  {
+    value: 'generic',
+    name: 'emma',
+    desc: 'general chat · 3 tiers',
+    title: 'emma: general-purpose routing. Cheap, mid or frontier depending on difficulty.',
+  },
+  {
+    value: '3tier',
+    name: 'lisa',
+    desc: 'support · 3 tiers',
+    title: 'lisa: customer support with a mid band, so mid-difficulty tickets stay on a cheaper model.',
+  },
+  {
+    value: '2tier',
+    name: 'kate',
+    desc: 'support · 2 tiers',
+    title: 'kate: customer support without a mid band - cheap below the cut, frontier above it.',
+  },
+]
 
 function describeBudget(budget) {
   if (!budget || budget.state === 'unlimited') return null
@@ -913,21 +942,34 @@ export default function DashboardPage() {
                 <p className="font-mono text-[10px] uppercase tracking-wide text-muted">Routing defaults</p>
                 <p className="font-mono text-[10px] text-muted">optional · a request can override them</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
-                <label className="flex flex-col gap-1">
-                  <span className="font-mono text-[10px] text-muted">Policy</span>
-                  <select
-                    value={keyPolicy}
-                    onChange={(e) => setKeyPolicy(e.target.value)}
-                    title="Which difficulty policy this key scores with. Requests can still name lisa or kate directly."
-                    className="bg-base border border-line rounded-lg px-2.5 py-2 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
-                  >
-                    <option value="">Auto (generic)</option>
-                    <option value="generic">General — emma</option>
-                    <option value="3tier">Support 3-tier — lisa</option>
-                    <option value="2tier">Support 2-tier — kate</option>
-                  </select>
-                </label>
+              <div className="flex flex-col gap-1">
+                <span className="font-mono text-[10px] text-muted">Policy</span>
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+                  {POLICY_CHOICES.map((p) => {
+                    const selected = keyPolicy === p.value
+                    return (
+                      <button
+                        key={p.name}
+                        type="button"
+                        onClick={() => setKeyPolicy(p.value)}
+                        aria-pressed={selected}
+                        title={p.title}
+                        className={`text-left rounded-lg border px-2.5 py-2 transition ${
+                          selected
+                            ? 'border-signal bg-signal/10'
+                            : 'border-line bg-base hover:border-signal/40'
+                        }`}
+                      >
+                        <span className="block font-mono text-xs text-primary">{p.name}</span>
+                        <span className="block font-mono text-[9px] text-muted leading-tight mt-0.5">
+                          {p.desc}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-2.5">
                 <label className="flex flex-col gap-1">
                   <span className="font-mono text-[10px] text-muted">Max tier</span>
                   <select
@@ -1103,7 +1145,7 @@ export default function DashboardPage() {
                       </label>
                     )}
                     <p className="font-mono text-[10px] text-muted mt-1.5">
-                      routing: {POLICY_SHORT[k.default_policy] || 'general'}
+                      routing: {POLICY_SHORT[k.default_policy] || 'emma (general)'}
                       <span className="mx-1.5">·</span>
                       ceiling {k.max_tier || 'none'}
                       <span className="mx-1.5">·</span>
