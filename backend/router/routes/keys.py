@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, field_validator
 from router.db import SessionLocal, ApiKey, Team
 from router.auth import require_user, invalidate_key_cache
+from router.key_prefs import POLICIES, TIERS
 from router.budgets import (
     budget_status,
     get_team,
@@ -27,16 +28,61 @@ def _validate_budget(v):
     return v
 
 
+def _validate_policy(v):
+    """Empty means 'no key-level policy'; the request or generic wins."""
+    if v is None or v == "":
+        return None
+    if v not in POLICIES:
+        raise ValueError(f"default_policy must be one of {list(POLICIES)}")
+    return v
+
+
+def _validate_max_tier(v):
+    """Empty means no ceiling. 'frontier' is accepted as an explicit no-op."""
+    if v is None or v == "":
+        return None
+    if v not in TIERS:
+        raise ValueError(f"max_tier must be one of {list(TIERS)}")
+    return v
+
+
+def _validate_threshold(v):
+    if v is None:
+        return None
+    if v < 0.0 or v > 2.0:
+        raise ValueError("default_threshold must be between 0.0 and 2.0")
+    return v
+
+
 class KeyCreateRequest(BaseModel):
     name: str
     daily_budget_usd: float | None = None
     monthly_budget_usd: float | None = None
     team_id: int | None = None
+    default_policy: str | None = None
+    max_tier: str | None = None
+    default_threshold: float | None = None
+    cache_enabled: bool | None = None
 
     @field_validator("daily_budget_usd", "monthly_budget_usd")
     @classmethod
     def check_budget(cls, v):
         return _validate_budget(v)
+
+    @field_validator("default_policy")
+    @classmethod
+    def check_policy(cls, v):
+        return _validate_policy(v)
+
+    @field_validator("max_tier")
+    @classmethod
+    def check_max_tier(cls, v):
+        return _validate_max_tier(v)
+
+    @field_validator("default_threshold")
+    @classmethod
+    def check_threshold(cls, v):
+        return _validate_threshold(v)
 
 
 class KeyUpdateRequest(BaseModel):
@@ -45,11 +91,30 @@ class KeyUpdateRequest(BaseModel):
     daily_budget_usd: float | None = None
     monthly_budget_usd: float | None = None
     team_id: int | None = None
+    default_policy: str | None = None
+    max_tier: str | None = None
+    default_threshold: float | None = None
+    cache_enabled: bool | None = None
 
     @field_validator("daily_budget_usd", "monthly_budget_usd")
     @classmethod
     def check_budget(cls, v):
         return _validate_budget(v)
+
+    @field_validator("default_policy")
+    @classmethod
+    def check_policy(cls, v):
+        return _validate_policy(v)
+
+    @field_validator("max_tier")
+    @classmethod
+    def check_max_tier(cls, v):
+        return _validate_max_tier(v)
+
+    @field_validator("default_threshold")
+    @classmethod
+    def check_threshold(cls, v):
+        return _validate_threshold(v)
 
 
 def _own_team(session, team_id, user_id) -> Team | None:
@@ -75,6 +140,10 @@ def _serialize(record: ApiKey, session) -> dict:
         "team_name": team.name if team else None,
         "daily_budget_usd": record.daily_budget_usd,
         "monthly_budget_usd": record.monthly_budget_usd,
+        "default_policy": record.default_policy,
+        "max_tier": record.max_tier,
+        "default_threshold": record.default_threshold,
+        "cache_enabled": record.cache_enabled is not False,
         "spent_this_month": round(spent_month, 6),
         "budget": status.as_dict(),
         "created_at": record.created_at.isoformat(),
@@ -104,6 +173,10 @@ def create_key(req: KeyCreateRequest, user_id: str = Depends(require_user)):
             team_id=team.id if team else None,
             daily_budget_usd=req.daily_budget_usd,
             monthly_budget_usd=req.monthly_budget_usd,
+            default_policy=req.default_policy,
+            max_tier=req.max_tier,
+            default_threshold=req.default_threshold,
+            cache_enabled=True if req.cache_enabled is None else req.cache_enabled,
         )
         session.add(record)
         session.commit()
@@ -139,6 +212,14 @@ def update_key(key_id: int, req: KeyUpdateRequest, user_id: str = Depends(requir
             record.daily_budget_usd = fields["daily_budget_usd"]
         if "monthly_budget_usd" in fields:
             record.monthly_budget_usd = fields["monthly_budget_usd"]
+        if "default_policy" in fields:
+            record.default_policy = fields["default_policy"]
+        if "max_tier" in fields:
+            record.max_tier = fields["max_tier"]
+        if "default_threshold" in fields:
+            record.default_threshold = fields["default_threshold"]
+        if "cache_enabled" in fields:
+            record.cache_enabled = True if fields["cache_enabled"] is None else fields["cache_enabled"]
 
         session.commit()
         session.refresh(record)
