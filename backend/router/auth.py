@@ -3,11 +3,10 @@ import time
 import logging
 import httpx
 from collections import defaultdict
-from datetime import datetime, date
 from fastapi import Header, HTTPException, Request
-from router.db import SessionLocal, ApiKey, RequestLog
+from router.db import SessionLocal, ApiKey
+from router.budgets import budget_status
 from router.config import SUPABASE_URL, SUPABASE_SERVICE_KEY, ADMIN_USER_ID
-from sqlalchemy import func
 
 log = logging.getLogger("routewise.auth")
 
@@ -46,6 +45,7 @@ _READ_ONLY_PREFIXES = (
     "/config",
     "/settings",
     "/keys",
+    "/teams",
     "/admin",
     "/alerts",
     "/catalog",
@@ -102,19 +102,13 @@ def check_rate_limit(api_key: str, bucket: str = "call"):
 
 
 def check_budget(api_key_record: ApiKey) -> bool:
-    if api_key_record.daily_budget_usd is None:
-        return True
+    """True when no cap is exhausted.
 
-    session = SessionLocal()
-    try:
-        today_start = datetime.combine(date.today(), datetime.min.time())
-        spent_today = session.query(func.sum(RequestLog.cost_usd)).filter(
-            RequestLog.api_key_id == api_key_record.id,
-            RequestLog.created_at >= today_start,
-        ).scalar() or 0.0
-        return spent_today < api_key_record.daily_budget_usd
-    finally:
-        session.close()
+    Kept as a boolean because that is what callers and tests want; the richer
+    BudgetStatus is available from router.budgets when a caller needs to say
+    which cap tripped.
+    """
+    return budget_status(api_key_record).allowed
 
 
 def _lookup_key_cached(key: str) -> ApiKey | None:
