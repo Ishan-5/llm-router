@@ -80,6 +80,14 @@ $ routewise ask "convert 5 miles to km" --json
 }
 ```
 
+When a budget cap has tripped, the meta line says which one and the answer still
+comes back from the cheap tier:
+
+```bash
+$ routewise ask "design a rate limiter"
+[cheap score=7.31 $0.00009 · 940ms budget-capped:team_monthly]
+```
+
 ## Readable answers
 
 Model replies come back as Markdown, which is unreadable in a raw terminal.
@@ -146,8 +154,12 @@ routewise config set-team growth        # every request from now on
 routewise config set-feature app        # narrower default, if you want one
 routewise ask "draft a refund reply" --feature refunds   # one-off override
 routewise config unset team
-routewise analytics                     # prints the per-team breakdown
+routewise analytics                     # per-team spend + budget posture
 ```
+
+`analytics` also prints the **binding budget cap** (`Budget ok · team_monthly ·
+$4.20 of $10.00 (42.0%)`) and how many requests were downgraded this month, so a
+spend problem is visible from the terminal without opening the dashboard.
 
 `--team` and `--feature` also work on `stream` and `chat`. Tags never fail a
 request, and calls without one appear as `untagged` in the analytics output.

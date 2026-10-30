@@ -784,9 +784,15 @@ print(f"Tier: {response.headers.get('x-routewise-tier', 'unknown')}")`,
           ['x-routewise-cost', 'USD actually spent on this request'],
           ['x-routewise-cache-hit', '"true" when a cached answer was served'],
           ['x-routewise-difficulty', 'predicted 0-10 difficulty score'],
+          ['x-routewise-budget-state', 'ok · warning · exhausted · unlimited'],
+          ['x-routewise-budget-scope', 'cap that decided the answer, e.g. team_monthly'],
+          ['x-routewise-budget-capped', '"true" when the budget forced the cheap tier'],
+          ['x-routewise-budget-remaining', 'USD left before the cap trips'],
         ],
         body: `Use these for per-request logging in your own app. They are the
-cheapest way to build your own routing dashboard without calling /analytics.`,
+cheapest way to build your own routing dashboard without calling /analytics.
+The same budget block rides on the final stream chunk as
+\`x-routewise-budget\`, so a streaming client can explain a downgrade too.`,
       },
       {
         label: 'Streaming',
