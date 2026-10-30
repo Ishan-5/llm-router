@@ -249,3 +249,54 @@ test("health resolves true on 200 and false on failure", async () => {
   });
   assert.equal(await downClient.health(), false);
 });
+
+test("client-level spend tags ride along as headers", async () => {
+  let headers: Record<string, string> = {};
+  const client = new RouteWiseClient({
+    apiKey: "rw_test",
+    baseUrl: "https://example.com",
+    team: "growth",
+    feature: "onboarding-copy",
+    fetchImpl: (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      headers = init?.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {};
+      return jsonResponse({ response: "x", routed_to: "cheap" });
+    }) as typeof fetch,
+  });
+
+  await client.ask({ query: "q" });
+  assert.equal(headers["x-routewise-team"], "growth");
+  assert.equal(headers["x-routewise-feature"], "onboarding-copy");
+});
+
+test("a per-call tag beats the client default", async () => {
+  let headers: Record<string, string> = {};
+  const client = new RouteWiseClient({
+    apiKey: "rw_test",
+    baseUrl: "https://example.com",
+    team: "growth",
+    fetchImpl: (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      headers = init?.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {};
+      return jsonResponse({ response: "x", routed_to: "cheap" });
+    }) as typeof fetch,
+  });
+
+  await client.ask({ query: "q", team: "support" });
+  assert.equal(headers["x-routewise-team"], "support");
+  assert.equal(headers["x-routewise-feature"], undefined);
+});
+
+test("no tags means no tag headers at all", async () => {
+  let headers: Record<string, string> = {};
+  const client = new RouteWiseClient({
+    apiKey: "rw_test",
+    baseUrl: "https://example.com",
+    fetchImpl: (async (_url: RequestInfo | URL, init?: RequestInit) => {
+      headers = init?.headers ? Object.fromEntries(new Headers(init.headers).entries()) : {};
+      return jsonResponse({ choices: [] });
+    }) as typeof fetch,
+  });
+
+  await client.chat({ messages: [{ role: "user", content: "hi" }] });
+  assert.equal(headers["x-routewise-team"], undefined);
+  assert.equal(headers["x-routewise-feature"], undefined);
+});

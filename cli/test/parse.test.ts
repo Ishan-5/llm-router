@@ -15,6 +15,13 @@ test("parses --flag value and --flag=value", () => {
   assert.equal(p2.flags["tier"], "mid");
 });
 
+test("spend tag flags take a value, not a boolean", () => {
+  const p = parseArgs(["ask", "--team", "growth", "--feature", "onboarding", "q"]);
+  assert.equal(p.flags["team"], "growth");
+  assert.equal(p.flags["feature"], "onboarding");
+  assert.deepEqual(p.positionals, ["q"]);
+});
+
 test("parses boolean flags", () => {
   const p = parseArgs(["ask", "--json", "--bypass-cache", "q"]);
   assert.equal(p.flags["json"], true);

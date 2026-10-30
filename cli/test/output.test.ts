@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { metaLine, money, num, printLogRow, printStats } from "../src/output.js";
+import { metaLine, money, num, printAnalytics, printLogRow, printStats } from "../src/output.js";
 
 test("money formatting", () => {
   assert.equal(money(0.00012345), "$0.00012");
@@ -12,6 +12,28 @@ test("num returns numbers only", () => {
   assert.equal(num(4.5), 4.5);
   assert.equal(num("4.5"), null);
   assert.equal(num(null), null);
+});
+
+test("printAnalytics lists spend by team, untagged included", () => {
+  const lines = printAnalytics({
+    summary: {
+      total_requests: 3, total_cost: 0.5, hypothetical_cost: 1.0, savings: 0.5,
+      savings_pct: 50, cache_hit_rate: 0, cache_savings: 0, fallback_rate: 0,
+    },
+    teams: [
+      { team_id: "growth", requests: 2, cost_usd: 0.4, saved_usd: 0.3, savings_pct: 42.9 },
+      { team_id: null, requests: 1, cost_usd: 0.1, saved_usd: 0, savings_pct: 0 },
+    ],
+  });
+  const text = lines.join("\n");
+  assert.match(text, /By team:/);
+  assert.match(text, /growth/);
+  assert.match(text, /untagged/);
+});
+
+test("printAnalytics omits the team section when there is nothing to group", () => {
+  const text = printAnalytics({ summary: { total_requests: 0, total_cost: 0 } }).join("\n");
+  assert.doesNotMatch(text, /By team:/);
 });
 
 test("metaLine formats live routing", () => {
