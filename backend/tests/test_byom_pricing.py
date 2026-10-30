@@ -9,6 +9,7 @@ from unittest.mock import patch
 from router.main import app
 from router.db import SessionLocal, ApiKey, ModelPricing
 from router.config import MODEL_CONFIG
+from router.budgets import UNLIMITED
 
 client = TestClient(app)
 
@@ -59,7 +60,7 @@ def _route_with_byom(key, byom_config):
     with patch("router.routes.route.check_cache", return_value=None), \
          patch("router.routes.route.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.routes.route.add_to_cache"), \
-         patch("router.routes.route.check_budget", return_value=True), \
+         patch("router.routes.route.budget_status", return_value=UNLIMITED), \
          patch("router.routes.route.call_with_failover", side_effect=_capture):
         response = client.post(
             "/route",
@@ -151,7 +152,7 @@ def test_api_key_only_override_keeps_default_tier_pricing():
     with patch("router.routes.route.check_cache", return_value=None), \
          patch("router.routes.route.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
          patch("router.routes.route.add_to_cache"), \
-         patch("router.routes.route.check_budget", return_value=True), \
+         patch("router.routes.route.budget_status", return_value=UNLIMITED), \
          patch("router.routes.route.call_with_failover", side_effect=_capture):
         response = client.post(
             "/route",
