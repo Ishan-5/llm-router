@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/tests-432%20passing-brightgreen" />
+  <img src="https://img.shields.io/badge/tests-436%20passing-brightgreen" />
   <img src="https://img.shields.io/pypi/v/routewise" />
   <img src="https://img.shields.io/npm/v/routewise" />
   <img src="https://img.shields.io/github/actions/workflow/status/Ishan-5/llm-router/ci.yml" />
@@ -460,7 +460,7 @@ and are returned in every `/route` response so the frontend diagram can show liv
 | ⚖️ Load balancing | Round-robin across multiple keys per tier · per-key 429 cooldown |
 | 🎨 Frontend | React · Vite · Tailwind · Recharts · react-markdown + rehype-highlight |
 | 🚢 Deployment | Docker · Render (backend) · Vercel (frontend) · PyPI (SDK) |
-| ✅ Testing | pytest (365 tests) · node:test (67 CLI tests) · 432 total · GitHub Actions CI |
+| ✅ Testing | pytest (369 tests) · node:test (67 CLI tests) · 436 total · GitHub Actions CI |
 
 ---
 
@@ -840,7 +840,11 @@ derives one from `SUPABASE_SERVICE_KEY`, so an existing deployment works without
 another secret; if neither exists, saving a credential returns `503` instead of
 storing plaintext. Rotating the encryption key makes old credentials
 undecryptable — the router logs it and falls back to the account config instead
-of sending the wrong provider's key, and the owner can re-save the credential.
+of sending the wrong provider's key. `GET /keys/{id}/byom` reports
+`credential_ok` per tier so a saved-but-unusable credential is visible rather
+than looking configured, the dashboard flags it with **re-enter the key**, and a
+`PUT` that omits `api_key` against an undecryptable row is rejected instead of
+keeping the dead ciphertext. Re-saving with the key repairs the tier.
 
 ---
 
