@@ -191,6 +191,21 @@ def _own_key(session, key_id, user_id) -> ApiKey:
     return record
 
 
+def _credential_ok(row: KeyProviderConfig) -> bool:
+    """Can the router actually use this tier today?
+
+    Ollama needs no credential. Anything else needs one that decrypts under the
+    server's current encryption key -- a row saved before a key change still has
+    ciphertext, but it is unusable, and that is exactly the state that used to
+    look healthy in the dashboard while routing ignored it.
+    """
+    if row.provider == "ollama":
+        return True
+    if not row.api_key_encrypted:
+        return False
+    return secret_store.decrypt(row.api_key_encrypted, log_failure=False) is not None
+
+
 def _byom_summary(session, key_id) -> dict:
     """Read-only view: provider/model/prices plus a hint, never the credential."""
     rows = session.query(KeyProviderConfig).filter(
@@ -202,6 +217,9 @@ def _byom_summary(session, key_id) -> dict:
             "model_id": row.model_id,
             "api_key_masked": row.api_key_hint or "",
             "has_api_key": bool(row.api_key_encrypted),
+            # False means this tier is silently falling back to the account
+            # model. The dashboard shows it so the owner can re-enter the key.
+            "credential_ok": _credential_ok(row),
             "price_per_m_input": row.price_per_m_input,
             "price_per_m_output": row.price_per_m_output,
         }
@@ -364,17 +382,31 @@ def set_key_byom(key_id: int, req: KeyByomRequest, user_id: str = Depends(requir
                     session.delete(existing)
                 continue
 
+            # "Keep the saved key" is only valid if that key still decrypts.
+            # Checking for ciphertext alone is what let a credential encrypted
+            # under an old server key survive every re-save: the dashboard kept
+            # showing a hint while routing ignored the whole tier.
+            stored_secret = None
+            if existing is not None and existing.api_key_encrypted:
+                stored_secret = secret_store.decrypt(
+                    existing.api_key_encrypted, log_failure=False
+                )
             keep_existing = (
                 cfg.api_key is None
                 and existing is not None
                 and existing.provider == cfg.provider
-                and bool(existing.api_key_encrypted)
+                and stored_secret is not None
             )
             if cfg.api_key is None and not keep_existing and cfg.provider != "ollama":
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"api_key is required for {tier} when the provider changes",
-                )
+                if existing is not None and existing.api_key_encrypted:
+                    detail = (
+                        f"api_key is required for {tier}: the saved credential can no "
+                        "longer be decrypted (the server encryption key changed), so it "
+                        "must be entered again"
+                    )
+                else:
+                    detail = f"api_key is required for {tier} when the provider changes"
+                raise HTTPException(status_code=400, detail=detail)
 
             row = existing or KeyProviderConfig(api_key_id=key_id, tier=tier)
             if existing is None:

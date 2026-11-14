@@ -52,7 +52,7 @@ def encrypt(raw: str) -> str | None:
     return f.encrypt(raw.encode()).decode()
 
 
-def decrypt(token: str) -> str | None:
+def decrypt(token: str, log_failure: bool = True) -> str | None:
     """None when unset, rotated or corrupt -- the caller must not guess."""
     f = _fernet()
     if f is None or not token:
@@ -60,7 +60,10 @@ def decrypt(token: str) -> str | None:
     try:
         return f.decrypt(token.encode()).decode()
     except (InvalidToken, ValueError):
-        log.warning("stored BYOM credential could not be decrypted (encryption key changed?)")
+        # List endpoints call this per tier to report health, so they pass
+        # log_failure=False: one warning per routed request is enough.
+        if log_failure:
+            log.warning("stored BYOM credential could not be decrypted (encryption key changed?)")
         return None
 
 

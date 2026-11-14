@@ -8,11 +8,13 @@ provider cannot carry the stored secret to the new provider.
 import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 from router import secret_store
 from router.db import SessionLocal, KeyProviderConfig
 from router.main import app
 from router.auth import invalidate_key_cache
+from router.budgets import UNLIMITED
 from router.model_config_loader import get_active_config
 from router.routes import keys as keys_module
 from router.routes.route import _apply_byom_overrides
@@ -230,3 +232,93 @@ def test_request_keeping_provider_keeps_the_stored_credential():
 
     assert user_config["cheap"]["model_id"] == "gpt-4o"
     assert user_config["cheap"]["api_key"] == RAW_KEY
+
+
+# --- a credential that stopped decrypting ----------------------------------
+#
+# The failure this guards against: rotate the server encryption key, and every
+# saved tier still reports a hint, still reads as configured, while routing
+# silently uses the account model. Worse, re-saving the form without retyping
+# the key used to keep the undecryptable ciphertext forever.
+
+def _rotate_encryption_key(monkeypatch):
+    monkeypatch.setattr(secret_store, "BYOM_ENCRYPTION_KEY", Fernet.generate_key().decode())
+
+
+def test_summary_marks_a_credential_that_no_longer_decrypts(monkeypatch):
+    key = _create_key()
+    _put_byom(key["id"], cheap={"provider": "groq", "model_id": "m", "api_key": RAW_KEY})
+
+    _rotate_encryption_key(monkeypatch)
+
+    tier = client.get(f"/keys/{key['id']}/byom").json()["byom"]["cheap"]
+    # The row is still there and still holds ciphertext, but it is unusable.
+    assert tier["has_api_key"] is True
+    assert tier["credential_ok"] is False
+
+    # The router falls back to the account config rather than sending a key it
+    # cannot read -- that is the silent part the summary now makes visible.
+    assert get_active_config(USER_ID, key["id"])["cheap"]["model_id"] != "m"
+
+
+def test_resaving_without_the_key_is_rejected_after_a_key_change(monkeypatch):
+    key = _create_key()
+    _put_byom(key["id"], cheap={"provider": "groq", "model_id": "m", "api_key": RAW_KEY})
+    before = _row(key["id"], "cheap").api_key_encrypted
+
+    _rotate_encryption_key(monkeypatch)
+
+    response = _put_byom(key["id"], cheap={"provider": "groq", "model_id": "m"})
+
+    assert response.status_code == 400
+    assert "decrypted" in response.json()["detail"]
+    # The dead ciphertext is not silently kept as if the save had worked.
+    assert _row(key["id"], "cheap").api_key_encrypted == before
+
+
+def test_resaving_with_a_fresh_credential_repairs_the_tier(monkeypatch):
+    key = _create_key()
+    _put_byom(key["id"], cheap={"provider": "groq", "model_id": "m", "api_key": RAW_KEY})
+
+    _rotate_encryption_key(monkeypatch)
+    repaired = _put_byom(
+        key["id"], cheap={"provider": "groq", "model_id": "m", "api_key": "gsk_secondsecret9999"}
+    )
+
+    assert repaired.status_code == 200
+    assert repaired.json()["byom"]["cheap"]["credential_ok"] is True
+    assert get_active_config(USER_ID, key["id"])["cheap"]["api_key"] == "gsk_secondsecret9999"
+
+
+def test_route_reports_the_provider_that_served_the_request():
+    """The response names the provider, so a BYOM override is verifiable without
+    inferring it from model_id (which can match the account default)."""
+    key = _create_key()
+    _put_byom(key["id"], cheap={"provider": "groq", "model_id": "qwen/qwen3-32b", "api_key": RAW_KEY})
+
+    captured = {}
+
+    def _capture(intended_tier, query, user_api_keys=None, messages=None,
+                 max_tokens=None, temperature=None, user_config=None):
+        captured["user_config"] = user_config
+        return {
+            "text": "ok", "tier": "cheap", "model_id": "qwen/qwen3-32b",
+            "input_tokens": 5, "output_tokens": 3, "cost_usd": 0.0,
+            "intended_tier": "cheap", "fallback_used": False,
+        }
+
+    with patch("router.routes.route.check_cache", return_value=None), \
+         patch("router.routes.route.get_tier", return_value=(1.0, "cheap", 3.4, 4.6)), \
+         patch("router.routes.route.add_to_cache"), \
+         patch("router.routes.route.budget_status", return_value=UNLIMITED), \
+         patch("router.routes.route.call_with_failover", side_effect=_capture):
+        response = client.post(
+            "/route",
+            json={"query": "hi", "override_tier": "cheap"},
+            headers={"Authorization": f"Bearer {key['key']}"},
+        )
+
+    assert response.status_code == 200
+    assert captured["user_config"]["cheap"]["provider"] == "groq"
+    assert response.json()["provider"] == "groq"
+    assert response.json()["model_id"] == "qwen/qwen3-32b"
