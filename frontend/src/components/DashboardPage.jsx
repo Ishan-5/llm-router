@@ -128,6 +128,38 @@ function byomSummaryText(byom) {
     .join(' · ')
 }
 
+// A tier whose stored credential no longer decrypts still reads as configured
+// in the summary, but routing ignores it. These two checks make that visible
+// instead of leaving a saved-but-inactive tier looking fine.
+function byomBrokenTiers(byom) {
+  return BYOM_TIERS.filter(({ value }) => {
+    const tier = byom?.[value]
+    return tier && tier.has_api_key && tier.credential_ok === false
+  }).map(({ value }) => value)
+}
+
+function byomKeylessTiers(byom) {
+  return BYOM_TIERS.filter(({ value }) => {
+    const tier = byom?.[value]
+    return tier && tier.provider !== 'ollama' && !tier.has_api_key
+  }).map(({ value }) => value)
+}
+
+// Used only when /providers cannot be reached. Without it the editor renders an
+// empty dropdown, which silently makes BYOM impossible to configure.
+const PROVIDER_FALLBACK = [
+  ['groq', 'Groq'],
+  ['openrouter', 'OpenRouter'],
+  ['openai', 'OpenAI'],
+  ['anthropic', 'Anthropic'],
+  ['gemini', 'Gemini'],
+  ['deepseek', 'DeepSeek'],
+  ['perplexity', 'Perplexity'],
+  ['mistral', 'Mistral'],
+  ['xai', 'xAI'],
+  ['ollama', 'Ollama'],
+]
+
 function describeDetail(payload) {
   const detail = payload?.detail
   if (Array.isArray(detail)) return detail[0]?.msg || 'invalid input'
@@ -152,14 +184,21 @@ function ByomEditor({ providers, initial, onChange }) {
     onChange(buildByomPayload(next))
   }
 
-  const providerOptions = Object.entries(providers || {})
+  const providerOptions = Object.keys(providers || {}).length
+    ? Object.entries(providers)
+    : PROVIDER_FALLBACK
+  const incomplete = BYOM_TIERS.filter(
+    ({ value }) => rows[value].enabled && (!rows[value].provider || !rows[value].model_id.trim())
+  ).map(({ value }) => value)
   const fieldClass = 'bg-surface border border-line rounded-md px-2 py-1.5 font-mono text-[11px] text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50'
 
   return (
     <div className="flex flex-col gap-2">
       {BYOM_TIERS.map(({ value, label }) => {
         const row = rows[value]
-        const savedHint = initial?.[value]?.api_key_masked
+        const saved = initial?.[value]
+        const savedHint = saved?.api_key_masked
+        const savedUnreadable = Boolean(saved?.has_api_key && saved?.credential_ok === false)
         return (
           <div key={value} className="rounded-lg border border-line bg-base p-2.5">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -172,6 +211,12 @@ function ByomEditor({ providers, initial, onChange }) {
               <span className="font-mono text-[10px] uppercase tracking-wide text-primary">{label}</span>
               <span className="font-mono text-[9px] text-muted">override this tier</span>
             </label>
+            {savedUnreadable && (
+              <p className="font-mono text-[9px] text-danger mt-1.5 leading-relaxed">
+                saved credential can&apos;t be decrypted (the server encryption key changed) —
+                re-enter the provider key or this tier falls back to the account model.
+              </p>
+            )}
             {row.enabled && (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 mt-2">
                 <select
@@ -195,7 +240,13 @@ function ByomEditor({ providers, initial, onChange }) {
                   autoComplete="off"
                   value={row.api_key}
                   onChange={(e) => update(value, 'api_key', e.target.value)}
-                  placeholder={savedHint ? `saved ${savedHint} - blank keeps it` : 'provider key'}
+                  placeholder={
+                    savedUnreadable
+                      ? 're-enter the provider key'
+                      : savedHint
+                        ? `saved ${savedHint} - blank keeps it`
+                        : 'provider key'
+                  }
                   className={fieldClass}
                 />
                 <div className="flex items-center gap-1.5">
@@ -225,6 +276,12 @@ function ByomEditor({ providers, initial, onChange }) {
           </div>
         )
       })}
+      {incomplete.length > 0 && (
+        <p className="font-mono text-[9px] text-danger leading-relaxed">
+          {incomplete.join(', ')} {incomplete.length === 1 ? 'is' : 'are'} ticked but missing a
+          provider or model id — {incomplete.length === 1 ? 'it' : 'they'} will not be saved.
+        </p>
+      )}
       <p className="font-mono text-[9px] text-muted leading-relaxed">
         Encrypted at rest and never shown again. Leave the key blank to keep the saved one.
         Uncheck every tier and save to remove BYOM.
@@ -1406,6 +1463,18 @@ export default function DashboardPage() {
                       >
                         {editingByomId === k.id ? 'close' : 'edit'}
                       </button>
+                      {byomBrokenTiers(k.byom).length > 0 && (
+                        <span className="text-danger">
+                          {' '}· {byomBrokenTiers(k.byom).join(', ')}: re-enter the key
+                          (saved one can&apos;t be decrypted)
+                        </span>
+                      )}
+                      {byomBrokenTiers(k.byom).length === 0 && byomKeylessTiers(k.byom).length > 0 && (
+                        <span className="text-danger">
+                          {' '}· {byomKeylessTiers(k.byom).join(', ')}: no credential saved,
+                          using the account model
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
