@@ -428,8 +428,16 @@ async def route_query(req: QueryRequest, request: Request, api_key: ApiKey = Dep
     if log_id is not None:
         loop.run_in_executor(executor, update_quality_score, log_id, sanitize_pii(req.query), result["text"], result["tier"], result["model_id"])
         loop.run_in_executor(executor, update_difficulty_label, log_id, sanitize_pii(req.query))
+    # Which provider actually served it -- the one field that makes a BYOM
+    # override verifiable from the response instead of inferring from model_id.
+    served_provider = (
+        "gemini"
+        if result.get("cross_provider_fallback")
+        else pre["user_config"].get(result["tier"], {}).get("provider")
+    )
     return {
         "response": result["text"], "routed_to": result["tier"],
+        "provider": served_provider,
         "intended_tier": result["intended_tier"], "predicted_tier": pre["predicted_tier"],
         "override_used": req.override_tier is not None, "budget_capped": over_budget,
         "fallback_used": result["fallback_used"],
