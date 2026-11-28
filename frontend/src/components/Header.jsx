@@ -218,7 +218,7 @@ export default function Header({ isDark, toggleTheme, onOpenSettings, byomActive
                         <rect x="3" y="11" width="18" height="11" rx="2" />
                         <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                       </svg>
-                      Keys stay in your browser — never sent to our DB.
+                      Browser keys stay here. Keys saved on an API key are encrypted on the server.
                     </p>
                   </div>
                   <div className="border-t border-line p-2">
