@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
-import { fetchLogs, fetchLogDetail, fetchAnalytics, fetchTeams, fetchProviders } from '../api'
+import { fetchLogs, fetchLogDetail, fetchAnalytics, fetchTeams, fetchProviders, describeRequestError } from '../api'
 import RequestLogs from './RequestLogs'
 import CostAnalytics from './CostAnalytics'
 import ApiPlayground from './ApiPlayground'
@@ -530,15 +530,22 @@ function AlertsTab() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [confirmingAlert, setConfirmingAlert] = useState(null)
 
   useEffect(() => { loadAlerts() }, [])
 
   async function loadAlerts() {
     setLoading(true)
-    const headers = await authHeaders()
-    const res = await fetch(`${API_BASE}/alerts`, { headers })
-    if (res.ok) setAlerts(await res.json())
-    setLoading(false)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`${API_BASE}/alerts`, { headers })
+      if (!res.ok) throw new Error('Failed to load alert rules')
+      setAlerts(await res.json())
+    } catch (e) {
+      setError(describeRequestError(e))
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleCreate(e) {
@@ -566,9 +573,23 @@ function AlertsTab() {
   }
 
   async function handleDelete(id) {
-    const headers = await authHeaders()
-    await fetch(`${API_BASE}/alerts/${id}`, { method: 'DELETE', headers })
-    setAlerts((prev) => prev.filter((a) => a.id !== id))
+    if (confirmingAlert !== id) {
+      setConfirmingAlert(id)
+      setTimeout(() => setConfirmingAlert((current) => (current === id ? null : current)), 4000)
+      return
+    }
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`${API_BASE}/alerts/${id}`, { method: 'DELETE', headers })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Failed to delete alert')
+      }
+      setAlerts((prev) => prev.filter((a) => a.id !== id))
+      setConfirmingAlert(null)
+    } catch (e) {
+      setError(describeRequestError(e))
+    }
   }
 
   const selectedType = ALERT_TYPES.find((t) => t.value === alertType)
@@ -661,7 +682,7 @@ function AlertsTab() {
                   onClick={() => handleDelete(a.id)}
                   className="font-mono text-[10px] px-3 py-1.5 rounded border border-danger/40 text-danger hover:bg-danger/10 transition shrink-0"
                 >
-                  delete
+                  {confirmingAlert === a.id ? 'confirm delete' : 'delete'}
                 </button>
               </div>
             )
@@ -696,8 +717,13 @@ export default function DashboardPage() {
   const [editingBudget, setEditingBudget] = useState(null)
   const [budgetDraft, setBudgetDraft] = useState('')
   const [savingBudget, setSavingBudget] = useState(false)
+  const [editingRouting, setEditingRouting] = useState(null)
+  const [routingDraft, setRoutingDraft] = useState({ policy: '', maxTier: '', threshold: '', cache: true })
+  const [savingRouting, setSavingRouting] = useState(false)
   const [error, setError] = useState(null)
-  const [copied, setCopied] = useState(false)
+  const [teamsError, setTeamsError] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
+  const [confirmingRevoke, setConfirmingRevoke] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedKeyId, setSelectedKeyId] = useState(null)
 
@@ -715,8 +741,9 @@ export default function DashboardPage() {
   async function loadTeams() {
     try {
       setTeams(await fetchTeams())
-    } catch {
-      // A missing session just means no teams to show; keys still load.
+      setTeamsError(null)
+    } catch (e) {
+      setTeamsError(describeRequestError(e))
     }
   }
 
@@ -857,6 +884,56 @@ export default function DashboardPage() {
     setSavingBudget(false)
   }
 
+  function startEditRouting(k) {
+    setRoutingDraft({
+      policy: k.default_policy || '',
+      maxTier: k.max_tier || '',
+      threshold: k.default_threshold == null ? '' : String(k.default_threshold),
+      cache: k.cache_enabled !== false,
+    })
+    setEditingRouting(editingRouting === k.id ? null : k.id)
+    setError(null)
+  }
+
+  async function saveRouting(id) {
+    const body = {
+      default_policy: routingDraft.policy || null,
+      max_tier: routingDraft.maxTier || null,
+      cache_enabled: routingDraft.cache,
+    }
+    if (routingDraft.threshold.trim() !== '') {
+      const parsed = Number(routingDraft.threshold)
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 2) {
+        setError('Routing sensitivity must be between 0 and 2')
+        return
+      }
+      body.default_threshold = parsed
+    } else {
+      body.default_threshold = null
+    }
+    setSavingRouting(true)
+    setError(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`${API_BASE}/keys/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Failed to update routing defaults')
+      }
+      const updated = await res.json()
+      setKeys((prev) => prev.map((k) => (k.id === id ? updated : k)))
+      setEditingRouting(null)
+    } catch (e) {
+      setError(describeRequestError(e))
+    } finally {
+      setSavingRouting(false)
+    }
+  }
+
   async function assignTeam(id, teamId) {
     setError(null)
     const headers = await authHeaders()
@@ -876,20 +953,38 @@ export default function DashboardPage() {
   }
 
   async function handleRevoke(id) {
+    if (confirmingRevoke !== id) {
+      setConfirmingRevoke(id)
+      setTimeout(() => setConfirmingRevoke((current) => (current === id ? null : current)), 4000)
+      return
+    }
     const safeId = Math.floor(Number(id))
     if (!Number.isFinite(safeId) || safeId <= 0) return
     setRevoking(id)
-    const headers = await authHeaders()
-    await fetch(`${API_BASE}/keys/${safeId}`, { method: 'DELETE', headers })
-    setKeys((prev) => prev.filter((k) => k.id !== id))
-    if (selectedKeyId === id) setSelectedKeyId(keys.find((k) => k.id !== id)?.id || null)
-    setRevoking(null)
+    setError(null)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`${API_BASE}/keys/${safeId}`, { method: 'DELETE', headers })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || 'Failed to revoke key')
+      }
+      setKeys((prev) => prev.filter((k) => k.id !== id))
+      if (selectedKeyId === id) setSelectedKeyId(keys.find((k) => k.id !== id)?.id || null)
+      setConfirmingRevoke(null)
+    } catch (e) {
+      setError(describeRequestError(e))
+    } finally {
+      setRevoking(null)
+    }
   }
 
-  function copyKey(key) {
+  function copyKey(key, id = 'new') {
     navigator.clipboard.writeText(key).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000)
+    }).catch(() => {
+      setError('Could not copy — check the browser clipboard permission')
     })
   }
 
@@ -1058,7 +1153,7 @@ export default function DashboardPage() {
                         <div className="space-y-3">
                           <SetupStep done={keys.length > 0} title="Create an API key" body="One key per person or service." />
                           <SetupStep done={teams.length > 0} title="Create a team with a monthly budget" body="Every key under it shares the cap." />
-                          <SetupStep done={false} title="Send your first request" body="Spend, savings and routing reasons land here." />
+                          <SetupStep done={monthSpend > 0} title="Send your first request" body="Spend, savings and routing reasons land here." />
                         </div>
                         <button
                           onClick={() => setActiveTab('keys')}
@@ -1324,14 +1419,14 @@ export default function DashboardPage() {
           {/* Newly created key — show once */}
           {newKey && (
             <div className="border border-signal/40 bg-signal/5 rounded-xl p-4 mb-8 shadow-card">
-              <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-2">Copy your key — you can view it anytime from the keys list</p>
+              <p className="font-mono text-[10px] text-signal uppercase tracking-wide mb-2">Copy it now — the list only shows a masked version</p>
               <div className="flex items-center gap-3">
                 <code className="font-mono text-xs text-primary break-all flex-1">{newKey}</code>
                 <button
                   onClick={() => copyKey(newKey)}
                   className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition shrink-0"
                 >
-                  {copied ? 'copied ✓' : 'copy'}
+                  {copiedId === 'new' ? 'copied ✓' : 'copy'}
                 </button>
               </div>
             </div>
@@ -1441,14 +1536,104 @@ export default function DashboardPage() {
                       </label>
                     )}
                     <p className="font-mono text-[10px] text-muted mt-1.5">
-                      routing: {POLICY_SHORT[k.default_policy] || 'emma (general)'}
+                      routing: {POLICY_SHORT[k.default_policy] || 'auto (account default)'}
                       <span className="mx-1.5">·</span>
                       ceiling {k.max_tier || 'none'}
                       <span className="mx-1.5">·</span>
                       sensitivity {k.default_threshold ?? 1.0}
                       <span className="mx-1.5">·</span>
                       cache {k.cache_enabled ? 'on' : 'off'}
+                      <span className="mx-1.5">·</span>
+                      <button
+                        type="button"
+                        onClick={() => startEditRouting(k)}
+                        className="underline decoration-dotted hover:text-signal transition"
+                      >
+                        {editingRouting === k.id ? 'close' : 'edit routing'}
+                      </button>
                     </p>
+                    {editingRouting === k.id && (
+                      <div className="mt-2 rounded-lg border border-line bg-panel/40 p-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono text-[10px] text-muted">Policy</span>
+                          <div className="grid grid-cols-2 xl:grid-cols-4 gap-2">
+                            {POLICY_CHOICES.map((p) => (
+                              <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => setRoutingDraft((prev) => ({ ...prev, policy: p.value }))}
+                                aria-pressed={routingDraft.policy === p.value}
+                                title={p.title}
+                                className={`text-left rounded-lg border px-2.5 py-2 transition ${
+                                  routingDraft.policy === p.value
+                                    ? 'border-signal bg-signal/10'
+                                    : 'border-line bg-base hover:border-signal/40'
+                                }`}
+                              >
+                                <span className="block font-mono text-xs text-primary">{p.name}</span>
+                                <span className="block font-mono text-[9px] text-muted leading-tight mt-0.5">{p.desc}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-2.5">
+                          <label className="flex flex-col gap-1">
+                            <span className="font-mono text-[10px] text-muted">Max tier</span>
+                            <select
+                              value={routingDraft.maxTier}
+                              onChange={(e) => setRoutingDraft((prev) => ({ ...prev, maxTier: e.target.value }))}
+                              className="bg-base border border-line rounded-lg px-2.5 py-2 font-mono text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+                            >
+                              <option value="">No ceiling</option>
+                              <option value="cheap">Cheap only</option>
+                              <option value="mid">Up to mid</option>
+                            </select>
+                          </label>
+                          <label className="flex flex-col gap-1">
+                            <span className="font-mono text-[10px] text-muted">Sensitivity</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="2"
+                              step="0.1"
+                              value={routingDraft.threshold}
+                              onChange={(e) => setRoutingDraft((prev) => ({ ...prev, threshold: e.target.value }))}
+                              placeholder="1.0 default"
+                              className="bg-base border border-line rounded-lg px-2.5 py-2 font-mono text-xs text-primary placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-signal/50"
+                            />
+                          </label>
+                          <label className="flex items-start gap-2 rounded-lg border border-line bg-base px-2.5 py-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={routingDraft.cache}
+                              onChange={(e) => setRoutingDraft((prev) => ({ ...prev, cache: e.target.checked }))}
+                              className="mt-0.5 accent-[var(--color-signal)]"
+                            />
+                            <span className="min-w-0">
+                              <span className="block font-mono text-[10px] text-primary">Response cache</span>
+                              <span className="block font-mono text-[9px] text-muted leading-tight mt-0.5">off = every call hits a model</span>
+                            </span>
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => saveRouting(k.id)}
+                            disabled={savingRouting}
+                            className="bg-signal text-white font-semibold text-xs px-4 py-2 rounded-lg hover:brightness-110 transition disabled:opacity-50"
+                          >
+                            {savingRouting ? 'saving…' : 'Save routing'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingRouting(null)}
+                            className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary transition"
+                          >
+                            cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <p className="font-mono text-[10px] text-muted mt-1">
                       BYOM: {byomSummaryText(k.byom) || 'account default'}
                       <span className="mx-1.5">·</span>
@@ -1479,17 +1664,17 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => copyKey(k.key)}
+                      onClick={() => copyKey(k.key, k.id)}
                       className="font-mono text-[10px] px-3 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
                     >
-                      {copied ? 'copied ✓' : 'copy'}
+                      {copiedId === k.id ? 'copied ✓' : 'copy'}
                     </button>
                     <button
                       onClick={() => handleRevoke(k.id)}
                       disabled={revoking === k.id}
                       className="font-mono text-[10px] px-3 py-1.5 rounded border border-danger/40 text-danger hover:bg-danger/10 transition disabled:opacity-50"
                     >
-                      {revoking === k.id ? 'revoking…' : 'revoke'}
+                      {revoking === k.id ? 'revoking…' : confirmingRevoke === k.id ? 'confirm revoke' : 'revoke'}
                     </button>
                   </div>
                   </div>
@@ -1526,11 +1711,14 @@ export default function DashboardPage() {
       {activeTab === 'teams' && (
         <TeamsTab
           teams={teams}
+          loadError={teamsError}
           onChanged={() => { loadTeams(); loadKeys() }}
         />
       )}
 
-          {activeTab === 'playground' && hasKeys && <ApiPlayground />}
+          {activeTab === 'playground' && hasKeys && (
+            <ApiPlayground key={selectedKey?.id} apiKey={selectedKey?.key} />
+          )}
 
           {activeTab === 'analytics' && hasKeys && (
             <div>
