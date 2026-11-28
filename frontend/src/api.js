@@ -84,9 +84,10 @@ export async function fetchRoutePolicies() {
   }
 }
 
-export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null, messages = null, supportMode = null) {
+export async function routeQueryStream(query, overrideTier = null, bypassCache = false, onChunk, onMeta, onDone, onError, signal, threshold = null, messages = null, supportMode = null, apiKey = null) {
   const userKeys = _getUserKeys()
   const byomConfig = _getByomConfig()
+  const bearerKey = apiKey || API_KEY
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
@@ -104,7 +105,7 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
 
   const res = await fetch(`${API_BASE}/route/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${bearerKey}` },
     body: JSON.stringify(body),
     signal,
   })
@@ -137,9 +138,10 @@ export async function routeQueryStream(query, overrideTier = null, bypassCache =
   }
 }
 
-export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null, messages = null, supportMode = null) {
+export async function routeQuery(query, overrideTier = null, bypassCache = false, signal, threshold = null, messages = null, supportMode = null, apiKey = null) {
   const userKeys = _getUserKeys()
   const byomConfig = _getByomConfig()
+  const bearerKey = apiKey || API_KEY
 
   const body = { query }
   if (overrideTier) body.override_tier = overrideTier
@@ -156,7 +158,7 @@ export async function routeQuery(query, overrideTier = null, bypassCache = false
 
   const res = await fetch(`${API_BASE}/route`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${bearerKey}` },
     body: JSON.stringify(body),
     signal,
   })
