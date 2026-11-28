@@ -28,6 +28,8 @@ function BudgetBar({ percent, state }) {
 function TeamCard({ team, onChanged }) {
   const style = STATE_STYLE[team.state] || STATE_STYLE.unlimited
   const [editing, setEditing] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
   const [draft, setDraft] = useState('')
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -37,6 +39,31 @@ function TeamCard({ team, onChanged }) {
     setDraft(team.monthly_budget_usd == null ? '' : String(team.monthly_budget_usd))
     setError(null)
     setEditing(true)
+  }
+
+  function startRename() {
+    setNameDraft(team.name)
+    setError(null)
+    setEditingName(true)
+  }
+
+  async function saveName() {
+    const name = nameDraft.trim()
+    if (!name) {
+      setError('Team name cannot be empty')
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      await updateTeam(team.id, { name })
+      setEditingName(false)
+      onChanged()
+    } catch (e) {
+      setError(describeRequestError(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function save() {
@@ -96,6 +123,12 @@ function TeamCard({ team, onChanged }) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
+            onClick={startRename}
+            className="font-mono text-[10px] px-2.5 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
+          >
+            rename
+          </button>
+          <button
             onClick={startEdit}
             className="font-mono text-[10px] px-2.5 py-1.5 rounded border border-line text-muted hover:text-primary hover:border-signal/50 transition"
           >
@@ -129,6 +162,36 @@ function TeamCard({ team, onChanged }) {
           )}
         </div>
       </div>
+
+      {editingName && (
+        <div className="flex items-center gap-2 mt-3">
+          <input
+            type="text"
+            autoFocus
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveName()
+              if (e.key === 'Escape') setEditingName(false)
+            }}
+            placeholder="Team name"
+            className="w-48 bg-surface border border-line rounded px-2 py-1 font-body text-xs text-primary focus:outline-none focus:ring-1 focus:ring-signal/50"
+          />
+          <button
+            onClick={saveName}
+            disabled={busy}
+            className="font-mono text-[10px] px-2 py-1 rounded border border-signal/50 text-signal hover:bg-signal/10 transition disabled:opacity-50"
+          >
+            {busy ? 'saving…' : 'save'}
+          </button>
+          <button
+            onClick={() => setEditingName(false)}
+            className="font-mono text-[10px] px-2 py-1 rounded border border-line text-muted hover:text-primary transition"
+          >
+            cancel
+          </button>
+        </div>
+      )}
 
       {editing && (
         <div className="flex items-center gap-2 mt-3">
@@ -167,7 +230,7 @@ function TeamCard({ team, onChanged }) {
   )
 }
 
-export default function TeamsTab({ teams, onChanged }) {
+export default function TeamsTab({ teams, loadError, onChanged }) {
   const [name, setName] = useState('')
   const [budget, setBudget] = useState('')
   const [creating, setCreating] = useState(false)
@@ -215,6 +278,10 @@ export default function TeamsTab({ teams, onChanged }) {
           log row and this dashboard says the budget is the reason.
         </p>
       </div>
+
+      {loadError && (
+        <p className="font-mono text-xs text-danger mb-4">Could not load teams: {loadError}</p>
+      )}
 
       <form onSubmit={handleCreate} className="flex flex-wrap gap-3 mb-8">
         <input
