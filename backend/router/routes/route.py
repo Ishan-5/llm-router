@@ -706,7 +706,14 @@ class FeedbackRequest(BaseModel):
 async def submit_feedback(req: FeedbackRequest, api_key: ApiKey = Depends(require_api_key)):
     session = SessionLocal()
     try:
-        entry = session.query(RequestLog).filter(RequestLog.id == req.request_log_id).first()
+        entry = (
+            session.query(RequestLog)
+            .filter(
+                RequestLog.id == req.request_log_id,
+                RequestLog.api_key_id == api_key.id,
+            )
+            .first()
+        )
         if entry is None:
             raise HTTPException(status_code=404, detail="Request log entry not found")
         entry.feedback = req.feedback

@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from router.main import app
-from router.db import SessionLocal, ApiKey
+from router.db import SessionLocal, ApiKey, RequestLog
 
 client = TestClient(app)
 
@@ -77,3 +77,81 @@ def test_route_uses_cache_when_available():
         data = response.json()
         assert data["cache_hit"] is True
         assert data["cost_usd"] == 0.0
+
+
+def _make_log_for(key_string):
+    session = SessionLocal()
+    try:
+        key = session.query(ApiKey).filter(ApiKey.key == key_string).first()
+        entry = RequestLog(
+            api_key_id=key.id,
+            query="capital of france",
+            response="Paris",
+            difficulty_score=1.0,
+            intended_tier="cheap",
+            tier="cheap",
+            model_id="test-model",
+            input_tokens=5,
+            output_tokens=3,
+            cost_usd=0.0,
+            latency_ms=1.0,
+        )
+        session.add(entry)
+        session.commit()
+        session.refresh(entry)
+        return entry.id
+    finally:
+        session.close()
+
+
+def test_feedback_writes_to_own_log():
+    key = _make_test_key("feedback-owner")
+    log_id = _make_log_for(key)
+
+    response = client.post(
+        "/route/feedback",
+        json={"request_log_id": log_id, "feedback": "up", "reason": " correct "},
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "request_log_id": log_id, "feedback": "up"}
+
+    session = SessionLocal()
+    try:
+        entry = session.get(RequestLog, log_id)
+        assert entry.feedback == "up"
+        assert entry.feedback_reason == "correct"
+    finally:
+        session.close()
+
+
+def test_feedback_cannot_edit_another_keys_log():
+    owner_key = _make_test_key("feedback-owner-other")
+    attacker_key = _make_test_key("feedback-attacker")
+    log_id = _make_log_for(owner_key)
+
+    response = client.post(
+        "/route/feedback",
+        json={"request_log_id": log_id, "feedback": "down"},
+        headers={"Authorization": f"Bearer {attacker_key}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Request log entry not found"
+
+    session = SessionLocal()
+    try:
+        entry = session.get(RequestLog, log_id)
+        assert entry.feedback is None
+    finally:
+        session.close()
+
+
+def test_feedback_missing_log_returns_404():
+    key = _make_test_key("feedback-missing-log")
+
+    response = client.post(
+        "/route/feedback",
+        json={"request_log_id": 999999, "feedback": "up"},
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    assert response.status_code == 404
