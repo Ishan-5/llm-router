@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { API_BASE } from '../config'
+import { describeRequestError } from '../api'
 import Confetti from './Confetti'
 
 const EXAMPLES = [
@@ -58,51 +59,54 @@ export default function OnboardingWizard() {
   const [test, setTest] = useState({ running: false, error: null, result: null })
   const [query, setQuery] = useState('')
   const [loadingKey, setLoadingKey] = useState(false)
+  const [setupError, setSetupError] = useState(null)
 
-  useEffect(() => {
-    async function setup() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.access_token) { setPhase('signedout'); return }
+  async function setup() {
+    setSetupError(null)
+    setPhase('loading')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) { setPhase('signedout'); return }
 
-        const { data: { user } } = await supabase.auth.getUser()
-        const meta = user?.user_metadata || {}
-        setFirstName((meta.full_name || user?.email?.split('@')[0] || '').split(' ')[0])
+      const { data: { user } } = await supabase.auth.getUser()
+      const meta = user?.user_metadata || {}
+      setFirstName((meta.full_name || user?.email?.split('@')[0] || '').split(' ')[0])
 
-        const savedKey = sessionStorage.getItem('rw_onboarding_key')
-        if (savedKey) {
-          setApiKey(savedKey)
-          setStep(Math.min(3, Number(sessionStorage.getItem('rw_onboarding_step')) || 1))
-          setPhase('ready')
-          return
-        }
-
-        const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }
-        const res = await fetch(`${API_BASE}/keys`, { headers })
-        if (!res.ok) throw new Error('Failed to load keys')
-        const keys = await res.json()
-
-        if (keys.length > 0) {
-          navigate('/dashboard', { replace: true })
-          return
-        }
-
-        const createRes = await fetch(`${API_BASE}/keys`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ name: 'My first key' }),
-        })
-        if (!createRes.ok) throw new Error('Failed to create key')
-        const key = (await createRes.json()).key
-        sessionStorage.setItem('rw_onboarding_key', key)
-        setApiKey(key)
+      const savedKey = sessionStorage.getItem('rw_onboarding_key')
+      if (savedKey) {
+        setApiKey(savedKey)
+        setStep(Math.min(3, Number(sessionStorage.getItem('rw_onboarding_step')) || 1))
         setPhase('ready')
-      } catch (e) {
-        setPhase('ready')
+        return
       }
+
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` }
+      const res = await fetch(`${API_BASE}/keys`, { headers })
+      if (!res.ok) throw new Error('Failed to load keys')
+      const keys = await res.json()
+
+      if (keys.length > 0) {
+        navigate('/dashboard', { replace: true })
+        return
+      }
+
+      const createRes = await fetch(`${API_BASE}/keys`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ name: 'My first key' }),
+      })
+      if (!createRes.ok) throw new Error('Failed to create key')
+      const key = (await createRes.json()).key
+      sessionStorage.setItem('rw_onboarding_key', key)
+      setApiKey(key)
+      setPhase('ready')
+    } catch (e) {
+      setSetupError(describeRequestError(e))
+      setPhase('error')
     }
-    setup()
-  }, [])
+  }
+
+  useEffect(() => { setup() }, [])
 
   function goTo(next) {
     if (next > 3) return
@@ -146,6 +150,32 @@ export default function OnboardingWizard() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-5 h-5 rounded-full bg-signal/30 animate-pulse" />
           <p className="font-mono text-xs text-muted">Setting up your workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'error') {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center px-6">
+        <div className="w-full max-w-md text-center">
+          <h1 className="font-display text-2xl font-semibold mb-2">Setup didn’t finish</h1>
+          <p className="font-mono text-xs text-danger mb-4">{setupError}</p>
+          <p className="text-sm text-muted mb-8">Your workspace is safe. Try again, or sign in again if the problem continues.</p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={setup}
+              className="bg-signal text-white font-semibold text-sm px-6 py-3 rounded-full shadow-card hover:brightness-110 transition"
+            >
+              Try again
+            </button>
+            <Link
+              to="/auth"
+              className="font-mono text-xs text-primary bg-surface border border-line px-5 py-3 rounded-full hover:border-signal/50 transition"
+            >
+              Sign in again
+            </Link>
+          </div>
         </div>
       </div>
     )
