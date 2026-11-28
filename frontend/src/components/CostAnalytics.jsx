@@ -202,7 +202,7 @@ export default function CostAnalytics({ apiKey }) {
           </div>
           {teams.every((team) => !team.team_id) ? (
             <p className="font-mono text-[10px] text-muted px-1">
-              Every request so far is untagged. Send <span className="text-primary">X-RouteWise-Team: growth</span> on a request and it appears here as its own row.
+              Every request so far is untagged. Assign a key to a team to tag its traffic automatically, or send <span className="text-primary">X-RouteWise-Team: growth</span> on a request.
             </p>
           ) : (
             team_count > teams.length && (
