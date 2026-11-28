@@ -726,9 +726,12 @@ export default function DashboardPage() {
   const [confirmingRevoke, setConfirmingRevoke] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedKeyId, setSelectedKeyId] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [refreshToken, setRefreshToken] = useState(0)
 
   useEffect(() => {
-    loadKeys(); loadTeams()
+    refreshAll()
     fetchProviders().then(setProviders).catch(() => {})
   }, [])
 
@@ -749,10 +752,27 @@ export default function DashboardPage() {
 
   async function loadKeys() {
     setLoadingKeys(true)
-    const headers = await authHeaders()
-    const res = await fetch(`${API_BASE}/keys`, { headers })
-    if (res.ok) setKeys(await res.json())
-    setLoadingKeys(false)
+    try {
+      const headers = await authHeaders()
+      const res = await fetch(`${API_BASE}/keys`, { headers })
+      if (!res.ok) throw new Error('Failed to load API keys')
+      setKeys(await res.json())
+    } catch (e) {
+      setError(describeRequestError(e))
+    } finally {
+      setLoadingKeys(false)
+    }
+  }
+
+  async function refreshAll() {
+    setRefreshing(true)
+    try {
+      await Promise.all([loadKeys(), loadTeams()])
+      setRefreshToken((v) => v + 1)
+      setLastUpdated(new Date().toLocaleTimeString())
+    } finally {
+      setRefreshing(false)
+    }
   }
 
   async function handleCreate(e) {
@@ -1080,21 +1100,35 @@ export default function DashboardPage() {
               <h1 className="font-display text-2xl sm:text-3xl font-semibold text-primary mt-1.5">{meta.title}</h1>
               <p className="text-muted text-sm mt-1.5 max-w-2xl">{meta.sub}</p>
             </div>
-            <div className="flex flex-wrap gap-2 shrink-0">
-              {activeTab !== 'keys' && (
+            <div className="flex flex-col items-start gap-1.5 sm:items-end shrink-0">
+              <p className="font-mono text-[10px] text-muted">
+                {lastUpdated ? `Updated ${lastUpdated}` : 'Loading workspace…'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {activeTab !== 'keys' && (
+                  <button
+                    onClick={() => setActiveTab('keys')}
+                    className="inline-flex items-center bg-signal text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:brightness-110 shadow-card transition"
+                  >
+                    New key
+                  </button>
+                )}
                 <button
-                  onClick={() => setActiveTab('keys')}
-                  className="inline-flex items-center bg-signal text-white font-semibold text-xs px-4 py-2.5 rounded-lg hover:brightness-110 shadow-card transition"
+                  onClick={refreshAll}
+                  disabled={refreshing}
+                  title="Reload keys, teams, spend and logs"
+                  className="inline-flex items-center gap-1.5 font-mono text-xs text-primary bg-surface border border-line px-4 py-2.5 rounded-lg hover:border-signal/50 hover:shadow-card transition disabled:opacity-50"
                 >
-                  New key
+                  <span aria-hidden="true" className={refreshing ? 'inline-block animate-spin' : ''}>↻</span>
+                  {refreshing ? 'Refreshing…' : 'Refresh'}
                 </button>
-              )}
-              <Link
-                to="/playground"
-                className="inline-flex items-center font-mono text-xs text-primary bg-surface border border-line px-4 py-2.5 rounded-lg hover:border-signal/50 hover:shadow-card transition"
-              >
-                Playground
-              </Link>
+                <Link
+                  to="/playground"
+                  className="inline-flex items-center font-mono text-xs text-primary bg-surface border border-line px-4 py-2.5 rounded-lg hover:border-signal/50 hover:shadow-card transition"
+                >
+                  Playground
+                </Link>
+              </div>
             </div>
           </header>
 
@@ -1147,7 +1181,7 @@ export default function DashboardPage() {
                     }
                   >
                     {hasKeys && selectedKey ? (
-                      <CostAnalytics apiKey={selectedKey.key} />
+                      <CostAnalytics key={`overview:${selectedKey.id}:${refreshToken}`} apiKey={selectedKey.key} />
                     ) : (
                       <div className="space-y-4">
                         <div className="space-y-3">
@@ -1170,7 +1204,7 @@ export default function DashboardPage() {
                     action={hasKeys ? <PanelLink onClick={() => setActiveTab('logs')}>View all</PanelLink> : null}
                   >
                     {hasKeys ? (
-                      <RequestLogs apiKey={selectedKey?.key} showTitle={false} />
+                      <RequestLogs key={`overview-logs:${selectedKey?.id}:${refreshToken}`} apiKey={selectedKey?.key} showTitle={false} />
                     ) : (
                       <p className="font-mono text-[11px] text-muted py-4">
                         Nothing routed yet. Each request appears here with the tier used and the budget reason behind it.
@@ -1717,7 +1751,7 @@ export default function DashboardPage() {
       )}
 
           {activeTab === 'playground' && hasKeys && (
-            <ApiPlayground key={selectedKey?.id} apiKey={selectedKey?.key} />
+            <ApiPlayground key={`playground:${selectedKey?.id}:${refreshToken}`} apiKey={selectedKey?.key} />
           )}
 
           {activeTab === 'analytics' && hasKeys && (
@@ -1725,7 +1759,7 @@ export default function DashboardPage() {
               <div className="mb-4">
                 <KeySwitcher keys={keys} selectedKeyId={selectedKeyId} onChange={setSelectedKeyId} mask={maskKey} />
               </div>
-              <CostAnalytics apiKey={selectedKey?.key} />
+              <CostAnalytics key={`analytics:${selectedKey?.id}:${refreshToken}`} apiKey={selectedKey?.key} />
             </div>
           )}
 
@@ -1734,7 +1768,7 @@ export default function DashboardPage() {
               <div className="mb-4">
                 <KeySwitcher keys={keys} selectedKeyId={selectedKeyId} onChange={setSelectedKeyId} mask={maskKey} />
               </div>
-              <RequestLogs apiKey={selectedKey?.key} showTitle={false} />
+              <RequestLogs key={`logs:${selectedKey?.id}:${refreshToken}`} apiKey={selectedKey?.key} showTitle={false} />
             </div>
           )}
 
