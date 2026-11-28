@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from router.config import ALLOWED_ORIGINS
 from router.db import SessionLocal, ApiKey
 from router.main import app
 from router.security import SECURITY_HEADERS
@@ -76,3 +77,24 @@ def test_streaming_still_streams_and_carries_security_headers():
 def test_hsts_is_absent_over_plain_http():
     # Browsers ignore HSTS over http; sending it anyway would be misleading.
     assert "strict-transport-security" not in client.get("/health").headers
+
+
+def test_cors_preflight_allows_write_methods():
+    # PUT /keys/{id}/byom and PATCH /keys/{id} are real endpoints; the browser
+    # must be allowed to preflight them.
+    origin = ALLOWED_ORIGINS[0]
+    for method, path in (("PUT", "/keys/1/byom"), ("PATCH", "/keys/1")):
+        resp = client.options(
+            path,
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": method,
+                "Access-Control-Request-Headers": "authorization,content-type",
+            },
+        )
+        assert resp.status_code == 200, (method, resp.text)
+        allowed = {
+            item.strip().upper()
+            for item in resp.headers.get("access-control-allow-methods", "").split(",")
+        }
+        assert method in allowed
