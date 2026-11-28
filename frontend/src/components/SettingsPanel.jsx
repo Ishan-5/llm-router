@@ -207,7 +207,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
     }
 
     try {
-      await saveConfigForUser(payload)
+      const savedToAccount = await saveConfigForUser(payload)
       try { await saveSettings(threshold) } catch {}
 
       const localStore = {}
@@ -227,7 +227,9 @@ export default function SettingsPanel({ onClose, onSaved }) {
       localStorage.setItem('byom_config', JSON.stringify(localStore))
 
       fetchConfigForUser().then(setActiveConfig).catch(() => {})
-      setSuccess('Config and router threshold saved successfully.')
+      setSuccess(savedToAccount
+        ? 'Config and router threshold saved successfully.'
+        : 'Saved on this device. Sign in to sync it to your account.')
       setTimeout(() => { onSaved && onSaved() }, 800)
     } catch (e) {
       setError(describeRequestError(e))
