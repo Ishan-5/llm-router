@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
-import { Routes, Route, useNavigate, useLocation, Link } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from './supabase'
 import Header from './components/Header'
 import RoutingDiagram from './components/RoutingDiagram'
@@ -213,6 +213,19 @@ function HomePage({ configVersion, backendOnline, isDark, onNavigate }) {
   )
 }
 
+function RequireSession({ user, ready, children }) {
+  const location = useLocation()
+  if (!ready) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <p className="font-mono text-xs text-muted">Checking your session…</p>
+      </div>
+    )
+  }
+  if (!user) return <Navigate to="/auth" replace state={{ from: location.pathname }} />
+  return children
+}
+
 function PricingRoute({ onNavigate }) {
   return <PricingPage onBack={() => onNavigate('/')} />
 }
@@ -222,6 +235,7 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
   const [toast, setToast] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [cmdOpen, setCmdOpen] = useState(false)
@@ -258,9 +272,13 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => setUser(session?.user ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setAuthReady(true))
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null)
+      setAuthReady(true)
       if (event === 'SIGNED_IN') {
         showToast('Signed in')
         let hasKeys = false
@@ -338,7 +356,7 @@ export default function App() {
           <Route path="/reliability" element={<ReliabilityPage isDark={isDark} />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/dashboard" element={<RequireSession user={user} ready={authReady}><DashboardPage /></RequireSession>} />
             <Route path="/playground" element={
               <div className="max-w-3xl mx-auto px-6 py-20">
                 <p className="font-mono text-xs text-signal tracking-wide uppercase mb-4">API Playground</p>
@@ -353,7 +371,7 @@ export default function App() {
             <Route path="/get-started" element={<OnboardingWizard />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/terms" element={<TermsPage />} />
-            <Route path="/admin" element={<AdminPage user={user} />} />
+            <Route path="/admin" element={<RequireSession user={user} ready={authReady}><AdminPage user={user} /></RequireSession>} />
             <Route path="*" element={
               <div className="relative max-w-3xl mx-auto px-6 py-32 text-center">
                 <div
