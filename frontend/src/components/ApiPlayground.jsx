@@ -8,14 +8,14 @@ const MAX_HISTORY = 15
 
 const SNIPPET_LANGS = ['curl', 'Python', 'JavaScript']
 
-function generateSnippet(lang, query, tier, streaming) {
+function generateSnippet(lang, query, tier, streaming, authKey = API_KEY) {
   const q = query.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   if (lang === 'curl') {
     const tierPart = tier !== 'auto' ? `  "override_tier": "${tier}",\n` : ''
     const streamPart = streaming ? '  "stream": true,\n' : ''
     return `curl -X POST ${API_BASE}/route${streaming ? '/stream' : ''} \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer ${API_KEY || '<your-api-key>'}" \\
+  -H "Authorization: Bearer ${authKey || '<your-api-key>'}" \\
   -d '{
     "query": "${q}",
 ${tierPart}${streamPart}}'`
@@ -28,7 +28,7 @@ ${tierPart}${streamPart}}'`
 url = "${API_BASE}/route/stream"
 headers = {
     "Content-Type": "application/json",
-    "Authorization": "Bearer ${API_KEY || '<your-api-key>'}"
+    "Authorization": "Bearer ${authKey || '<your-api-key>'}"
 }
 payload = {"query": "${q}"${tier !== 'auto' ? `, "override_tier": "${tier}"` : ''}, "stream": True}
 
@@ -42,7 +42,7 @@ for line in resp.iter_lines():
 url = "${API_BASE}/route"
 headers = {
     "Content-Type": "application/json",
-    "Authorization": "Bearer ${API_KEY || '<your-api-key>'}"
+    "Authorization": "Bearer ${authKey || '<your-api-key>'}"
 }
 payload = {"query": "${q}"${tier !== 'auto' ? `, "override_tier": "${tier}"` : ''}}
 
@@ -56,7 +56,7 @@ print(data["response"])`
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "Authorization": "Bearer ${API_KEY || '<your-api-key>'}"
+    "Authorization": "Bearer ${authKey || '<your-api-key>'}"
   },
   body: JSON.stringify({
     query: "${q}"${tier !== 'auto' ? `,\n    override_tier: "${tier}"` : ''},
@@ -76,7 +76,7 @@ while (true) {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "Authorization": "Bearer ${API_KEY || '<your-api-key>'}"
+    "Authorization": "Bearer ${authKey || '<your-api-key>'}"
   },
   body: JSON.stringify({
     query: "${q}"${tier !== 'auto' ? `,\n    override_tier: "${tier}"` : ''}
@@ -89,10 +89,10 @@ console.log(data.response);`
   return ''
 }
 
-function SnippetTabs({ query, tier, streaming }) {
+function SnippetTabs({ query, tier, streaming, authKey }) {
   const [active, setActive] = useState('curl')
   const [copied, setCopied] = useState(false)
-  const code = generateSnippet(active, query, tier, streaming)
+  const code = generateSnippet(active, query, tier, streaming, authKey)
 
   function copy() {
     navigator.clipboard.writeText(code).then(() => {
@@ -158,7 +158,8 @@ const MCP_CONFIG_SNIPPET = `{
   }
 }`
 
-export default function ApiPlayground() {
+export default function ApiPlayground({ apiKey = null }) {
+  const authKey = apiKey || API_KEY
   const [query, setQuery] = useState('')
   const [tier, setTier] = useState('auto')
   const [threshold, setThreshold] = useState(() => getSharedThreshold() ?? 1.0)
@@ -230,6 +231,9 @@ export default function ApiPlayground() {
         (err) => { setError(describeRequestError(err)); setLoading(false) },
         controller.signal,
         threshold,
+        null,
+        null,
+        authKey,
       )
         // Unhandled, a dropped connection left the spinner spinning forever.
         .catch((err) => {
@@ -238,7 +242,7 @@ export default function ApiPlayground() {
           setError(describeRequestError(err))
         })
     } else {
-      routeQuery(trimmed, tier === 'auto' ? null : tier, bypassCache, controller.signal, threshold)
+      routeQuery(trimmed, tier === 'auto' ? null : tier, bypassCache, controller.signal, threshold, null, null, authKey)
         .then((data) => {
           setResponse(data)
           addHistory({
@@ -289,6 +293,13 @@ export default function ApiPlayground() {
 
   return (
     <div className="space-y-4">
+      {apiKey && (
+        <p className="font-mono text-[10px] text-muted bg-panel/50 border border-line rounded-lg px-3 py-2">
+          Using selected key <span className="text-primary">{apiKey.slice(0, 8)}…{apiKey.slice(-4)}</span>.
+          Requests count against its budget and routing defaults.
+        </p>
+      )}
+
       {/* Input area */}
       <form onSubmit={handleSubmit} className="space-y-3">
         <div className="bg-panel border border-line rounded-xl shadow-card overflow-hidden focus-within:border-signal/50 focus-within:ring-1 focus-within:ring-signal/20 transition-all">
@@ -459,7 +470,7 @@ export default function ApiPlayground() {
           </button>
           {showSnippets && (
             <div className="animate-[cmd-slide_0.15s_ease-out]">
-              <SnippetTabs query={activeSnippetQuery} tier={tier} streaming={streaming} />
+              <SnippetTabs query={activeSnippetQuery} tier={tier} streaming={streaming} authKey={authKey} />
             </div>
           )}
         </div>
