@@ -257,7 +257,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
                 Override any tier with your own provider + model. Unset tiers keep built-in defaults.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-3">
-                {['OpenAI-compatible', 'Keys stay client-side', 'Swappable in one click'].map((b) => (
+                {['OpenAI-compatible', 'Browser keys stay here', 'Swappable in one click'].map((b) => (
                   <span key={b} className="font-mono text-[9px] px-2 py-1 rounded-full border border-line bg-surface text-muted">
                     {b}
                   </span>
@@ -369,7 +369,7 @@ export default function SettingsPanel({ onClose, onSaved }) {
                   <rect x="3" y="11" width="18" height="11" rx="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                 </svg>
-                Keys are used from your browser at request time — never stored server-side.
+                Browser keys are used at request time and are not saved in your account config. Per-key BYOM keys are encrypted on the server.
               </p>
             )}
           </div>
